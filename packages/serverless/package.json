@@ -1,0 +1,20 @@
+{
+  "name": "@sfood/serverless",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    "./wiki-pages": "./src/wikiPagesHandler.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@sfood/wiki-core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

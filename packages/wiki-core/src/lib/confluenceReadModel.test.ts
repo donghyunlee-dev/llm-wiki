@@ -1,0 +1,61 @@
+import { describe, expect, it } from "vitest";
+import {
+  extractHeadingsFromHtml,
+  normalizeConfluencePage,
+  sanitizeConfluenceHtml,
+  type RawConfluencePage,
+} from "./confluenceReadModel";
+
+describe("confluenceReadModel", () => {
+  it("sanitizes script tags and inline handlers", () => {
+    const html = `<h1 onclick="alert(1)">Title</h1><script>alert(1)</script>`;
+    const sanitized = sanitizeConfluenceHtml(html);
+
+    expect(sanitized).not.toContain("<script");
+    expect(sanitized).not.toContain("onclick=");
+  });
+
+  it("extracts headings from html", () => {
+    const headings = extractHeadingsFromHtml(
+      `<h1>Main</h1><h2 id="details">Details</h2>`,
+    );
+
+    expect(headings).toEqual([
+      { id: "main", level: 1, text: "Main" },
+      { id: "details", level: 2, text: "Details" },
+    ]);
+  });
+
+  it("normalizes a raw confluence page into a wiki document", () => {
+    const rawPage: RawConfluencePage = {
+      id: "1",
+      title: "문서 제목",
+      spaceId: "63111172",
+      status: "current",
+      version: 3,
+      bodyHtml: `<h1>문서 제목</h1><p>요약 문장입니다.</p>`,
+      sourceUrl: "https://example.test/wiki/pages/1",
+      metadata: {
+        docType: "overview",
+        visibility: "public",
+        audience: "beginner",
+        status: "published",
+        prerequisites: [],
+        next: [],
+        related: [],
+      },
+      updatedAt: "2026-04-28",
+    };
+
+    const normalized = normalizeConfluencePage(rawPage, "guides", "doc-title");
+
+    expect(normalized.category).toBe("guides");
+    expect(normalized.slug).toBe("doc-title");
+    expect(normalized.headings[0]).toEqual({
+      id: "문서-제목",
+      level: 1,
+      text: "문서 제목",
+    });
+    expect(normalized.contentHtml).toContain("<h1>");
+  });
+});

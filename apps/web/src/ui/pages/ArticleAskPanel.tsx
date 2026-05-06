@@ -1,0 +1,276 @@
+import {
+  startTransition,
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type FormEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { Link } from "react-router-dom";
+import { getWikiDocumentByIdFrom, type WikiDocument } from "@sfood/wiki-core";
+import { StructuredAnswerView } from "../StructuredAnswerView";
+
+type AskResult = {
+  answer: string;
+  supportedByContext: boolean;
+  confluenceData: Array<{
+    pageId: string;
+    title: string;
+    quote: string;
+  }>;
+  unsupportedClaims: string[];
+  suggestedNextPages: Array<{
+    pageId: string;
+    title: string;
+    reason: string;
+  }>;
+};
+
+type AskTurn = {
+  id: string;
+  question: string;
+  status: "loading" | "complete" | "error";
+  result?: AskResult;
+  errorMessage?: string;
+};
+
+const COLLAPSED_HEIGHT = 64;
+const EXPANDED_HEIGHT = 280;
+
+export function ArticleAskPanel({
+  documents,
+  initialQuestion = "",
+  pageId,
+}: {
+  documents: WikiDocument[];
+  initialQuestion?: string;
+  pageId: string;
+}) {
+  const [question, setQuestion] = useState(initialQuestion);
+  const [turns, setTurns] = useState<AskTurn[]>([]);
+  const [panelHeight, setPanelHeight] = useState(COLLAPSED_HEIGHT);
+  const turnsRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (turnsRef.current) {
+      turnsRef.current.scrollTop = turnsRef.current.scrollHeight;
+    }
+  }, [turns]);
+
+  const startResize = (event: ReactPointerEvent<HTMLElement>) => {
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = panelHeight;
+
+    const resize = (moveEvent: PointerEvent) => {
+      const nextHeight = Math.min(360, Math.max(64, startHeight + startY - moveEvent.clientY));
+      setPanelHeight(nextHeight);
+    };
+    const stopResize = () => {
+      window.removeEventListener("pointermove", resize);
+      window.removeEventListener("pointerup", stopResize);
+    };
+
+    window.addEventListener("pointermove", resize);
+    window.addEventListener("pointerup", stopResize);
+  };
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const trimmedQuestion = question.trim();
+
+    if (!trimmedQuestion) {
+      return;
+    }
+
+    const turnId = `${Date.now()}-${turns.length + 1}`;
+    setQuestion("");
+    setPanelHeight((height) => Math.max(height, EXPANDED_HEIGHT));
+    setTurns((items) => [
+      ...items,
+      {
+        id: turnId,
+        question: trimmedQuestion,
+        status: "loading",
+      },
+    ]);
+
+    try {
+      const response = await fetch("/api/wiki/ai/ask", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          pageId,
+          question: trimmedQuestion,
+          history: turns
+            .filter((turn) => turn.status === "complete" && turn.result)
+            .slice(-3)
+            .map((turn) => ({
+              question: turn.question,
+              answer: turn.result?.answer,
+            })),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("답변을 생성하지 못했습니다.");
+      }
+
+      const payload = await response.json() as AskResult;
+
+      startTransition(() => {
+        setTurns((items) =>
+          items.map((item) =>
+            item.id === turnId
+              ? { ...item, status: "complete", result: payload }
+              : item,
+          ),
+        );
+      });
+    } catch (error) {
+      setTurns((items) =>
+        items.map((item) =>
+          item.id === turnId
+            ? {
+              ...item,
+              status: "error",
+              errorMessage: error instanceof Error ? error.message : "답변을 생성하지 못했습니다.",
+            }
+            : item,
+        ),
+      );
+    }
+  };
+
+  return (
+    <section
+      className="article-ask article-ask-dock"
+      aria-label="문서 질문"
+      style={{ "--article-ask-height": `${panelHeight}px` } as CSSProperties}
+      onPointerDown={(event) => {
+        const target = event.target as HTMLElement;
+
+        if (target.closest("input, button, a")) {
+          return;
+        }
+
+        const bounds = event.currentTarget.getBoundingClientRect();
+
+        if (event.clientY - bounds.top <= 8) {
+          startResize(event);
+        }
+      }}
+    >
+      {turns.length ? (
+        <div className="article-ask-turns" ref={turnsRef}>
+          {turns.map((turn) => (
+            <div className="article-ask-turn" key={turn.id}>
+              <div className="article-ask-question">{turn.question}</div>
+              <div className="article-ask-answer">
+                {turn.status === "loading" ? (
+                  <ArticleAskLoading />
+                ) : turn.status === "complete" && turn.result ? (
+                  <ArticleAskResult documents={documents} result={turn.result} />
+                ) : (
+                  <p>{turn.errorMessage ?? "답변을 준비하지 못했습니다."}</p>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <form className="article-ask-form" onSubmit={submit}>
+        <input
+          value={question}
+          onChange={(event) => setQuestion(event.target.value)}
+          placeholder="이 문서에서 궁금한 내용을 입력하세요"
+        />
+        <button type="submit" aria-label="질문 전송" title="질문 전송">
+          <SendIcon />
+        </button>
+      </form>
+    </section>
+  );
+}
+
+function ArticleAskLoading() {
+  return (
+    <div className="article-ask-loading">
+      <span className="chat-spinner" aria-hidden="true" />
+    </div>
+  );
+}
+
+function ArticleAskResult({
+  documents,
+  result,
+}: {
+  documents: WikiDocument[];
+  result: AskResult;
+}) {
+  return (
+    <div className="article-ask-result">
+      <div>
+        <h3>답변</h3>
+        <StructuredAnswerView text={result.answer} variant="article" />
+      </div>
+
+      {result.suggestedNextPages.length ? (
+        <div>
+          <h3>추천 문서</h3>
+          <ul>
+            {result.suggestedNextPages.map((item) => {
+              const document = getWikiDocumentByIdFrom(documents, item.pageId);
+
+              return (
+                <li key={`${item.pageId}-${item.reason}`}>
+                  {document ? (
+                    <Link to={`/${document.category}/${document.slug}`} target="_blank" rel="noreferrer">
+                      <strong>{item.title}</strong>
+                      <span>{item.reason}</span>
+                    </Link>
+                  ) : (
+                    <>
+                      <strong>{item.title}</strong>
+                      <span>{item.reason}</span>
+                    </>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ) : null}
+
+      {result.unsupportedClaims.length ? (
+        <div>
+          <h3>확인 필요</h3>
+          <ul>
+            {result.unsupportedClaims.map((claim) => (
+              <li key={claim}>{claim}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function SendIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20">
+      <path
+        d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+    </svg>
+  );
+}

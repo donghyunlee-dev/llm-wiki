@@ -1,0 +1,57 @@
+# local-browsing-ux Result
+
+## Delivered Scope
+- Added shared `WikiDocumentListItem` for category/search document cards.
+- Added category page list search, audience filter, document type filter, sort control, and result counts.
+- Updated search page to show grouped counts and render only result-bearing groups before the empty result state.
+- Reduced global page typography, panel spacing, card padding, and large rounded section styling toward a denser wiki/documentation UI.
+- Replaced pill-like metadata chips with compact rectangular chips.
+- Replaced header theme text buttons with compact icon buttons.
+- Added article HTML block renderer for headings, paragraphs, lists, code blocks, tables, quotes, and fallback fragments.
+- Changed the article table of contents into a sticky side navigation.
+- Reworked prerequisite, next, and related links into a compact document graph block.
+- Limited remote readable pages to guides, projects, FAQ, and the `Playbook` page, with onboarding pages excluded.
+- Added `parentId` propagation from Confluence into the wiki read model and graph validation helpers.
+- Added local read-only AI Ask endpoint and article Ask panel with structured output: AI answer, Confluence evidence, unsupported claims, and suggested documents.
+- Expanded search from exact title/summary/heading matching to weighted token matching across title, summary, headings, and body HTML.
+- Added a search follow-up Ask panel so users can continue the query against the most relevant result.
+- Replaced the search result page with a chatbot-style layout: user question, OpenAI natural-language answer, search result summary, evidence, and unsupported-claim sections.
+- Added `/api/wiki/ai/search` for OpenAI analysis over the top Confluence search results.
+- Rendered recommended documents from the allowed search scope as compact external links that open in a new tab.
+- Added in-memory Confluence result caching and AI search response caching in the local dev API.
+- Reduced AI search context size, top document count, output token budget, and reasoning effort for lower latency.
+- Added chatbot loading spinner, progress bar, and status text.
+- Rendered AI answer text as structured paragraphs and lists instead of a flat text block.
+- Cleared the floating input after navigation and replaced the submit text button with an icon button.
+- Expanded search recommendations beyond guides so project and FAQ matches can also appear under the answer.
+- Changed search recommendation links to open internal wiki detail pages instead of Confluence source pages.
+- Removed the visible search evidence section and the article source-page link.
+- Moved recommended document selection into the AI search response so weak token matches are not shown by default.
+- Tightened the search prompt so answers start as natural prose, use lists only for real list-shaped content, and state exact-target gaps before related setup patterns.
+- Changed AI search candidate selection to check matching Confluence index pages first, then expand into detailed documents for answer generation and recommendations.
+- Split Confluence `ops` pages into a hidden policy cache so they can guide answer policy without appearing in search results or recommendations.
+- Changed search result document links to open in a new tab so the current search conversation stays visible.
+- Removed the explanatory loading copy under the search progress bar.
+- Changed the search screen from a single-answer state to an accumulated conversation so follow-up searches keep previous questions and answers on screen.
+- Normalized search input, question, answer, loading, and result summary typography to the compact shared `13px` UI scale.
+- Added spacing between each search question and answer turn so chatbot results do not visually collapse together.
+- Reworked article AI Ask into a fixed bottom dock so users can read the document and answer together.
+- Changed article AI Ask to an accumulated conversation with icon-only send, structured answer text, loading state, and internal recommended-document links that open in a new tab.
+- Fixed article table-of-contents anchors by applying normalized heading ids to rendered heading blocks.
+- Removed explanatory helper copy from search and article AI Ask surfaces so the UI keeps only navigation, labels, state, and content.
+- Renamed article `AI Ask` to Korean `문서 질문`.
+- Tightened the article question dock width, height, padding, and reserved bottom space so it fits the article layout without leaving a large gap below document flow.
+- Removed the undefined document-flow section from article pages.
+- Moved the article question area into the article panel as a full-width sticky bottom block so it aligns with the document content and reaches the page end naturally.
+- Fixed the search and article question placeholder font size by explicitly applying the shared `13px` size to inputs and placeholder pseudo-elements.
+- Added a top resize handle to the article question component so users can drag upward to expand the answer area.
+- Normalized remaining shared site typography away from default Tailwind `text-sm`/`text-base` scales toward fixed compact pixel sizes for page copy, buttons, article content, and home controls.
+- Reworked the article question component back to viewport-bottom fixed positioning so resizing keeps the bottom anchored and expands the answer area upward.
+- Changed the article question component interaction model: it starts as a compact 64px input bar and automatically expands to 280px when the user submits a question.
+- Added automatic scroll-to-latest behavior inside the article question conversation area.
+- Removed the separate resize handle element and made the article question panel's top border area act as the height resize handle, so the handle no longer consumes vertical space.
+- Kept data source, routes, and AWS/deployment scope unchanged.
+
+## Next Steps
+- Add parent/ancestor breadcrumbs if more than one visible parent level is needed.
+- Continue AI answer quality tuning against actual Confluence pages.

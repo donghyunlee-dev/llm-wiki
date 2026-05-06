@@ -1,0 +1,17 @@
+{
+  "name": "sfood-llm-wiki",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@10.0.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @sfood/web dev",
+    "build": "pnpm --filter @sfood/web build",
+    "preview": "pnpm --filter @sfood/web preview",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "benchmark:search": "node docs/tasks/search-quality-and-answer-rendering/compare-search.mjs"
+  }
+}

@@ -1,0 +1,309 @@
+import {
+  normalizeConfluencePage,
+  type RawConfluencePage,
+} from "./confluenceReadModel";
+import type { CategorySlug, WikiDocument } from "./wikiDocuments";
+
+type SnapshotDefinition = {
+  category: CategorySlug;
+  slug: string;
+  page: RawConfluencePage;
+};
+
+export type SnapshotPayload = {
+  pages: SnapshotDefinition[];
+};
+
+const SPACE_ID = "63111172";
+const BASE_URL = "https://sfoodxproject.atlassian.net/wiki/spaces/LLMWIKI/pages";
+
+const SNAPSHOTS: SnapshotDefinition[] = [
+  {
+    category: "guides",
+    slug: "agent-start",
+    page: {
+      id: "91000001",
+      title: "Agent 시작하기",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-04-28",
+      sourceUrl: `${BASE_URL}/91000001`,
+      metadata: {
+        docType: "tutorial",
+        visibility: "public",
+        audience: "beginner",
+        status: "published",
+        prerequisites: [],
+        next: ["91000002"],
+        related: ["92000001"],
+      },
+      bodyHtml: `
+        <h1>Agent 시작하기</h1>
+        <p>처음 접속한 사용자가 가장 먼저 읽는 출발점입니다.</p>
+        <h2 id="why">왜 이 문서를 먼저 읽어야 하나요?</h2>
+        <p>기초 흐름을 먼저 이해하면 다른 문서를 읽을 때 길을 잃지 않습니다.</p>
+        <h2 id="start">시작 순서</h2>
+        <ol>
+          <li>위키의 목적을 이해합니다.</li>
+          <li>대표 가이드를 읽습니다.</li>
+          <li>사례를 참고한 뒤 다음 단계로 넘어갑니다.</li>
+        </ol>
+      `,
+    },
+  },
+  {
+    category: "guides",
+    slug: "wiki-usage",
+    page: {
+      id: "91000002",
+      title: "사내 위키 활용 방법",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-04-28",
+      sourceUrl: `${BASE_URL}/91000002`,
+      metadata: {
+        docType: "howto",
+        visibility: "public",
+        audience: "beginner",
+        status: "published",
+        prerequisites: ["91000001"],
+        next: ["91000003"],
+        related: ["94000001"],
+      },
+      bodyHtml: `
+        <h1>사내 위키 활용 방법</h1>
+        <p>무엇을 읽고 어떤 사례를 참고해야 하는지 빠르게 판단하도록 돕습니다.</p>
+        <h2 id="flow">추천 탐색 흐름</h2>
+        <p>검색, 가이드 확인, 사례 참고, 설계 시작의 순서를 권장합니다.</p>
+        <h2 id="tips">문서를 볼 때 확인할 것</h2>
+        <ul>
+          <li>문서 목적</li>
+          <li>대상 사용자</li>
+          <li>다음으로 읽을 문서</li>
+        </ul>
+      `,
+    },
+  },
+  {
+    category: "guides",
+    slug: "project-design-start",
+    page: {
+      id: "91000003",
+      title: "프로젝트 설계 시작하기",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-04-28",
+      sourceUrl: `${BASE_URL}/91000003`,
+      metadata: {
+        docType: "howto",
+        visibility: "public",
+        audience: "intermediate",
+        status: "published",
+        prerequisites: ["91000002"],
+        next: [],
+        related: ["92000002"],
+      },
+      bodyHtml: `
+        <h1>프로젝트 설계 시작하기</h1>
+        <p>가이드와 사례를 읽은 뒤 실제 문제를 설계 항목으로 정리합니다.</p>
+        <h2 id="before">들어가기 전 준비</h2>
+        <p>무엇을 바꾸려는지 한 문장으로 정리합니다.</p>
+        <h2 id="checklist">설계 메모 체크리스트</h2>
+        <ul>
+          <li>문제 정의</li>
+          <li>대상 사용자</li>
+          <li>필요한 자료</li>
+        </ul>
+      `,
+    },
+  },
+  {
+    category: "projects",
+    slug: "approval-tool",
+    page: {
+      id: "92000001",
+      title: "업무 승인 요청 도구",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-04-28",
+      sourceUrl: `${BASE_URL}/92000001`,
+      metadata: {
+        docType: "example",
+        visibility: "public",
+        audience: "intermediate",
+        status: "published",
+        prerequisites: [],
+        next: ["91000003"],
+        related: ["91000001"],
+      },
+      bodyHtml: `
+        <h1>업무 승인 요청 도구</h1>
+        <p>반복되는 승인 절차를 간단한 입력 흐름으로 정리한 사례입니다.</p>
+        <h2 id="problem">해결한 문제</h2>
+        <p>메일과 메신저에 흩어진 승인 요청을 한 흐름으로 묶었습니다.</p>
+        <h2 id="result">결과</h2>
+        <p>요청 누락을 줄이고 처리 시간을 단축했습니다.</p>
+      `,
+    },
+  },
+  {
+    category: "projects",
+    slug: "weekly-report-automation",
+    page: {
+      id: "92000002",
+      title: "주간 보고서 자동화",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-04-28",
+      sourceUrl: `${BASE_URL}/92000002`,
+      metadata: {
+        docType: "example",
+        visibility: "public",
+        audience: "intermediate",
+        status: "published",
+        prerequisites: [],
+        next: ["91000003"],
+        related: ["93000002"],
+      },
+      bodyHtml: `
+        <h1>주간 보고서 자동화</h1>
+        <p>반복적인 보고서 정리 시간을 줄이기 위해 템플릿과 수집 흐름을 재구성한 사례입니다.</p>
+        <h2 id="problem">해결한 문제</h2>
+        <p>매주 같은 형식의 보고서를 수작업으로 정리하던 문제를 다뤘습니다.</p>
+        <h2 id="result">결과</h2>
+        <p>보고서 작성 시간을 줄이고 누락을 줄였습니다.</p>
+      `,
+    },
+  },
+  {
+    category: "projects",
+    slug: "internal-chatbot",
+    page: {
+      id: "92000003",
+      title: "내부 문의 챗봇",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-04-28",
+      sourceUrl: `${BASE_URL}/92000003`,
+      metadata: {
+        docType: "example",
+        visibility: "public",
+        audience: "intermediate",
+        status: "published",
+        prerequisites: [],
+        next: ["91000003"],
+        related: ["94000001"],
+      },
+      bodyHtml: `
+        <h1>내부 문의 챗봇</h1>
+        <p>반복 문의 응답을 빠르게 안내하기 위한 사례입니다.</p>
+        <h2 id="problem">해결한 문제</h2>
+        <p>같은 질문이 반복되어 담당자 응답 시간이 커지는 문제를 줄였습니다.</p>
+        <h2 id="result">결과</h2>
+        <p>기본 문의 응답 속도가 빨라졌습니다.</p>
+      `,
+    },
+  },
+  {
+    category: "library",
+    slug: "basic-guidelines",
+    page: {
+      id: "93000001",
+      title: "기본 지침서",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-04-28",
+      sourceUrl: `${BASE_URL}/93000001`,
+      metadata: {
+        docType: "reference",
+        visibility: "public",
+        audience: "beginner",
+        status: "published",
+        prerequisites: [],
+        next: [],
+        related: ["91000002"],
+      },
+      bodyHtml: `
+        <h1>기본 지침서</h1>
+        <p>프로젝트 진행 전에 확인해야 하는 공통 규칙 모음입니다.</p>
+        <h2 id="rules">기본 규칙</h2>
+        <p>작게 시작하고, 문서를 맞추고, 검증 가능한 범위로 진행합니다.</p>
+      `,
+    },
+  },
+  {
+    category: "library",
+    slug: "templates",
+    page: {
+      id: "93000002",
+      title: "템플릿",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-04-28",
+      sourceUrl: `${BASE_URL}/93000002`,
+      metadata: {
+        docType: "reference",
+        visibility: "public",
+        audience: "beginner",
+        status: "published",
+        prerequisites: [],
+        next: [],
+        related: ["91000003"],
+      },
+      bodyHtml: `
+        <h1>템플릿</h1>
+        <p>작업을 빠르게 시작하도록 돕는 템플릿 모음입니다.</p>
+        <h2 id="types">템플릿 종류</h2>
+        <p>설계 메모, 체크리스트, 공통 문서 형식을 포함합니다.</p>
+      `,
+    },
+  },
+  {
+    category: "faq",
+    slug: "common-questions",
+    page: {
+      id: "94000001",
+      title: "자주 묻는 질문",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-04-28",
+      sourceUrl: `${BASE_URL}/94000001`,
+      metadata: {
+        docType: "reference",
+        visibility: "public",
+        audience: "beginner",
+        status: "published",
+        prerequisites: [],
+        next: [],
+        related: ["91000001", "92000003"],
+      },
+      bodyHtml: `
+        <h1>자주 묻는 질문</h1>
+        <p>처음 사용하는 직원이 자주 묻는 질문과 답을 모았습니다.</p>
+        <h2 id="questions">질문 목록</h2>
+        <p>무엇부터 읽어야 하는지, 어떤 사례를 먼저 보면 좋은지 등의 질문을 다룹니다.</p>
+      `,
+    },
+  },
+];
+
+export function buildSnapshotWikiDocuments(): WikiDocument[] {
+  return SNAPSHOTS.map(({ category, slug, page }) =>
+    normalizeConfluencePage(page, category, slug),
+  );
+}
+
+export function getSnapshotPayload(): SnapshotPayload {
+  return {
+    pages: SNAPSHOTS,
+  };
+}
