@@ -76,6 +76,11 @@ export function classifyQuestionIntent(question: string): QuestionIntent {
   if (/(설치|설정|구성|세팅|연결|연동|로그인|login|install|configure|setup|enable)/.test(normalized)) {
     scores.setup += 4;
   }
+  // Usage/how-to signals — "어떻게 사용하는지", "사용법", "쓰는 법" 등
+  // concept만큼 강하지 않지만 실행 가이드 쪽으로 유도
+  if (/(사용법|사용하기|어떻게 사용|쓰는 법|활용법|사용 방법)/.test(normalized)) {
+    scores.setup += 2;
+  }
 
   // Broad planning signals
   if (/(시작하기 전에|준비|설계|계획|먼저 읽|순서|어떤 흐름|체크리스트|무엇을 해야|무엇부터)/.test(normalized)) {

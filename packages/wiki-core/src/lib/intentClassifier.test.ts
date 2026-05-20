@@ -106,13 +106,20 @@ describe("classifyQuestionIntent — edge cases and negative scenarios", () => {
     expect(classifyQuestionIntent("MCP가 뭐 지?")).toBe("concept");
   });
 
-  it("does NOT classify 'Gmail 사용법' as concept", () => {
-    // 사용법은 how-to에 가까움 — concept 아닌 general
-    expect(classifyQuestionIntent("Gmail 사용법")).not.toBe("concept");
+  it("classifies 'Gmail 사용법' as setup (usage = how-to guide)", () => {
+    expect(classifyQuestionIntent("Gmail 사용법")).toBe("setup");
   });
 
-  it("does NOT classify 'API 예시' as concept", () => {
-    expect(classifyQuestionIntent("API 예시")).not.toBe("concept");
+  it("classifies 'claude webhook 사용법' as setup", () => {
+    expect(classifyQuestionIntent("claude webhook 사용법")).toBe("setup");
+  });
+
+  it("classifies 'claude 기능 중 webhook을 어떻게 사용하는지 알고 싶은 거야' as setup", () => {
+    expect(classifyQuestionIntent("[Guide] claude 기능 중 webhook을 어떻게 사용하는지 알고 싶은 거야")).toBe("setup");
+  });
+
+  it("classifies 'API 예시' as general (reference, not how-to)", () => {
+    expect(classifyQuestionIntent("API 예시")).toBe("general");
   });
 
   it("classifies 'MCP 오류 해결 문서 있어?' as page-lookup (page shape wins immediately)", () => {
