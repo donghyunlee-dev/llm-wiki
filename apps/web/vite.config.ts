@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { normalizePolicyNotice, normalizeAiSearchAnswerText, parseAiSearchResponseText } from "./src/lib/aiSearchResponse";
 import {
   aiAskJsonSchema,
   aiSearchJsonSchema,
@@ -8,35 +9,39 @@ import {
   buildAiAskPromptContext,
   buildAiSearchInput,
   buildAiSearchPromptContext,
-  classifySearchQuestionIntent,
   buildSearchFollowUpQuestion,
 } from "../../packages/wiki-core/src/lib/aiAsk.ts";
+import { classifyQuestionIntent } from "../../packages/wiki-core/src/lib/intentClassifier.ts";
 import { fetchConfluencePageRecords } from "../../packages/wiki-core/src/lib/confluenceClient.ts";
 import {
   buildWikiDocumentsFromRecords,
   buildPolicyDocumentsFromRecords,
   parseRemotePolicyPageRecords,
-  parseRemoteOpsPageRecords,
   parseRemoteWikiPageRecords,
 } from "../../packages/wiki-core/src/lib/wikiDataSource.ts";
 import {
+  expandSearchContextDocuments,
   getIndexFirstSearchWikiDocumentsIn,
   getTopSearchWikiDocumentsIn,
   getParentWikiDocumentFrom,
   getWikiDocumentByIdFrom,
+  getWikiDocumentHref,
+  isIndexWikiDocument,
   resolveWikiDocumentsByIdsFrom,
   type WikiDocument,
 } from "../../packages/wiki-core/src/lib/wikiDocuments.ts";
+import { fetchGitHubOrgProjects, type GitHubProject } from "../../packages/wiki-core/src/lib/githubClient.ts";
+import { logSearchToPlaybook, type PlaybookSearchEntry } from "../../packages/wiki-core/src/lib/playbookLogger.ts";
 
-const WIKI_CACHE_TTL_MS = 5 * 60 * 1000;
-const AI_SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
+const WIKI_CACHE_TTL_MS = 30 * 60 * 1000;
+const GITHUB_CACHE_TTL_MS = 30 * 60 * 1000;
+const AI_SEARCH_CACHE_TTL_MS = 30 * 60 * 1000;
 
 type WikiCache = {
   expiresAt: number;
   records: ReturnType<typeof parseRemoteWikiPageRecords>;
   documents: WikiDocument[];
   policyDocuments: ReturnType<typeof buildPolicyDocumentsFromRecords>;
-  opsPolicyDocuments: ReturnType<typeof buildPolicyDocumentsFromRecords>;
 };
 
 type AiSearchCacheEntry = {
@@ -44,9 +49,16 @@ type AiSearchCacheEntry = {
   payload: unknown;
 };
 
+type GitHubCache = {
+  expiresAt: number;
+  projects: GitHubProject[];
+};
+
 let wikiCache: WikiCache | null = null;
 let wikiCachePromise: Promise<WikiCache> | null = null;
 const aiSearchCache = new Map<string, AiSearchCacheEntry>();
+let githubCache: GitHubCache | null = null;
+let githubCachePromise: Promise<GitHubCache> | null = null;
 
 function hasConfluenceConfig(env: Record<string, string>) {
   return Boolean(
@@ -59,6 +71,65 @@ function hasConfluenceConfig(env: Record<string, string>) {
 
 function hasOpenAiConfig(env: Record<string, string>) {
   return Boolean(env.OPENAI_API_KEY || env.VITE_OPENAI_API_KEY);
+}
+
+function hasGithubConfig(env: Record<string, string>) {
+  return Boolean(env.GITHUB_TOKEN && env.GITHUB_ORG);
+}
+
+function githubDevApiPlugin(env: Record<string, string>): Plugin {
+  return {
+    name: "sfood-github-dev-api",
+    configureServer(server) {
+      server.middlewares.use("/api/github/projects", async (_request, response) => {
+        response.setHeader("Content-Type", "application/json; charset=utf-8");
+
+        if (!hasGithubConfig(env)) {
+          response.statusCode = 503;
+          response.end(
+            JSON.stringify({ message: "GitHub environment is not configured." }),
+          );
+          return;
+        }
+
+        try {
+          const cache = await loadGithubCache(env);
+          response.end(JSON.stringify({ projects: cache.projects }));
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : "Failed to load GitHub projects.";
+          response.statusCode = 502;
+          response.end(JSON.stringify({ message }));
+        }
+      });
+    },
+  };
+}
+
+async function loadGithubCache(env: Record<string, string>): Promise<GitHubCache> {
+  const now = Date.now();
+
+  if (githubCache && githubCache.expiresAt > now) {
+    return githubCache;
+  }
+
+  if (githubCachePromise) {
+    return githubCachePromise;
+  }
+
+  githubCachePromise = fetchGitHubOrgProjects({
+    token: env.GITHUB_TOKEN,
+    org: env.GITHUB_ORG,
+  })
+    .then((projects) => {
+      githubCache = { expiresAt: Date.now() + GITHUB_CACHE_TTL_MS, projects };
+      return githubCache;
+    })
+    .finally(() => {
+      githubCachePromise = null;
+    });
+
+  return githubCachePromise;
 }
 
 function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
@@ -138,8 +209,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
             Boolean(item) && array.findIndex((candidate) => candidate?.id === item.id) === index,
           );
 
-          const policyDocuments = cache.policyDocuments.length ? cache.policyDocuments : cache.opsPolicyDocuments;
-          const promptContext = buildAiAskPromptContext(document, relatedDocuments, policyDocuments, question, history);
+          const promptContext = buildAiAskPromptContext(document, relatedDocuments, cache.policyDocuments, question, history);
           const aiResponse = await fetch("https://api.openai.com/v1/responses", {
             method: "POST",
             headers: {
@@ -168,8 +238,12 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
 
           const payload = await aiResponse.json();
           const resultText = extractResponseText(payload);
+          const resultPayload = enrichPolicyNoticeSources(
+            JSON.parse(resultText) as Record<string, unknown>,
+            promptContext.policyContext.selectedPolicies,
+          );
 
-          response.end(resultText);
+          response.end(JSON.stringify(resultPayload));
         } catch (error) {
           const message = error instanceof Error ? error.message : "Failed to answer question.";
 
@@ -219,31 +293,38 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
           }
 
           const cache = await loadVisibleDevWikiCache(env);
-          const questionIntent = classifySearchQuestionIntent(searchQuestion);
-          const topDocuments = questionIntent === "broad-planning"
+          const questionIntent = classifyQuestionIntent(searchQuestion);
+          const topDocuments = (questionIntent === "broad-planning" || questionIntent === "concept")
             ? uniqueWikiDocuments([
                 ...getTopSearchWikiDocumentsIn(cache.documents, searchQuestion, 10),
                 ...getIndexFirstSearchWikiDocumentsIn(cache.documents, searchQuestion, 10),
               ]).slice(0, 10)
             : getIndexFirstSearchWikiDocumentsIn(cache.documents, searchQuestion, 8);
+          const contextDocuments = expandSearchContextDocuments(cache.documents, topDocuments, 14);
 
           if (!topDocuments.length) {
             response.end(JSON.stringify({
               answer: "관련 문서를 찾지 못했습니다. 질문을 더 구체적으로 입력해 주세요.",
+              policyNotice: {
+                isPolicyRelated: false,
+                message: "",
+              },
+              immediateActions: [],
+              exampleCommands: [],
+              verificationChecks: [],
+              cautions: [],
               confluenceData: [],
               unsupportedClaims: ["검색 결과에 질문을 뒷받침할 공개 문서가 없습니다."],
               recommendedPages: [],
               recommendedDocuments: [],
-              guideDocuments: [],
             }));
             return;
           }
 
           const promptContext = buildAiSearchPromptContext(
-            topDocuments,
+            contextDocuments,
             question,
             cache.policyDocuments,
-            cache.opsPolicyDocuments,
             history,
           );
           const aiResponse = await fetch("https://api.openai.com/v1/responses", {
@@ -255,7 +336,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
             body: JSON.stringify({
               model: env.VITE_OPENAI_MODEL || env.OPENAI_MODEL || "gpt-5-mini",
               input: buildAiSearchInput(promptContext),
-              max_output_tokens: 1500,
+              max_output_tokens: 2800,
               reasoning: {
                 effort: "minimal",
               },
@@ -277,8 +358,20 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
           }
 
           const payload = await aiResponse.json();
-          const result = parseAiSearchResult(payload);
+          const rawResult = parseAiSearchResult(payload);
+          // For concept questions, suppress action sections the AI may have filled anyway
+          const result = questionIntent === "concept"
+            ? { ...rawResult, immediateActions: [], exampleCommands: [], verificationChecks: [], cautions: [] }
+            : rawResult;
 
+          const rankingRecommendedDocuments = getIndexFirstSearchWikiDocumentsIn(cache.documents, searchQuestion, 8)
+            .filter((document) => !isIndexWikiDocument(document))
+            .map((document) => ({
+              id: document.id,
+              title: document.title,
+              summary: document.summary,
+              href: getWikiDocumentHref(document) ?? "#",
+            }));
           const recommendedPageIds = Array.isArray(result.recommendedPages)
             ? new Set(
                 result.recommendedPages
@@ -286,27 +379,50 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
                   .filter((pageId): pageId is string => typeof pageId === "string"),
               )
             : new Set<string>();
-          const recommendedDocuments = cache.documents
-            .filter((document) => recommendedPageIds.has(document.id))
-            .slice(0, 4)
+          const aiRecommendedDocuments = cache.documents
+            .filter((document) => {
+              if (!recommendedPageIds.has(document.id)) return false;
+              const dt = document.metadata.docType;
+              if (dt === "nav" || dt === "ops" || dt === "policy") return false;
+              return true;
+            })
             .map((document) => ({
               id: document.id,
               title: document.title,
               summary: document.summary,
-              href: `/${document.category}/${document.slug}`,
+              href: getWikiDocumentHref(document) ?? "#",
             }));
+          // 추천 페이지: AI가 직접 선택한 페이지 (없으면 랭킹 상위)
+          const recommendedDocuments = (aiRecommendedDocuments.length ? aiRecommendedDocuments : rankingRecommendedDocuments)
+            .slice(0, 4);
+          // 관련 페이지: 랭킹 기반 페이지 중 추천 페이지에 없는 것
+          const recommendedIds = new Set(recommendedDocuments.map((d) => d.id));
+          const relatedDocuments = rankingRecommendedDocuments
+            .filter((d) => !recommendedIds.has(d.id))
+            .slice(0, 4);
           const { recommendedPages: _recommendedPages, ...responseWithoutRawPages } = result as {
             recommendedPages?: unknown;
             [key: string]: unknown;
           };
           const responsePayload = {
             ...responseWithoutRawPages,
+            policyNotice: enrichPolicyNoticeSources(
+              { policyNotice: responseWithoutRawPages.policyNotice },
+              promptContext.policyContext.selectedPolicies,
+            ).policyNotice,
             recommendedDocuments,
-            guideDocuments: recommendedDocuments,
+            relatedDocuments,
           };
 
           writeAiSearchCache(searchQuestion, responsePayload);
           response.end(JSON.stringify(responsePayload));
+
+          // Fire-and-forget: log to Playbook after response is sent
+          if (env.CONFLUENCE_PLAYBOOK_PAGE_ID) {
+            firePlaybookLog(env, question, responsePayload).catch((err) => {
+              console.error("[playbook]", err instanceof Error ? err.message : err);
+            });
+          }
         } catch (error) {
           const message = error instanceof Error ? error.message : "Failed to answer search question.";
 
@@ -318,42 +434,102 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
   };
 }
 
+function firePlaybookLog(
+  env: Record<string, string>,
+  question: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const answer = typeof payload.answer === "string" ? payload.answer : "";
+  const answerSummary = answer.slice(0, 200).replace(/\s+/g, " ").trim();
+
+  const rawDocs = Array.isArray(payload.recommendedDocuments) ? payload.recommendedDocuments : [];
+  const recommendedDocuments = rawDocs
+    .filter((d): d is Record<string, unknown> => typeof d === "object" && d !== null)
+    .map((d) => ({
+      title: typeof d.title === "string" ? d.title : "",
+      href: typeof d.href === "string" ? d.href : "",
+    }));
+
+  const unsupportedClaims = Array.isArray(payload.unsupportedClaims) ? payload.unsupportedClaims : [];
+  const isSufficient = unsupportedClaims.length === 0 && recommendedDocuments.length >= 2;
+  const sufficiency: PlaybookSearchEntry["sufficiency"] = isSufficient ? "충분" : "부족";
+
+  const missingKeywords: string[] = isSufficient
+    ? []
+    : unsupportedClaims.length > 0
+      ? unsupportedClaims.filter((c): c is string => typeof c === "string").slice(0, 5)
+      : [question];
+
+  const entry: PlaybookSearchEntry = {
+    timestamp: new Date(),
+    question,
+    answerSummary,
+    recommendedDocuments,
+    sufficiency,
+    missingKeywords,
+  };
+
+  return logSearchToPlaybook(
+    {
+      siteName: env.ATLASSIAN_SITE_NAME,
+      userEmail: env.ATLASSIAN_USER_EMAIL,
+      apiToken: env.ATLASSIAN_API_TOKEN,
+      spaceId: env.CONFLUENCE_SPACE_ID,
+      playbookPageId: env.CONFLUENCE_PLAYBOOK_PAGE_ID,
+    },
+    entry,
+  );
+}
+
 async function loadVisibleDevWikiCache(env: Record<string, string>) {
   const now = Date.now();
 
+  // Fresh cache hit
   if (wikiCache && wikiCache.expiresAt > now) {
     return wikiCache;
   }
 
+  // Stale-while-revalidate: return stale data immediately, refresh in background
+  if (wikiCache && !wikiCachePromise) {
+    wikiCachePromise = fetchAndBuildWikiCache(env).finally(() => {
+      wikiCachePromise = null;
+    });
+    return wikiCache;
+  }
+
+  // Deduplicate concurrent cold-start fetches
   if (wikiCachePromise) {
     return wikiCachePromise;
   }
 
-  wikiCachePromise = fetchConfluencePageRecords({
+  // Cold start: wait for first load
+  wikiCachePromise = fetchAndBuildWikiCache(env).finally(() => {
+    wikiCachePromise = null;
+  });
+
+  wikiCache = await wikiCachePromise;
+  return wikiCache;
+}
+
+async function fetchAndBuildWikiCache(env: Record<string, string>): Promise<WikiCache> {
+  const pages = await fetchConfluencePageRecords({
     siteName: env.ATLASSIAN_SITE_NAME,
     userEmail: env.ATLASSIAN_USER_EMAIL,
     apiToken: env.ATLASSIAN_API_TOKEN,
     spaceId: env.CONFLUENCE_SPACE_ID,
-  })
-    .then((pages) => {
-      const records = parseRemoteWikiPageRecords({ pages });
-      const policyRecords = parseRemotePolicyPageRecords({ pages });
-      const opsRecords = parseRemoteOpsPageRecords({ pages });
+  });
+  const records = parseRemoteWikiPageRecords({ pages });
+  const policyRecords = parseRemotePolicyPageRecords({ pages });
 
-      return {
-        expiresAt: Date.now() + WIKI_CACHE_TTL_MS,
-        records,
-        documents: buildWikiDocumentsFromRecords(records),
-        policyDocuments: buildPolicyDocumentsFromRecords(policyRecords, "policy"),
-        opsPolicyDocuments: buildPolicyDocumentsFromRecords(opsRecords, "ops"),
-      };
-    })
-    .finally(() => {
-      wikiCachePromise = null;
-    });
+  const cache = {
+    expiresAt: Date.now() + WIKI_CACHE_TTL_MS,
+    records,
+    documents: buildWikiDocumentsFromRecords(records),
+    policyDocuments: buildPolicyDocumentsFromRecords(policyRecords, "policy"),
+  };
 
-  wikiCache = await wikiCachePromise;
-  return wikiCache;
+  wikiCache = cache;
+  return cache;
 }
 
 function readAiSearchCache(question: string) {
@@ -465,95 +641,7 @@ function extractResponseText(payload: unknown) {
 
 function parseAiSearchResult(payload: unknown) {
   const responseText = extractResponseText(payload);
-  const candidates = [responseText, extractJsonObjectText(responseText)];
-
-  for (const candidate of candidates) {
-    if (!candidate) {
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(candidate) as Record<string, unknown>;
-
-      return {
-        answer:
-          typeof parsed.answer === "string"
-            ? normalizeAiSearchAnswerText(parsed.answer)
-            : normalizeAiSearchAnswerText(responseText),
-        confluenceData: Array.isArray(parsed.confluenceData) ? parsed.confluenceData : [],
-        unsupportedClaims: Array.isArray(parsed.unsupportedClaims) ? parsed.unsupportedClaims : [],
-        recommendedPages: Array.isArray(parsed.recommendedPages) ? parsed.recommendedPages : [],
-      };
-    } catch {
-      continue;
-    }
-  }
-
-  return {
-    answer: normalizeAiSearchAnswerText(responseText),
-    confluenceData: [],
-    unsupportedClaims: ["AI search response could not be parsed into the expected JSON shape."],
-    recommendedPages: [],
-  };
-}
-
-function extractJsonObjectText(text: string) {
-  const startIndex = text.indexOf("{");
-  const endIndex = text.lastIndexOf("}");
-
-  if (startIndex < 0 || endIndex <= startIndex) {
-    return "";
-  }
-
-  return text.slice(startIndex, endIndex + 1);
-}
-
-function normalizeAiSearchAnswerText(text: string) {
-  const trimmed = text.trim();
-  const candidates = [trimmed, maybeUnescapeAiSearchJsonText(trimmed)];
-
-  for (const candidate of candidates) {
-    const answerFieldMatch = candidate.match(/^\{\s*"answer"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
-
-    if (answerFieldMatch?.[1]) {
-      try {
-        const decoded = JSON.parse(`"${answerFieldMatch[1]}"`) as string;
-        return decoded.trim();
-      } catch {
-        // Fall through to object parsing.
-      }
-    }
-
-    if (!candidate.startsWith("{")) {
-      continue;
-    }
-
-    const nestedCandidate = extractJsonObjectText(candidate);
-
-    if (!nestedCandidate) {
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(nestedCandidate) as Record<string, unknown>;
-
-      if (typeof parsed.answer === "string") {
-        return parsed.answer.trim();
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  return trimmed;
-}
-
-function maybeUnescapeAiSearchJsonText(text: string) {
-  if (!text.includes('\\"') && !text.includes("\\n") && !text.includes("\\\\")) {
-    return text;
-  }
-
-  return text.replace(/\\"/g, '"').replace(/\\n/g, "\n").replace(/\\\\/g, "\\");
+  return parseAiSearchResponseText(responseText);
 }
 
 function normalizeAiSearchResponsePayload(payload: unknown) {
@@ -563,10 +651,47 @@ function normalizeAiSearchResponsePayload(payload: unknown) {
 
   const record = payload as Record<string, unknown>;
   const answer = typeof record.answer === "string" ? normalizeAiSearchAnswerText(record.answer) : record.answer;
+  const policyNotice = normalizePolicyNotice(record.policyNotice);
 
   return {
     ...record,
     answer,
+    policyNotice,
+  };
+}
+
+function enrichPolicyNoticeSources<T extends Record<string, unknown>>(
+  payload: T,
+  selectedPolicies: Array<{
+    id: string;
+    title: string;
+    sourceUrl?: string;
+  }>,
+): T {
+  const policyNotice = normalizePolicyNotice(payload.policyNotice);
+
+  if (!policyNotice.isPolicyRelated) {
+    return {
+      ...payload,
+      policyNotice,
+    };
+  }
+
+  const sources = selectedPolicies
+    .filter((policy) => policy.sourceUrl)
+    .map((policy) => ({
+      id: policy.id,
+      title: policy.title,
+      href: policy.sourceUrl as string,
+    }))
+    .slice(0, 4);
+
+  return {
+    ...payload,
+    policyNotice: {
+      ...policyNotice,
+      sources,
+    },
   };
 }
 
@@ -582,6 +707,6 @@ export default defineConfig(({ command, mode }) => {
       "import.meta.env.VITE_WIKI_DATA_SOURCE": JSON.stringify(wikiDataSource),
       "import.meta.env.VITE_WIKI_REMOTE_ENDPOINT": JSON.stringify(wikiRemoteEndpoint),
     },
-    plugins: [confluenceDevApiPlugin(env), react(), tailwindcss()],
+    plugins: [confluenceDevApiPlugin(env), githubDevApiPlugin(env), react(), tailwindcss()],
   };
 });

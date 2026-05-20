@@ -1,26 +1,18 @@
 import { buildSnapshotWikiDocuments } from "./confluenceSnapshots";
+import { classifyQuestionIntent } from "./intentClassifier";
 
-export type CategorySlug = "guides" | "projects" | "library" | "faq";
+export type WikiSection = "guides" | "faq" | "library";
 
 export type WikiDocument = {
   id: string;
   parentId?: string;
   slug: string;
-  category: CategorySlug;
   title: string;
   summary: string;
   updatedAt: string;
   sourceUrl?: string;
   metadata: {
-    docType:
-      | "overview"
-      | "concept"
-      | "tutorial"
-      | "howto"
-      | "reference"
-      | "troubleshooting"
-      | "example";
-    visibility: "public";
+    docType: "guide" | "page" | "faq" | "library" | "policy" | "nav" | "ops";
     audience: "beginner" | "intermediate" | "advanced";
     status: "published";
     prerequisites: string[];
@@ -35,11 +27,38 @@ export type WikiDocument = {
   contentHtml: string;
 };
 
-export type SearchGroups = Record<CategorySlug, WikiDocument[]>;
+export type SearchGroups = Record<WikiSection, WikiDocument[]>;
+
+export function getWikiDocumentSection(document: WikiDocument): WikiSection | null {
+  const dt = document.metadata.docType;
+  if (dt === "guide" || dt === "page") return "guides";
+  if (dt === "faq") return "faq";
+  if (dt === "library") return "library";
+  return null;
+}
+
+export function getWikiDocumentHref(document: WikiDocument): string | null {
+  const section = getWikiDocumentSection(document);
+  return section ? `/${section}/${document.slug}` : null;
+}
 
 type RankedSearchDocument = {
   document: WikiDocument;
   score: number;
+};
+
+export type SearchQuestionMode =
+  | "concept"
+  | "setup"
+  | "troubleshooting"
+  | "comparison"
+  | "planning"
+  | "general";
+
+export type SearchQuestionProfile = {
+  mode: SearchQuestionMode;
+  normalizedQuestion: string;
+  tokens: string[];
 };
 
 const WIKI_DOCUMENTS: WikiDocument[] = buildSnapshotWikiDocuments();
@@ -48,20 +67,20 @@ export function listWikiDocumentsFrom(documents: WikiDocument[]) {
   return [...documents];
 }
 
-export function listWikiDocumentsByCategoryFrom(
+export function listWikiDocumentsBySectionFrom(
   documents: WikiDocument[],
-  category: CategorySlug,
+  section: WikiSection,
 ) {
-  return documents.filter((document) => document.category === category);
+  return documents.filter((document) => getWikiDocumentSection(document) === section);
 }
 
 export function getWikiDocumentFrom(
   documents: WikiDocument[],
-  category: CategorySlug,
+  section: WikiSection,
   slug: string,
 ) {
   return documents.find(
-    (document) => document.category === category && document.slug === slug,
+    (document) => getWikiDocumentSection(document) === section && document.slug === slug,
   );
 }
 
@@ -106,12 +125,12 @@ export function listWikiDocuments() {
   return listWikiDocumentsFrom(WIKI_DOCUMENTS);
 }
 
-export function listWikiDocumentsByCategory(category: CategorySlug) {
-  return listWikiDocumentsByCategoryFrom(WIKI_DOCUMENTS, category);
+export function listWikiDocumentsBySection(section: WikiSection) {
+  return listWikiDocumentsBySectionFrom(WIKI_DOCUMENTS, section);
 }
 
-export function getWikiDocument(category: CategorySlug, slug: string) {
-  return getWikiDocumentFrom(WIKI_DOCUMENTS, category, slug);
+export function getWikiDocument(section: WikiSection, slug: string) {
+  return getWikiDocumentFrom(WIKI_DOCUMENTS, section, slug);
 }
 
 export function getWikiDocumentById(id: string) {
@@ -121,9 +140,8 @@ export function getWikiDocumentById(id: string) {
 export function searchWikiDocumentsIn(documents: WikiDocument[], query: string): SearchGroups {
   const emptyGroups: SearchGroups = {
     guides: [],
-    projects: [],
-    library: [],
     faq: [],
+    library: [],
   };
 
   const rankedDocuments = rankSearchDocumentsIn(documents, query);
@@ -133,25 +151,27 @@ export function searchWikiDocumentsIn(documents: WikiDocument[], query: string):
   }
 
   for (const { document } of rankedDocuments) {
-    emptyGroups[document.category].push(document);
+    const section = getWikiDocumentSection(document);
+    if (section) {
+      emptyGroups[section].push(document);
+    }
   }
 
   return emptyGroups;
 }
 
 function rankSearchDocumentsIn(documents: WikiDocument[], query: string): RankedSearchDocument[] {
-  const normalizedQuery = normalizeSearchText(query);
+  const profile = inferSearchQuestionProfile(query);
 
-  if (!normalizedQuery) {
+  if (!profile.normalizedQuestion) {
     return [];
   }
 
-  const tokens = tokenizeSearchTokens(query);
-
   return documents
+    .filter((document) => document.metadata.docType !== "ops" && document.metadata.docType !== "policy")
     .map((document) => ({
       document,
-      score: scoreDocumentForSearch(document, normalizedQuery, tokens),
+      score: scoreDocumentForSearch(document, profile),
     }))
     .filter((item) => item.score > 0)
     .sort((first, second) => second.score - first.score);
@@ -159,9 +179,10 @@ function rankSearchDocumentsIn(documents: WikiDocument[], query: string): Ranked
 
 function scoreDocumentForSearch(
   document: WikiDocument,
-  normalizedQuery: string,
-  tokens: string[],
+  profile: SearchQuestionProfile,
 ) {
+  const normalizedQuery = profile.normalizedQuestion;
+  const tokens = profile.tokens;
   const title = document.title.toLocaleLowerCase("ko-KR");
   const summary = document.summary.toLocaleLowerCase("ko-KR");
   const headings = document.headings
@@ -173,9 +194,26 @@ function scoreDocumentForSearch(
   const docType = document.metadata.docType.toLocaleLowerCase("ko-KR");
   const haystack = [title, summary, headings, body, slug, docType].join(" ");
   const emailIntent = hasEmailSetupIntent(tokens);
+  const signals = detectDocumentSignals({
+    title,
+    summary,
+    headings,
+    body,
+    slug,
+    docType,
+  });
+  const scope = detectDocumentScope({
+    title,
+    summary,
+    headings,
+    body,
+    slug,
+    docType,
+  });
+  const docTypeAffinity = getSearchDocTypeAffinity(profile.mode, docType, signals, scope);
 
   if (haystack.includes(normalizedQuery)) {
-    return 100;
+    return 120 + getSearchModeAffinity(profile.mode, signals, scope) + getSearchScopeAffinity(profile.mode, scope) + docTypeAffinity;
   }
 
   const tokenScore = tokens.reduce((score, token) => {
@@ -208,28 +246,238 @@ function scoreDocumentForSearch(
     return score;
   }, 0);
 
-  if (!emailIntent) {
-    return tokenScore;
+  if (tokenScore === 0) {
+    return 0;
   }
 
-  const emailServiceTerms = [
+  let score = tokenScore + getSearchModeAffinity(profile.mode, signals, scope) + getSearchScopeAffinity(profile.mode, scope) + docTypeAffinity;
+
+  if (document.parentId) {
+    score += profile.mode === "planning" ? 3 : 1;
+  }
+
+  if (document.headings.length) {
+    score += 1;
+  }
+
+  if (emailIntent) {
+    const emailServiceTerms = [
+      "gmail",
+      "google workspace",
+      "google mail",
+      "outlook",
+      "microsoft 365",
+      "office 365",
+      "m365",
+      "ms365",
+      "smtp",
+    ];
+
+    const emailSupportTerms = ["mail", "메일", "email", "e-mail"];
+
+    const serviceBoost = emailServiceTerms.some((term) => haystack.includes(term)) ? 14 : 0;
+    const supportBoost = emailSupportTerms.some((term) => haystack.includes(term)) ? 4 : 0;
+
+    score += serviceBoost + supportBoost;
+  }
+
+  return score;
+}
+
+export function inferSearchQuestionProfile(question: string): SearchQuestionProfile {
+  const normalizedQuestion = normalizeSearchText(question);
+  const tokens = tokenizeSearchTokens(question);
+
+  return {
+    mode: inferSearchQuestionMode(normalizedQuestion),
+    normalizedQuestion,
+    tokens,
+  };
+}
+
+function inferSearchQuestionMode(normalizedQuestion: string): SearchQuestionMode {
+  const intent = classifyQuestionIntent(normalizedQuestion);
+
+  switch (intent) {
+    case "concept": return "concept";
+    case "setup": return "setup";
+    case "troubleshooting": return "troubleshooting";
+    case "comparison": return "comparison";
+    case "broad-planning": return "planning";
+    default: return "general";
+  }
+}
+
+function detectDocumentSignals(fields: {
+  title: string;
+  summary: string;
+  headings: string;
+  body: string;
+  slug: string;
+  docType: string;
+}) {
+  const haystack = [
+    fields.title,
+    fields.summary,
+    fields.headings,
+    fields.body,
+    fields.slug,
+    fields.docType,
+  ].join(" ");
+
+  return {
+    concept: /(?:목적|개요|정의|설명|무엇인가|무엇인지|란 무엇|종합 가이드|먼저 무엇을 연결해야 하나)/.test(haystack),
+    setup: /(?:설치|설정|연결|구성|세팅|install|setup|connect|enable|configure|login|명령|command)/.test(haystack),
+    troubleshooting: /(?:오류|문제|해결|troubleshoot|failed|fail|안 되|안되|에러)/.test(haystack),
+    comparison: /(?:비교|차이|vs|대신|선택|고를|추천)/.test(haystack),
+    planning: /(?:준비|순서|체크리스트|먼저|권장|시작하기 전에|무엇부터|흐름|운영|배포)/.test(haystack),
+  };
+}
+
+function detectDocumentScope(fields: {
+  title: string;
+  summary: string;
+  headings: string;
+  body: string;
+  slug: string;
+  docType: string;
+}) {
+  const haystack = [
+    fields.title,
+    fields.summary,
+    fields.headings,
+    fields.body,
+    fields.slug,
+    fields.docType,
+  ].join(" ");
+
+  const specificTerms = [
+    "filesystem",
+    "browser",
+    "playwright",
+    "desktop control",
+    "agent browser",
+    "jira",
+    "claude",
+    "codex",
     "gmail",
-    "google workspace",
-    "google mail",
-    "outlook",
     "microsoft 365",
-    "office 365",
-    "m365",
-    "ms365",
-    "smtp",
+    "outlook",
+    "gemini",
+    "cursor",
+    "cline",
   ];
 
-  const emailSupportTerms = ["mail", "메일", "email", "e-mail"];
+  const broadTerms = [
+    "종합 가이드",
+    "목적",
+    "개요",
+    "정의",
+    "설명",
+    "무엇인가",
+    "mcp 설정하기",
+    "mcp란 무엇인가",
+  ];
 
-  const serviceBoost = emailServiceTerms.some((term) => haystack.includes(term)) ? 14 : 0;
-  const supportBoost = emailSupportTerms.some((term) => haystack.includes(term)) ? 4 : 0;
+  return {
+    specific: specificTerms.some((term) => haystack.includes(term)),
+    broad: broadTerms.some((term) => haystack.includes(term)),
+  };
+}
 
-  return tokenScore + serviceBoost + supportBoost;
+function getSearchScopeAffinity(
+  mode: SearchQuestionMode,
+  scope: ReturnType<typeof detectDocumentScope>,
+) {
+  switch (mode) {
+    case "concept":
+      return (scope.broad ? 20 : 0) - (scope.specific ? 16 : 0);
+    case "setup":
+      return (scope.specific ? 12 : 0) + (scope.broad ? 4 : 0);
+    case "troubleshooting":
+      return (scope.specific ? 10 : 0);
+    case "comparison":
+      return (scope.broad ? 8 : 0);
+    case "planning":
+      return (scope.broad ? 14 : 0) - (scope.specific ? 4 : 0);
+    default:
+      return (scope.broad ? 4 : 0) - (scope.specific ? 2 : 0);
+  }
+}
+
+function getSearchModeAffinity(
+  mode: SearchQuestionMode,
+  signals: ReturnType<typeof detectDocumentSignals>,
+  scope: ReturnType<typeof detectDocumentScope>,
+) {
+  switch (mode) {
+    case "concept":
+      return (signals.concept ? 52 : 0) + (signals.planning ? 8 : 0) - ((signals.setup && scope.specific) ? 12 : 0) - (signals.troubleshooting ? 8 : 0);
+    case "setup":
+      return (signals.setup ? 36 : 0) + (signals.concept ? 4 : 0) + (signals.troubleshooting ? 8 : 0) - (signals.comparison ? 2 : 0);
+    case "troubleshooting":
+      return (signals.troubleshooting ? 42 : 0) + (signals.setup ? 8 : 0) - (signals.concept ? 8 : 0);
+    case "comparison":
+      return (signals.comparison ? 36 : 0) + (signals.concept ? 4 : 0);
+    case "planning":
+      return (signals.planning ? 38 : 0) + (signals.concept ? 8 : 0) + (signals.setup ? 4 : 0);
+    default:
+      return (signals.concept ? 10 : 0) + (signals.setup ? 10 : 0) + (signals.troubleshooting ? 10 : 0) + (signals.comparison ? 10 : 0) + (signals.planning ? 10 : 0);
+  }
+}
+
+function getSearchDocTypeAffinity(
+  mode: SearchQuestionMode,
+  docType: string,
+  signals: ReturnType<typeof detectDocumentSignals>,
+  scope: ReturnType<typeof detectDocumentScope>,
+) {
+  if (docType === "nav") return 0;
+  if (docType === "policy") return -10;
+  if (docType === "ops") return -20;
+
+  const isGuide = docType === "guide";
+  const isPage = docType === "page";
+  const isFaq = docType === "faq";
+  const isLibrary = docType === "library";
+
+  switch (mode) {
+    case "concept":
+      if (isGuide) return signals.concept || scope.broad ? 20 : 10;
+      if (isPage) return signals.setup && scope.specific ? -8 : 0;
+      if (isFaq) return -8;
+      if (isLibrary) return 4;
+      return 0;
+    case "setup":
+      if (isPage) {
+        if (signals.troubleshooting) return 8;
+        return signals.setup || scope.specific ? 18 : 6;
+      }
+      if (isGuide) return scope.broad ? 8 : 4;
+      if (isFaq) return signals.troubleshooting ? 12 : 4;
+      if (isLibrary) return signals.setup ? 4 : 0;
+      return 0;
+    case "troubleshooting":
+      if (isFaq) return signals.troubleshooting || scope.specific ? 20 : 10;
+      if (isPage) return signals.troubleshooting ? 8 : 4;
+      if (isGuide) return -4;
+      return 0;
+    case "comparison":
+      if (isGuide) return signals.comparison ? 10 : 4;
+      if (isLibrary) return signals.comparison ? 8 : 4;
+      if (isPage) return signals.comparison ? 4 : 0;
+      return 0;
+    case "planning":
+      if (isGuide || isPage) return signals.planning || scope.broad ? 18 : 8;
+      if (isLibrary) return signals.planning ? 8 : 4;
+      return 0;
+    default:
+      if (isGuide) return scope.broad ? 6 : 3;
+      if (isPage) return scope.specific ? 4 : 2;
+      if (isFaq) return scope.specific ? 3 : 1;
+      if (isLibrary) return scope.specific ? 3 : 1;
+      return 0;
+  }
 }
 
 function tokenizeSearchTokens(query: string) {
@@ -379,14 +627,74 @@ export function getIndexFirstSearchWikiDocumentsIn(
   const expandedDocuments = expandDetailDocumentsFromIndexes(detailDocuments, matchedIndexes);
   const scopedMatches = getTopSearchWikiDocumentsIn(expandedDocuments, query, limit);
   const globalMatches = getTopSearchWikiDocumentsIn(detailDocuments, query, limit);
+  const rankedIds = new Set([...scopedMatches, ...globalMatches].map((d) => d.id));
+  const indexLinkedExtras = expandedDocuments.filter(
+    (d) => !rankedIds.has(d.id) && matchedIndexes.some((idx) => d.parentId === idx.id),
+  );
 
-  return uniqueDocuments([...scopedMatches, ...globalMatches]).slice(0, limit);
+  return uniqueDocuments([...scopedMatches, ...globalMatches, ...indexLinkedExtras]).slice(0, limit);
+}
+
+export function expandSearchContextDocuments(
+  documents: WikiDocument[],
+  seedDocuments: WikiDocument[],
+  limit = 12,
+) {
+  const resolvedDocuments: WikiDocument[] = [];
+  const seenIds = new Set<string>();
+  const seedIds = new Set(seedDocuments.map((document) => document.id));
+
+  const addDocument = (document: WikiDocument | undefined) => {
+    if (!document || seenIds.has(document.id)) {
+      return;
+    }
+
+    seenIds.add(document.id);
+    resolvedDocuments.push(document);
+  };
+
+  for (const document of seedDocuments) {
+    addDocument(document);
+  }
+
+  for (const seed of seedDocuments) {
+    addDocument(getParentWikiDocumentFrom(documents, seed));
+
+    for (const linkedDocument of resolveWikiDocumentsByIdsFrom(documents, [
+      ...seed.metadata.prerequisites,
+      ...seed.metadata.next,
+      ...seed.metadata.related,
+    ])) {
+      addDocument(linkedDocument);
+    }
+  }
+
+  for (const candidate of documents) {
+    if (seedIds.has(candidate.id)) {
+      continue;
+    }
+
+    if (candidate.parentId && seedIds.has(candidate.parentId)) {
+      addDocument(candidate);
+      continue;
+    }
+
+    const linksToSeed = [
+      ...candidate.metadata.prerequisites,
+      ...candidate.metadata.next,
+      ...candidate.metadata.related,
+    ].some((id) => seedIds.has(id));
+
+    if (linksToSeed) {
+      addDocument(candidate);
+    }
+  }
+
+  return resolvedDocuments.slice(0, limit);
 }
 
 export function isIndexWikiDocument(document: WikiDocument) {
-  const searchableText = `${document.slug} ${document.title}`.toLocaleLowerCase("ko-KR");
-
-  return /\bindex\b/i.test(searchableText) || searchableText.includes("인덱스");
+  return document.metadata.docType === "nav";
 }
 
 function expandDetailDocumentsFromIndexes(
