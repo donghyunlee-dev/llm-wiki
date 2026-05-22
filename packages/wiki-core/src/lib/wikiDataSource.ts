@@ -4,16 +4,13 @@ import {
   normalizeConfluencePage,
   type RawConfluencePage,
 } from "./confluenceReadModel";
-import type { CategorySlug, WikiDocument } from "./wikiDocuments";
+import type { WikiDocument } from "./wikiDocuments";
 
 export const PUBLIC_WIKI_SPACE_ID = "63111172";
-const ALLOWED_REMOTE_CATEGORIES = new Set<CategorySlug>(["guides", "projects", "faq"]);
-const ALLOWED_REMOTE_TITLES = new Set(["Playbook"]);
 const BLOCKED_REMOTE_TITLE_PARTS = ["onboarding"];
-const BLOCKED_ONBOARDING_QA_PATTERN = /\bs\d+-\d{3}\b/i;
+const BLOCKED_ONBOARDING_QA_PATTERN = /\bs\d+-\d{3}[a-z]?\b/i;
 
 export type RemoteWikiPageRecord = {
-  category: CategorySlug;
   slug: string;
   page: RawConfluencePage;
 };
@@ -74,7 +71,7 @@ export function buildWikiDocumentsFromPayload(
 
 export function buildWikiDocumentsFromRecords(records: RemoteWikiPageRecord[]) {
   return records.map((record) =>
-    normalizeConfluencePage(record.page, record.category, record.slug),
+    normalizeConfluencePage(record.page, record.slug),
   );
 }
 
@@ -87,16 +84,26 @@ export function buildPolicyDocumentsFromRecords(
 
 export function parseRemoteWikiPageRecords(payload: unknown): RemoteWikiPageRecord[] {
   const records = readRecordArray(payload);
-  const validRecords = records
+  const parsed = records
     .map((record, index) => parseRemoteWikiPageRecord(record, index))
     .filter((record) => record.page.status === "current")
-    .filter((record) => record.page.metadata.visibility === "public")
     .filter((record) => record.page.metadata.status === "published")
     .filter((record) => record.page.metadata.docType !== "ops")
     .filter((record) => record.page.metadata.docType !== "policy")
-    .filter(isAllowedRemotePage);
+    .filter((record) => record.page.metadata.docType !== "playbook");
 
-  return validRecords;
+  // 제목·패턴으로 직접 차단된 페이지의 ID 수집 → 자식도 함께 제외
+  const blockedParentIds = new Set(
+    parsed
+      .filter((record) => isBlockedRemotePage(record))
+      .map((record) => record.page.id),
+  );
+
+  return parsed.filter((record) => {
+    if (isBlockedRemotePage(record)) return false;
+    if (record.page.parentId && blockedParentIds.has(record.page.parentId)) return false;
+    return isAllowedRemotePage(record);
+  });
 }
 
 export function parseRemotePolicyPageRecords(payload: unknown): RemoteWikiPageRecord[] {
@@ -124,8 +131,8 @@ function isAllowedRemotePage(record: RemoteWikiPageRecord) {
     return false;
   }
 
-  return ALLOWED_REMOTE_CATEGORIES.has(record.category) ||
-    ALLOWED_REMOTE_TITLES.has(record.page.title);
+  const dt = record.page.metadata.docType;
+  return dt === "guide" || dt === "page" || dt === "faq" || dt === "library" || dt === "nav";
 }
 
 function isBlockedRemotePage(record: RemoteWikiPageRecord) {
@@ -182,7 +189,6 @@ function parseRemoteWikiPageRecord(record: unknown, index: number): RemoteWikiPa
     throw new Error(`Remote wiki record at index ${index} must be an object.`);
   }
 
-  const category = readCategory(record.category, index);
   const slug = readString(record.slug, `records[${index}].slug`);
   const page = readRawConfluencePage(record.page, index);
 
@@ -191,7 +197,6 @@ function parseRemoteWikiPageRecord(record: unknown, index: number): RemoteWikiPa
   }
 
   return {
-    category,
     slug,
     page,
   };
@@ -225,7 +230,6 @@ function readMetadata(metadata: unknown, index: number): RawConfluencePage["meta
 
   return {
     docType: readDocType(metadata.docType, index),
-    visibility: readVisibility(metadata.visibility, index),
     audience: readAudience(metadata.audience, index),
     status: readMetadataStatus(metadata.status, index),
     prerequisites: readStringArray(metadata.prerequisites, `records[${index}].page.metadata.prerequisites`),
@@ -234,38 +238,21 @@ function readMetadata(metadata: unknown, index: number): RawConfluencePage["meta
   };
 }
 
-function readCategory(value: unknown, index: number): CategorySlug {
-  if (value === "guides" || value === "projects" || value === "library" || value === "faq") {
-    return value;
-  }
-
-  throw new Error(`records[${index}].category must be a known wiki category.`);
-}
-
 function readDocType(value: unknown, index: number): RawConfluencePage["metadata"]["docType"] {
   if (
-    value === "overview" ||
-    value === "concept" ||
-    value === "tutorial" ||
-    value === "howto" ||
-    value === "reference" ||
-    value === "troubleshooting" ||
-    value === "example" ||
+    value === "guide" ||
+    value === "page" ||
+    value === "faq" ||
+    value === "library" ||
     value === "ops" ||
-    value === "policy"
+    value === "policy" ||
+    value === "nav" ||
+    value === "playbook"
   ) {
     return value;
   }
 
   throw new Error(`records[${index}].page.metadata.docType must be a known document type.`);
-}
-
-function readVisibility(value: unknown, index: number): RawConfluencePage["metadata"]["visibility"] {
-  if (value === "public" || value === "internal") {
-    return value;
-  }
-
-  throw new Error(`records[${index}].page.metadata.visibility must be public or internal.`);
 }
 
 function readAudience(value: unknown, index: number): RawConfluencePage["metadata"]["audience"] {

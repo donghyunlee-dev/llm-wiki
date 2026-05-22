@@ -15,8 +15,6 @@ export type HomeContent = {
     examples: [string, string, string];
   };
   entryCards: [EntryCard, EntryCard, EntryCard, EntryCard];
-  featuredGuides: [string, string, string];
-  featuredProjects: [string, string, string];
   projectDesign: {
     title: string;
     body: string;
@@ -74,16 +72,6 @@ export const HOME_CONTENT: HomeContent = {
       href: "/faq",
     },
   ],
-  featuredGuides: [
-    "Agent 시작하기",
-    "사내 위키 활용 방법",
-    "프로젝트 설계 시작하기",
-  ],
-  featuredProjects: [
-    "업무 승인 요청 도구",
-    "주간 보고서 자동화",
-    "내부 문의 챗봇",
-  ],
   projectDesign: {
     title: "만들고 싶은 방향이 정리되었나요?",
     body: "가이드와 사례를 확인한 뒤 만들고 싶은 내용을 설계로 정리하세요.",
@@ -100,8 +88,6 @@ export function collectVisibleText(content: HomeContent) {
     content.search.placeholder,
     ...content.search.examples,
     ...content.entryCards.flatMap((card) => [card.title, card.description]),
-    ...content.featuredGuides,
-    ...content.featuredProjects,
     content.projectDesign.title,
     content.projectDesign.body,
     content.projectDesign.cta,
@@ -120,14 +106,6 @@ export function validateHomePageContent(content: HomeContent) {
     {
       name: "main entry cards stay fixed at four",
       pass: content.entryCards.length === 4,
-    },
-    {
-      name: "featured guide list stays fixed at three",
-      pass: content.featuredGuides.length === 3,
-    },
-    {
-      name: "featured project list stays fixed at three",
-      pass: content.featuredProjects.length === 3,
     },
     {
       name: "search examples stay fixed at three",

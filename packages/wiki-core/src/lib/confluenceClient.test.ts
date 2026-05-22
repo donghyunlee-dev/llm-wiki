@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { fetchConfluencePageRecords } from "./confluenceClient";
 
 const metadata = {
-  docType: "tutorial",
-  visibility: "public",
+  docType: "guide",
   audience: "beginner",
   status: "published",
   prerequisites: [],
@@ -80,7 +79,6 @@ describe("fetchConfluencePageRecords", () => {
     );
     expect(records).toEqual([
       {
-        category: "guides",
         slug: "agent-시작하기",
         page: {
           id: "123",
@@ -96,6 +94,52 @@ describe("fetchConfluencePageRecords", () => {
         },
       },
     ]);
+  });
+
+  it("uses a follow-up property fetch when the property list returns a numeric id without a value", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          results: [
+            {
+              id: "789",
+              status: "current",
+              title: "[Guide] Index",
+              spaceId: "63111172",
+              body: { storage: { value: "<p>index</p>" } },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          results: [
+            {
+              id: 98765,
+              key: "wiki.metadata",
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          id: 98765,
+          key: "wiki.metadata",
+          value: { ...metadata, docType: "nav" },
+        }),
+      );
+
+    const records = await fetchConfluencePageRecords({
+      siteName: "sfoodxproject",
+      userEmail: "user@example.com",
+      apiToken: "token",
+      spaceId: "63111172",
+      fetch: mockFetch,
+    });
+
+    expect(records[0]?.page.metadata.docType).toBe("nav");
+    expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
   it("uses a follow-up property fetch when the metadata list does not include a value", async () => {
@@ -134,7 +178,7 @@ describe("fetchConfluencePageRecords", () => {
           key: "wiki.metadata",
           value: {
             ...metadata,
-            docType: "example",
+            docType: "page",
           },
         }),
       );
@@ -146,7 +190,7 @@ describe("fetchConfluencePageRecords", () => {
       fetch: mockFetch,
     });
 
-    expect(records[0]?.category).toBe("projects");
+    expect(records[0]?.page.metadata.docType).toBe("page");
     expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
@@ -193,7 +237,6 @@ describe("fetchConfluencePageRecords", () => {
 
     expect(records).toEqual([
       {
-        category: "guides",
         slug: "guide-gmail-mcp-setup",
         page: {
           id: "84705630",
@@ -204,8 +247,7 @@ describe("fetchConfluencePageRecords", () => {
           bodyHtml: "<p>Gmail mail setup</p>",
           sourceUrl: "https://sfoodxproject.atlassian.net/wiki/spaces/AIAW/pages/84705630",
           metadata: {
-            docType: "tutorial",
-            visibility: "public",
+            docType: "guide",
             audience: "beginner",
             status: "published",
             prerequisites: [],
@@ -247,5 +289,51 @@ describe("fetchConfluencePageRecords", () => {
     });
 
     expect(records).toEqual([]);
+  });
+
+  it("rejects pages with removed legacy docType values", async () => {
+    const legacyTypes = ["overview", "concept", "howto", "example", "troubleshooting", "reference", "tutorial", "index", "router", "registry"];
+
+    for (const oldType of legacyTypes) {
+      const mockFetch = vi
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse({
+            results: [
+              {
+                id: "100",
+                status: "current",
+                title: "Legacy Doc",
+                spaceId: "63111172",
+                version: { number: 1, createdAt: "2026-04-29T00:00:00.000Z" },
+                body: { storage: { value: "<p>body</p>" } },
+                _links: { webui: "/wiki/spaces/LLMWIKI/pages/100" },
+              },
+            ],
+          }),
+        )
+        .mockResolvedValueOnce(
+          jsonResponse({
+            results: [
+              {
+                id: "prop-legacy",
+                key: "wiki.metadata",
+                value: { ...metadata, docType: oldType },
+              },
+            ],
+          }),
+        );
+
+      const records = await fetchConfluencePageRecords({
+        siteName: "sfoodxproject",
+        userEmail: "user@example.com",
+        apiToken: "token",
+        spaceId: "63111172",
+        fetch: mockFetch,
+      });
+
+      // Legacy docType → metadata parse fails → page is omitted
+      expect(records, `${oldType} should produce no records`).toHaveLength(0);
+    }
   });
 });

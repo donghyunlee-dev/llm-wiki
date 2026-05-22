@@ -36,8 +36,7 @@ describe("confluenceReadModel", () => {
       bodyHtml: `<h1>문서 제목</h1><p>요약 문장입니다.</p>`,
       sourceUrl: "https://example.test/wiki/pages/1",
       metadata: {
-        docType: "overview",
-        visibility: "public",
+        docType: "guide",
         audience: "beginner",
         status: "published",
         prerequisites: [],
@@ -47,9 +46,9 @@ describe("confluenceReadModel", () => {
       updatedAt: "2026-04-28",
     };
 
-    const normalized = normalizeConfluencePage(rawPage, "guides", "doc-title");
+    const normalized = normalizeConfluencePage(rawPage, "doc-title");
 
-    expect(normalized.category).toBe("guides");
+    expect(normalized.metadata.docType).toBe("guide");
     expect(normalized.slug).toBe("doc-title");
     expect(normalized.headings[0]).toEqual({
       id: "문서-제목",

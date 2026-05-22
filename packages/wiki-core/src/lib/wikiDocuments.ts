@@ -12,7 +12,7 @@ export type WikiDocument = {
   updatedAt: string;
   sourceUrl?: string;
   metadata: {
-    docType: "guide" | "page" | "faq" | "library" | "policy" | "nav" | "ops";
+    docType: "guide" | "page" | "faq" | "library" | "policy" | "nav" | "ops" | "playbook";
     audience: "beginner" | "intermediate" | "advanced";
     status: "published";
     prerequisites: string[];
@@ -168,7 +168,7 @@ function rankSearchDocumentsIn(documents: WikiDocument[], query: string): Ranked
   }
 
   return documents
-    .filter((document) => document.metadata.docType !== "ops" && document.metadata.docType !== "policy")
+    .filter((document) => document.metadata.docType !== "ops" && document.metadata.docType !== "policy" && document.metadata.docType !== "playbook")
     .map((document) => ({
       document,
       score: scoreDocumentForSearch(document, profile),
@@ -434,7 +434,7 @@ function getSearchDocTypeAffinity(
 ) {
   if (docType === "nav") return 0;
   if (docType === "policy") return -10;
-  if (docType === "ops") return -20;
+  if (docType === "ops" || docType === "playbook") return -20;
 
   const isGuide = docType === "guide";
   const isPage = docType === "page";

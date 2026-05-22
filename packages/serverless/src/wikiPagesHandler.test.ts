@@ -51,8 +51,7 @@ describe("wikiPagesHandler", () => {
             {
               key: "wiki.metadata",
               value: {
-                docType: "tutorial",
-                visibility: "public",
+                docType: "guide",
                 audience: "beginner",
                 status: "published",
                 prerequisites: [],
@@ -73,7 +72,6 @@ describe("wikiPagesHandler", () => {
     expect(JSON.parse(response.body)).toMatchObject({
       pages: [
         {
-          category: "guides",
           slug: "guide",
           page: {
             id: "123",

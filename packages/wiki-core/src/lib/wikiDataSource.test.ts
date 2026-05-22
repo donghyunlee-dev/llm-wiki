@@ -13,7 +13,6 @@ import {
 
 function buildRemoteRecord(overrides: Partial<RemoteWikiPageRecord> = {}): RemoteWikiPageRecord {
   return {
-    category: "guides",
     slug: "remote-guide",
     page: {
       id: "remote-1",
@@ -25,8 +24,7 @@ function buildRemoteRecord(overrides: Partial<RemoteWikiPageRecord> = {}): Remot
       bodyHtml: "<h2>Remote Heading</h2><p>Remote body</p>",
       sourceUrl: "https://example.com/wiki/spaces/public/pages/remote-1",
       metadata: {
-        docType: "tutorial",
-        visibility: "public",
+        docType: "guide",
         audience: "beginner",
         status: "published",
         prerequisites: [],
@@ -41,7 +39,6 @@ function buildRemoteRecord(overrides: Partial<RemoteWikiPageRecord> = {}): Remot
 
 function buildPolicyRecord(overrides: Partial<RemoteWikiPageRecord> = {}): RemoteWikiPageRecord {
   return buildRemoteRecord({
-    category: "library",
     slug: "policy-guide",
     page: {
       ...buildRemoteRecord().page,
@@ -60,8 +57,8 @@ describe("wikiDataSource", () => {
   it("builds allowed wiki documents from snapshot-shaped remote payloads", () => {
     const documents = buildWikiDocumentsFromPayload(getSnapshotPayload());
 
-    expect(documents).toHaveLength(7);
-    expect(documents[0]?.title).toBe("Agent 시작하기");
+    expect(documents).toHaveLength(10);
+    expect(documents[0]?.title).toBe("가이드 인덱스");
   });
 
   it("builds wiki documents from remote page arrays", () => {
@@ -72,9 +69,40 @@ describe("wikiDataSource", () => {
       id: "remote-1",
       parentId: "root-1",
       slug: "remote-guide",
-      category: "guides",
       title: "Remote Guide",
     });
+  });
+
+  it("accepts nav doc type used by the corpus navigation pages", () => {
+    const documents = buildWikiDocumentsFromPayload([
+      buildRemoteRecord({
+        slug: "guide-index",
+        page: {
+          ...buildRemoteRecord().page,
+          id: "index-1",
+          title: "가이드 인덱스",
+          metadata: {
+            ...buildRemoteRecord().page.metadata,
+            docType: "nav",
+          },
+        },
+      }),
+      buildRemoteRecord({
+        slug: "guide-getting-started",
+        page: {
+          ...buildRemoteRecord().page,
+          id: "nav-1",
+          title: "Getting Started",
+          metadata: {
+            ...buildRemoteRecord().page.metadata,
+            docType: "nav",
+          },
+        },
+      }),
+    ]);
+
+    expect(documents).toHaveLength(2);
+    expect(documents.map((document) => document.metadata.docType)).toEqual(["nav", "nav"]);
   });
 
   it("allows visible remote records with empty body HTML", () => {
@@ -112,22 +140,10 @@ describe("wikiDataSource", () => {
         Accept: "application/json",
       },
     });
-    expect(documents).toHaveLength(7);
-    expect(documents.every((document) => document.metadata.visibility === "public")).toBe(true);
+    expect(documents).toHaveLength(10);
   });
 
-  it("filters remote records that are not public, current, and published before normalization", () => {
-    const internalRecord = buildRemoteRecord({
-      slug: "internal-guide",
-      page: {
-        ...buildRemoteRecord().page,
-        id: "internal-1",
-        metadata: {
-          ...buildRemoteRecord().page.metadata,
-          visibility: "internal",
-        },
-      },
-    });
+  it("filters remote records that are not current and published before normalization", () => {
     const archivedRecord = buildRemoteRecord({
       slug: "archived-guide",
       page: {
@@ -160,16 +176,15 @@ describe("wikiDataSource", () => {
     });
 
     const records = parseRemoteWikiPageRecords({
-      pages: [buildRemoteRecord(), internalRecord, archivedRecord, draftRecord, opsRecord],
+      pages: [buildRemoteRecord(), archivedRecord, draftRecord, opsRecord],
     });
 
     expect(records).toHaveLength(1);
     expect(records[0]?.slug).toBe("remote-guide");
   });
 
-  it("keeps ops records available for hidden policy cache only", () => {
-    const publicOpsRecord = buildRemoteRecord({
-      category: "library",
+  it("keeps ops records available for hidden ops cache only", () => {
+    const opsRecord1 = buildRemoteRecord({
       slug: "ops-development-rules",
       page: {
         ...buildRemoteRecord().page,
@@ -181,8 +196,7 @@ describe("wikiDataSource", () => {
         },
       },
     });
-    const internalOpsRecord = buildRemoteRecord({
-      category: "library",
+    const opsRecord2 = buildRemoteRecord({
       slug: "ops-internal-rules",
       page: {
         ...buildRemoteRecord().page,
@@ -191,13 +205,12 @@ describe("wikiDataSource", () => {
         metadata: {
           ...buildRemoteRecord().page.metadata,
           docType: "ops",
-          visibility: "internal",
         },
       },
     });
 
-    expect(parseRemoteWikiPageRecords({ pages: [publicOpsRecord, internalOpsRecord] })).toEqual([]);
-    expect(parseRemoteOpsPageRecords({ pages: [publicOpsRecord, internalOpsRecord] }).map((record) => record.slug)).toEqual([
+    expect(parseRemoteWikiPageRecords({ pages: [opsRecord1, opsRecord2] })).toEqual([]);
+    expect(parseRemoteOpsPageRecords({ pages: [opsRecord1, opsRecord2] }).map((record) => record.slug)).toEqual([
       "ops-development-rules",
       "ops-internal-rules",
     ]);
@@ -205,23 +218,39 @@ describe("wikiDataSource", () => {
 
   it("keeps policy records available for hidden policy cache only", () => {
     const policyRecord = buildPolicyRecord();
-    const internalPolicyRecord = buildPolicyRecord({
+    const policyRecord2 = buildPolicyRecord({
       slug: "policy-internal",
       page: {
         ...buildPolicyRecord().page,
         id: "policy-2",
-        metadata: {
-          ...buildPolicyRecord().page.metadata,
-          visibility: "internal",
-        },
       },
     });
 
-    expect(parseRemoteWikiPageRecords({ pages: [policyRecord, internalPolicyRecord] })).toEqual([]);
-    expect(parseRemotePolicyPageRecords({ pages: [policyRecord, internalPolicyRecord] }).map((record) => record.slug)).toEqual([
+    expect(parseRemoteWikiPageRecords({ pages: [policyRecord, policyRecord2] })).toEqual([]);
+    expect(parseRemotePolicyPageRecords({ pages: [policyRecord, policyRecord2] }).map((record) => record.slug)).toEqual([
       "policy-guide",
       "policy-internal",
     ]);
+  });
+
+  it("excludes playbook records without throwing and does not expose them to public corpus", () => {
+    const playbookRecord = buildRemoteRecord({
+      slug: "playbook-log",
+      page: {
+        ...buildRemoteRecord().page,
+        id: "playbook-1",
+        title: "Playbook - 2026-05-21",
+        metadata: { ...buildRemoteRecord().page.metadata, docType: "playbook" },
+      },
+    });
+
+    expect(() =>
+      parseRemoteWikiPageRecords({ pages: [buildRemoteRecord(), playbookRecord] }),
+    ).not.toThrow();
+
+    const records = parseRemoteWikiPageRecords({ pages: [buildRemoteRecord(), playbookRecord] });
+    expect(records.map((r) => r.slug)).toEqual(["remote-guide"]);
+    expect(records.some((r) => r.slug === "playbook-log")).toBe(false);
   });
 
   it("builds compact policy documents from hidden policy records", () => {
@@ -237,95 +266,54 @@ describe("wikiDataSource", () => {
     expect(documents[0]?.contentText).toContain("Remote body");
   });
 
-  it("limits remote records to guide, project, FAQ, and Playbook pages", () => {
-    const projectRecord = buildRemoteRecord({
-      category: "projects",
-      slug: "project-example",
+  it("limits remote records to guide, page, faq, library, and nav pages", () => {
+    const pageRecord = buildRemoteRecord({
+      slug: "page-example",
       page: {
         ...buildRemoteRecord().page,
-        id: "project-1",
-        title: "Project Example",
-        metadata: {
-          ...buildRemoteRecord().page.metadata,
-          docType: "example",
-        },
+        id: "page-1",
+        title: "Page Example",
+        metadata: { ...buildRemoteRecord().page.metadata, docType: "page" },
       },
     });
     const libraryRecord = buildRemoteRecord({
-      category: "library",
       slug: "library-reference",
       page: {
         ...buildRemoteRecord().page,
         id: "library-1",
         title: "Library Reference",
-        metadata: {
-          ...buildRemoteRecord().page.metadata,
-          docType: "reference",
-        },
+        metadata: { ...buildRemoteRecord().page.metadata, docType: "library" },
       },
     });
     const faqRecord = buildRemoteRecord({
-      category: "faq",
       slug: "faq-record",
       page: {
         ...buildRemoteRecord().page,
         id: "faq-1",
         title: "FAQ Record",
-        metadata: {
-          ...buildRemoteRecord().page.metadata,
-          docType: "troubleshooting",
-        },
+        metadata: { ...buildRemoteRecord().page.metadata, docType: "faq" },
       },
     });
-    const playbookRecord = buildRemoteRecord({
-      category: "library",
-      slug: "playbook",
+    const navRecord = buildRemoteRecord({
+      slug: "nav-index",
       page: {
         ...buildRemoteRecord().page,
-        id: "playbook-1",
-        title: "Playbook",
-        metadata: {
-          ...buildRemoteRecord().page.metadata,
-          docType: "reference",
-        },
-      },
-    });
-    const onboardingRecord = buildRemoteRecord({
-      category: "guides",
-      slug: "onboarding-index",
-      page: {
-        ...buildRemoteRecord().page,
-        id: "onboarding-1",
-        title: "Onboarding Index",
-      },
-    });
-    const onboardingQaRecord = buildRemoteRecord({
-      category: "guides",
-      slug: "s3-003-도구는-어떻게-연결해요",
-      page: {
-        ...buildRemoteRecord().page,
-        id: "onboarding-qa-1",
-        title: "[s3-003] 도구는 어떻게 연결해요?",
+        id: "nav-1",
+        title: "Nav Index",
+        metadata: { ...buildRemoteRecord().page.metadata, docType: "nav" },
       },
     });
 
     const records = parseRemoteWikiPageRecords({
-      pages: [
-        buildRemoteRecord(),
-        projectRecord,
-        libraryRecord,
-        faqRecord,
-        playbookRecord,
-        onboardingRecord,
-        onboardingQaRecord,
-      ],
+      pages: [buildRemoteRecord(), pageRecord, libraryRecord, faqRecord, navRecord],
     });
 
     expect(records.map((record) => record.slug)).toEqual([
       "remote-guide",
-      "project-example",
+      "page-example",
+      "library-reference",
       "faq-record",
-      "playbook",
+      "nav-index",
     ]);
   });
 
@@ -348,7 +336,7 @@ describe("wikiDataSource", () => {
     );
   });
 
-  it("returns an empty record list when no remote documents are visible", () => {
+  it("returns an empty record list when all records are ops or policy", () => {
     expect(
       parseRemoteWikiPageRecords([
         buildRemoteRecord({
@@ -356,7 +344,7 @@ describe("wikiDataSource", () => {
             ...buildRemoteRecord().page,
             metadata: {
               ...buildRemoteRecord().page.metadata,
-              visibility: "internal",
+              docType: "ops",
             },
           },
         }),

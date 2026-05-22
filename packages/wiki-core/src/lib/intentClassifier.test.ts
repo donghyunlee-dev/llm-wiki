@@ -130,6 +130,22 @@ describe("classifyQuestionIntent — edge cases and negative scenarios", () => {
     // 링크 + 안됨: page-lookup 판정이 즉시 승리
     expect(classifyQuestionIntent("설정 문서 링크가 안 열려")).toBe("page-lookup");
   });
+
+  it("classifies '코덱스와 클로드의 skill이 뭐가 다르지?' as comparison (다르 pattern)", () => {
+    expect(classifyQuestionIntent("코덱스와 클로드의 skill이 뭐가 다르지?")).toBe("comparison");
+  });
+
+  it("classifies 'Claude Code랑 Cursor 중에 뭐가 달라?' as comparison", () => {
+    expect(classifyQuestionIntent("Claude Code랑 Cursor 중에 뭐가 달라?")).toBe("comparison");
+  });
+
+  it("classifies 'Codex에서 Jira 이슈를 읽으려면?' as setup (goal-oriented how-to)", () => {
+    expect(classifyQuestionIntent("Codex에서 Jira 이슈를 읽으려면?")).toBe("setup");
+  });
+
+  it("classifies 'MCP를 활용하려면 어떻게 해야 해?' as setup (활용하려면)", () => {
+    expect(classifyQuestionIntent("MCP를 활용하려면 어떻게 해야 해?")).toBe("setup");
+  });
 });
 
 describe("extractQuestionSubjects", () => {
@@ -149,5 +165,11 @@ describe("extractQuestionSubjects", () => {
 
   it("extracts vibe coding as compound subject", () => {
     expect(extractQuestionSubjects("vibe coding이 뭔지")).toContain("vibe coding");
+  });
+
+  it("returns only english subjects — korean-only input yields empty", () => {
+    expect(extractQuestionSubjects("클로드의 webhook에 대해 설명해줘")).toEqual(["webhook"]);
+    expect(extractQuestionSubjects("클로드 코드 설치 방법")).toEqual([]);
+    expect(extractQuestionSubjects("코덱스를 어떻게 설치해?")).toEqual([]);
   });
 });

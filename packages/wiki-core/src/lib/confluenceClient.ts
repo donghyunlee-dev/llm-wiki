@@ -3,7 +3,6 @@ import {
   PUBLIC_WIKI_SPACE_ID,
   type RemoteWikiPageRecord,
 } from "./wikiDataSource";
-import type { CategorySlug } from "./wikiDocuments";
 
 const METADATA_PROPERTY_KEY = "wiki.metadata";
 
@@ -51,6 +50,8 @@ type ConfluencePropertyResponse = {
   value?: unknown;
 };
 
+const METADATA_FETCH_BATCH_SIZE = 20;
+
 export async function fetchConfluencePageRecords(
   config: ConfluenceClientConfig,
 ): Promise<RemoteWikiPageRecord[]> {
@@ -60,30 +61,40 @@ export async function fetchConfluencePageRecords(
   const pages = await fetchAllPages(siteBaseUrl, spaceId, request);
   const records: RemoteWikiPageRecord[] = [];
 
-  for (const page of pages) {
-    const metadata = await fetchPageMetadata(siteBaseUrl, page.id, request);
-    const resolvedMetadata = metadata ?? inferMetadataFromTitle(page.title);
+  for (let i = 0; i < pages.length; i += METADATA_FETCH_BATCH_SIZE) {
+    const batch = pages.slice(i, i + METADATA_FETCH_BATCH_SIZE);
+    const batchResults = await Promise.all(
+      batch.map(async (page) => {
+        const metadata = await fetchPageMetadata(siteBaseUrl, page.id, request);
+        const resolvedMetadata = metadata ?? inferMetadataFromTitle(page.title);
 
-    if (!resolvedMetadata) {
-      continue;
+        if (!resolvedMetadata) {
+          return null;
+        }
+
+        return {
+          slug: slugifyPageTitle(page.title, page.id),
+          page: {
+            id: page.id,
+            ...(page.parentId ? { parentId: page.parentId } : {}),
+            title: page.title,
+            spaceId: page.spaceId,
+            status: page.status,
+            version: page.version?.number ?? 1,
+            bodyHtml: page.body?.storage?.value ?? "",
+            sourceUrl: resolvePageUrl(siteBaseUrl, page._links?.webui),
+            metadata: resolvedMetadata,
+            updatedAt: normalizeUpdatedAt(page.version?.createdAt),
+          },
+        } satisfies RemoteWikiPageRecord;
+      }),
+    );
+
+    for (const result of batchResults) {
+      if (result !== null) {
+        records.push(result);
+      }
     }
-
-    records.push({
-      category: resolveCategory(resolvedMetadata.docType),
-      slug: slugifyPageTitle(page.title, page.id),
-      page: {
-        id: page.id,
-        ...(page.parentId ? { parentId: page.parentId } : {}),
-        title: page.title,
-        spaceId: page.spaceId,
-        status: page.status,
-        version: page.version?.number ?? 1,
-        bodyHtml: page.body?.storage?.value ?? "",
-        sourceUrl: resolvePageUrl(siteBaseUrl, page._links?.webui),
-        metadata: resolvedMetadata,
-        updatedAt: normalizeUpdatedAt(page.version?.createdAt),
-      },
-    });
   }
 
   return records;
@@ -128,7 +139,11 @@ async function fetchPageMetadata(
   }
 
   if (property.value) {
-    return readMetadataValue(property.value);
+    try {
+      return readMetadataValue(property.value);
+    } catch {
+      return null;
+    }
   }
 
   if (!property.id) {
@@ -147,7 +162,11 @@ async function fetchPageMetadata(
     return null;
   }
 
-  return readMetadataValue(propertyDetail.value);
+  try {
+    return readMetadataValue(propertyDetail.value);
+  } catch {
+    return null;
+  }
 }
 
 function createConfluenceRequest(config: ConfluenceClientConfig) {
@@ -170,6 +189,159 @@ function createConfluenceRequest(config: ConfluenceClientConfig) {
 
     return response.json();
   };
+}
+
+function createConfluenceWriteRequest(config: ConfluenceClientConfig) {
+  const siteBaseUrl = resolveSiteBaseUrl(config.siteName);
+  const fetchImpl = config.fetch ?? fetch;
+  const authorization = `Basic ${btoa(`${config.userEmail}:${config.apiToken}`)}`;
+
+  return async (pathOrUrl: string, method: "POST" | "PUT", body: unknown) => {
+    const url = resolveConfluencePathOrUrl(siteBaseUrl, pathOrUrl);
+    const response = await fetchImpl(url, {
+      method,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: authorization,
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      throw new Error(`Confluence write failed with status ${response.status}: ${text}`);
+    }
+
+    return response.json();
+  };
+}
+
+export type ConfluencePageSummary = {
+  id: string;
+  title: string;
+  version: number;
+};
+
+export type ConfluencePageDetail = ConfluencePageSummary & {
+  bodyHtml: string;
+};
+
+export async function findConfluenceChildPageByTitle(
+  config: ConfluenceClientConfig,
+  parentId: string,
+  title: string,
+): Promise<ConfluencePageSummary | null> {
+  const siteBaseUrl = resolveSiteBaseUrl(config.siteName);
+  const request = createConfluenceRequest(config);
+  let nextPath = `/wiki/api/v2/pages/${encodeURIComponent(parentId)}/children?limit=50`;
+
+  while (nextPath) {
+    const response = await request(nextPath);
+
+    if (!isRecord(response) || !Array.isArray(response.results)) {
+      break;
+    }
+
+    for (const item of response.results) {
+      if (!isRecord(item)) continue;
+      const itemTitle = typeof item.title === "string" ? item.title : "";
+      if (itemTitle === title) {
+        return {
+          id: readString(item.id, "child.id"),
+          title: itemTitle,
+          version: isRecord(item.version) && typeof item.version.number === "number"
+            ? item.version.number
+            : 1,
+        };
+      }
+    }
+
+    nextPath = isRecord(response._links) && typeof response._links.next === "string"
+      ? resolveConfluencePathOrUrl(siteBaseUrl, response._links.next)
+      : "";
+  }
+
+  return null;
+}
+
+export async function getConfluencePageDetail(
+  config: ConfluenceClientConfig,
+  pageId: string,
+): Promise<ConfluencePageDetail> {
+  const request = createConfluenceRequest(config);
+  const response = await request(
+    `/wiki/api/v2/pages/${encodeURIComponent(pageId)}?body-format=storage`,
+  );
+
+  if (!isRecord(response)) {
+    throw new Error("Confluence page detail response must be an object.");
+  }
+
+  const bodyHtml = isRecord(response.body) &&
+    isRecord(response.body.storage) &&
+    typeof response.body.storage.value === "string"
+    ? response.body.storage.value
+    : "";
+
+  return {
+    id: readString(response.id, "page.id"),
+    title: readString(response.title, "page.title"),
+    version: isRecord(response.version) && typeof response.version.number === "number"
+      ? response.version.number
+      : 1,
+    bodyHtml,
+  };
+}
+
+export async function createConfluencePage(
+  config: ConfluenceClientConfig,
+  parentId: string,
+  title: string,
+  bodyHtml: string,
+): Promise<string> {
+  const spaceId = config.spaceId || PUBLIC_WIKI_SPACE_ID;
+  const write = createConfluenceWriteRequest(config);
+  const response = await write("/wiki/api/v2/pages", "POST", {
+    spaceId,
+    parentId,
+    title,
+    status: "current",
+    body: {
+      storage: {
+        value: bodyHtml,
+        representation: "storage",
+      },
+    },
+  });
+
+  if (!isRecord(response) || typeof response.id !== "string") {
+    throw new Error("Confluence create page response did not include id.");
+  }
+
+  return response.id;
+}
+
+export async function updateConfluencePage(
+  config: ConfluenceClientConfig,
+  pageId: string,
+  title: string,
+  bodyHtml: string,
+  currentVersion: number,
+): Promise<void> {
+  const write = createConfluenceWriteRequest(config);
+  await write(`/wiki/api/v2/pages/${encodeURIComponent(pageId)}`, "PUT", {
+    id: pageId,
+    status: "current",
+    title,
+    version: { number: currentVersion + 1 },
+    body: {
+      storage: {
+        value: bodyHtml,
+        representation: "storage",
+      },
+    },
+  });
 }
 
 function readPageListResponse(response: unknown) {
@@ -226,7 +398,7 @@ function readPropertyListResponse(response: unknown): ConfluencePropertyListResp
     results: response.results
       .filter(isRecord)
       .map((property) => ({
-        id: typeof property.id === "string" ? property.id : undefined,
+        id: typeof property.id === "string" ? property.id : typeof property.id === "number" ? String(property.id) : undefined,
         key: typeof property.key === "string" ? property.key : undefined,
         value: property.value,
       })),
@@ -252,7 +424,6 @@ function readMetadataValue(value: unknown): RawConfluencePage["metadata"] {
 
   return {
     docType: readDocType(value.docType),
-    visibility: readVisibility(value.visibility),
     audience: readAudience(value.audience),
     status: readStatus(value.status),
     prerequisites: readStringArray(value.prerequisites),
@@ -261,29 +432,12 @@ function readMetadataValue(value: unknown): RawConfluencePage["metadata"] {
   };
 }
 
-function resolveCategory(docType: RawConfluencePage["metadata"]["docType"]): CategorySlug {
-  if (docType === "example") {
-    return "projects";
-  }
-
-  if (docType === "reference" || docType === "ops") {
-    return "library";
-  }
-
-  if (docType === "troubleshooting") {
-    return "faq";
-  }
-
-  return "guides";
-}
-
 function inferMetadataFromTitle(title: string): RawConfluencePage["metadata"] | null {
   const normalizedTitle = title.trim().toLocaleLowerCase("ko-KR");
 
   if (normalizedTitle.startsWith("[guide]") || normalizedTitle.startsWith("guide")) {
     return {
-      docType: "tutorial",
-      visibility: "public",
+      docType: "guide",
       audience: "beginner",
       status: "published",
       prerequisites: [],
@@ -294,8 +448,7 @@ function inferMetadataFromTitle(title: string): RawConfluencePage["metadata"] | 
 
   if (normalizedTitle.startsWith("[faq]") || normalizedTitle.startsWith("faq")) {
     return {
-      docType: "troubleshooting",
-      visibility: "public",
+      docType: "faq",
       audience: "beginner",
       status: "published",
       prerequisites: [],
@@ -304,10 +457,14 @@ function inferMetadataFromTitle(title: string): RawConfluencePage["metadata"] | 
     };
   }
 
-  if (normalizedTitle.startsWith("[blueprint]") || normalizedTitle.startsWith("blueprint")) {
+  if (
+    normalizedTitle.startsWith("[blueprint]") ||
+    normalizedTitle.startsWith("blueprint") ||
+    normalizedTitle.startsWith("[playbook]") ||
+    normalizedTitle === "playbook"
+  ) {
     return {
-      docType: "overview",
-      visibility: "public",
+      docType: "playbook",
       audience: "intermediate",
       status: "published",
       prerequisites: [],
@@ -318,20 +475,7 @@ function inferMetadataFromTitle(title: string): RawConfluencePage["metadata"] | 
 
   if (normalizedTitle.startsWith("[project]") || normalizedTitle.startsWith("project")) {
     return {
-      docType: "example",
-      visibility: "public",
-      audience: "intermediate",
-      status: "published",
-      prerequisites: [],
-      next: [],
-      related: [],
-    };
-  }
-
-  if (normalizedTitle.startsWith("[playbook]") || normalizedTitle === "playbook") {
-    return {
-      docType: "reference",
-      visibility: "public",
+      docType: "page",
       audience: "intermediate",
       status: "published",
       prerequisites: [],
@@ -389,15 +533,14 @@ function slugifyPageTitle(title: string, fallbackId: string) {
 
 function readDocType(value: unknown): RawConfluencePage["metadata"]["docType"] {
   if (
-    value === "overview" ||
-    value === "concept" ||
-    value === "tutorial" ||
-    value === "howto" ||
-    value === "reference" ||
-    value === "troubleshooting" ||
-    value === "example" ||
+    value === "guide" ||
+    value === "page" ||
+    value === "faq" ||
+    value === "library" ||
+    value === "policy" ||
+    value === "nav" ||
     value === "ops" ||
-    value === "policy"
+    value === "playbook"
   ) {
     return value;
   }
@@ -405,20 +548,12 @@ function readDocType(value: unknown): RawConfluencePage["metadata"]["docType"] {
   throw new Error("wiki.metadata.docType is invalid.");
 }
 
-function readVisibility(value: unknown): RawConfluencePage["metadata"]["visibility"] {
-  if (value === "public" || value === "internal") {
-    return value;
-  }
-
-  throw new Error("wiki.metadata.visibility is invalid.");
-}
-
 function readAudience(value: unknown): RawConfluencePage["metadata"]["audience"] {
   if (value === "beginner" || value === "intermediate" || value === "advanced") {
     return value;
   }
 
-  throw new Error("wiki.metadata.audience is invalid.");
+  return "beginner";
 }
 
 function readStatus(value: unknown): RawConfluencePage["metadata"]["status"] {
@@ -426,7 +561,7 @@ function readStatus(value: unknown): RawConfluencePage["metadata"]["status"] {
     return value;
   }
 
-  throw new Error("wiki.metadata.status is invalid.");
+  return "published";
 }
 
 function readString(value: unknown, fieldName: string) {

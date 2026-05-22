@@ -2,10 +2,9 @@ import {
   normalizeConfluencePage,
   type RawConfluencePage,
 } from "./confluenceReadModel";
-import type { CategorySlug, WikiDocument } from "./wikiDocuments";
+import type { WikiDocument } from "./wikiDocuments";
 
 type SnapshotDefinition = {
-  category: CategorySlug;
   slug: string;
   page: RawConfluencePage;
 };
@@ -19,7 +18,32 @@ const BASE_URL = "https://sfoodxproject.atlassian.net/wiki/spaces/LLMWIKI/pages"
 
 const SNAPSHOTS: SnapshotDefinition[] = [
   {
-    category: "guides",
+    slug: "guide-index",
+    page: {
+      id: "91000000",
+      title: "가이드 인덱스",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-05-01",
+      sourceUrl: `${BASE_URL}/91000000`,
+      metadata: {
+        docType: "nav",
+        audience: "beginner",
+        status: "published",
+        prerequisites: [],
+        next: ["91000001", "91000002", "91000003"],
+        related: [],
+      },
+      bodyHtml: `
+        <h1>가이드 인덱스</h1>
+        <p>사내 LLM 위키 가이드 문서의 전체 목록과 탐색 경로입니다.</p>
+        <h2 id="list">가이드 목록</h2>
+        <p>Agent 시작하기, 위키 활용 방법, 프로젝트 설계 시작하기 순서로 읽는 것을 권장합니다.</p>
+      `,
+    },
+  },
+  {
     slug: "agent-start",
     page: {
       id: "91000001",
@@ -30,8 +54,7 @@ const SNAPSHOTS: SnapshotDefinition[] = [
       updatedAt: "2026-04-28",
       sourceUrl: `${BASE_URL}/91000001`,
       metadata: {
-        docType: "tutorial",
-        visibility: "public",
+        docType: "nav",
         audience: "beginner",
         status: "published",
         prerequisites: [],
@@ -53,7 +76,6 @@ const SNAPSHOTS: SnapshotDefinition[] = [
     },
   },
   {
-    category: "guides",
     slug: "wiki-usage",
     page: {
       id: "91000002",
@@ -64,8 +86,7 @@ const SNAPSHOTS: SnapshotDefinition[] = [
       updatedAt: "2026-04-28",
       sourceUrl: `${BASE_URL}/91000002`,
       metadata: {
-        docType: "howto",
-        visibility: "public",
+        docType: "guide",
         audience: "beginner",
         status: "published",
         prerequisites: ["91000001"],
@@ -87,7 +108,6 @@ const SNAPSHOTS: SnapshotDefinition[] = [
     },
   },
   {
-    category: "guides",
     slug: "project-design-start",
     page: {
       id: "91000003",
@@ -98,8 +118,7 @@ const SNAPSHOTS: SnapshotDefinition[] = [
       updatedAt: "2026-04-28",
       sourceUrl: `${BASE_URL}/91000003`,
       metadata: {
-        docType: "howto",
-        visibility: "public",
+        docType: "guide",
         audience: "intermediate",
         status: "published",
         prerequisites: ["91000002"],
@@ -121,7 +140,6 @@ const SNAPSHOTS: SnapshotDefinition[] = [
     },
   },
   {
-    category: "projects",
     slug: "approval-tool",
     page: {
       id: "92000001",
@@ -132,8 +150,7 @@ const SNAPSHOTS: SnapshotDefinition[] = [
       updatedAt: "2026-04-28",
       sourceUrl: `${BASE_URL}/92000001`,
       metadata: {
-        docType: "example",
-        visibility: "public",
+        docType: "page",
         audience: "intermediate",
         status: "published",
         prerequisites: [],
@@ -151,7 +168,6 @@ const SNAPSHOTS: SnapshotDefinition[] = [
     },
   },
   {
-    category: "projects",
     slug: "weekly-report-automation",
     page: {
       id: "92000002",
@@ -162,8 +178,7 @@ const SNAPSHOTS: SnapshotDefinition[] = [
       updatedAt: "2026-04-28",
       sourceUrl: `${BASE_URL}/92000002`,
       metadata: {
-        docType: "example",
-        visibility: "public",
+        docType: "page",
         audience: "intermediate",
         status: "published",
         prerequisites: [],
@@ -181,7 +196,6 @@ const SNAPSHOTS: SnapshotDefinition[] = [
     },
   },
   {
-    category: "projects",
     slug: "internal-chatbot",
     page: {
       id: "92000003",
@@ -192,8 +206,7 @@ const SNAPSHOTS: SnapshotDefinition[] = [
       updatedAt: "2026-04-28",
       sourceUrl: `${BASE_URL}/92000003`,
       metadata: {
-        docType: "example",
-        visibility: "public",
+        docType: "page",
         audience: "intermediate",
         status: "published",
         prerequisites: [],
@@ -211,7 +224,6 @@ const SNAPSHOTS: SnapshotDefinition[] = [
     },
   },
   {
-    category: "library",
     slug: "basic-guidelines",
     page: {
       id: "93000001",
@@ -222,8 +234,7 @@ const SNAPSHOTS: SnapshotDefinition[] = [
       updatedAt: "2026-04-28",
       sourceUrl: `${BASE_URL}/93000001`,
       metadata: {
-        docType: "reference",
-        visibility: "public",
+        docType: "library",
         audience: "beginner",
         status: "published",
         prerequisites: [],
@@ -239,7 +250,6 @@ const SNAPSHOTS: SnapshotDefinition[] = [
     },
   },
   {
-    category: "library",
     slug: "templates",
     page: {
       id: "93000002",
@@ -250,8 +260,7 @@ const SNAPSHOTS: SnapshotDefinition[] = [
       updatedAt: "2026-04-28",
       sourceUrl: `${BASE_URL}/93000002`,
       metadata: {
-        docType: "reference",
-        visibility: "public",
+        docType: "library",
         audience: "beginner",
         status: "published",
         prerequisites: [],
@@ -267,7 +276,6 @@ const SNAPSHOTS: SnapshotDefinition[] = [
     },
   },
   {
-    category: "faq",
     slug: "common-questions",
     page: {
       id: "94000001",
@@ -278,8 +286,7 @@ const SNAPSHOTS: SnapshotDefinition[] = [
       updatedAt: "2026-04-28",
       sourceUrl: `${BASE_URL}/94000001`,
       metadata: {
-        docType: "reference",
-        visibility: "public",
+        docType: "faq",
         audience: "beginner",
         status: "published",
         prerequisites: [],
@@ -297,8 +304,8 @@ const SNAPSHOTS: SnapshotDefinition[] = [
 ];
 
 export function buildSnapshotWikiDocuments(): WikiDocument[] {
-  return SNAPSHOTS.map(({ category, slug, page }) =>
-    normalizeConfluencePage(page, category, slug),
+  return SNAPSHOTS.map(({ slug, page }) =>
+    normalizeConfluencePage(page, slug),
   );
 }
 

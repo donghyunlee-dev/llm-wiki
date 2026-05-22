@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  expandSearchContextDocuments,
   getIndexFirstSearchWikiDocumentsIn,
   getTopSearchWikiDocumentsIn,
   getParentWikiDocumentFrom,
@@ -12,13 +13,11 @@ function document(overrides: Partial<WikiDocument> = {}): WikiDocument {
   return {
     id: "1",
     slug: "doc",
-    category: "guides",
     title: "Document",
     summary: "Summary",
     updatedAt: "2026-04-30",
     metadata: {
-      docType: "tutorial",
-      visibility: "public",
+      docType: "guide",
       audience: "beginner",
       status: "published",
       prerequisites: [],
@@ -119,17 +118,150 @@ describe("wiki document graph helpers", () => {
     ).toEqual(["gmail", "m365"]);
   });
 
-  it("keeps the most relevant document ahead of category ordering", () => {
+  it("prefers broad overview pages over tool-specific setup pages for concept questions", () => {
+    const overviewDoc = document({
+      id: "overview",
+      metadata: {
+        ...document().metadata,
+        docType: "guide",
+      },
+      title: "[Guide] MCP 설정하기",
+      summary: "MCP를 목적별로 선택해 따라갈 수 있도록 정리한 종합 가이드",
+      contentHtml: "<p>목적, 개요, 정의를 함께 설명합니다.</p>",
+    });
+    const setupDoc = document({
+      id: "setup",
+      slug: "filesystem-mcp-setup",
+      metadata: {
+        ...document().metadata,
+        docType: "page",
+      },
+      title: "[Guide] Filesystem MCP Setup",
+      summary: "Filesystem MCP를 먼저 연결하는 방법",
+      contentHtml: "<p>Filesystem MCP를 설정하고 테스트합니다.</p>",
+    });
+
+    expect(
+      getTopSearchWikiDocumentsIn([setupDoc, overviewDoc], "mcp가 뭐지?", 1).map((doc) => doc.id),
+    ).toEqual(["overview"]);
+  });
+
+  it("keeps concept overview pages ahead of generic index pages for concept questions", () => {
+    const overviewDoc = document({
+      id: "overview",
+      metadata: {
+        ...document().metadata,
+        docType: "guide",
+      },
+      title: "[Guide] MCP 설정하기",
+      summary: "MCP를 목적별로 선택해 따라갈 수 있도록 정리한 종합 가이드",
+      contentHtml: "<p>목적, 개요, 정의를 함께 설명합니다.</p>",
+    });
+    const indexDoc = document({
+      id: "index",
+      slug: "guide-index",
+      metadata: {
+        ...document().metadata,
+        docType: "nav",
+      },
+      title: "[Guide] Index",
+      summary: "MCP 및 로컬 도구 시작 문서",
+      contentHtml: "<p>MCP 시작 문서와 인덱스를 정리합니다.</p>",
+    });
+
+    expect(
+      getTopSearchWikiDocumentsIn([indexDoc, overviewDoc], "mcp가 뭐지?", 1).map((doc) => doc.id),
+    ).toEqual(["overview"]);
+  });
+
+  it("still expands from matched indexes for concept questions", () => {
+    const indexDoc = document({
+      id: "index",
+      slug: "guide-mcp-index",
+      metadata: {
+        ...document().metadata,
+        docType: "nav",
+      },
+      title: "[Guide] MCP Index",
+      summary: "MCP 개요와 하위 문서를 모은 인덱스",
+      contentHtml: "<p>MCP 개요를 정리합니다.</p>",
+    });
+    const childDoc = document({
+      id: "child",
+      parentId: "index",
+      slug: "guide-alpha-detail",
+      title: "[Guide] Alpha Detail",
+      summary: "세부 절차를 정리한 문서",
+      contentHtml: "<p>세부 절차를 정리합니다.</p>",
+    });
+    const overviewDoc = document({
+      id: "overview",
+      metadata: {
+        ...document().metadata,
+        docType: "guide",
+      },
+      title: "[Guide] MCP란 무엇인가",
+      summary: "MCP 개념 설명",
+      contentHtml: "<p>MCP의 정의와 역할을 설명합니다.</p>",
+    });
+
+    expect(
+      getIndexFirstSearchWikiDocumentsIn([overviewDoc, childDoc, indexDoc], "mcp가 뭐지?", 2).map((doc) => doc.id),
+    ).toEqual(expect.arrayContaining(["overview", "child"]));
+  });
+
+  it("routes different question shapes to different page families", () => {
+    const conceptDoc = document({
+      id: "concept",
+      title: "[Guide] MCP란 무엇인가",
+      summary: "MCP 개념 설명",
+      contentHtml: "<h2>개요</h2><p>MCP의 정의와 역할을 설명합니다.</p><h2>설명</h2>",
+    });
+    const setupDoc = document({
+      id: "setup",
+      slug: "codex-browser-mcp-setup",
+      metadata: {
+        ...document().metadata,
+        docType: "page",
+      },
+      title: "[Guide] Codex Browser MCP Setup",
+      summary: "Browser MCP 연결 방법",
+      contentHtml: "<p>Browser MCP를 설치하고 설정합니다.</p>",
+    });
+    const troubleshootDoc = document({
+      id: "troubleshoot",
+      slug: "codex-browser-mcp-troubleshooting",
+      title: "[Guide] Codex Browser MCP 오류 해결",
+      summary: "설정이 안 될 때 확인할 항목",
+      metadata: {
+        ...document().metadata,
+        docType: "faq",
+      },
+      contentHtml: "<p>설정이 안 될 때 오류 원인과 해결 순서를 정리합니다.</p>",
+    });
+    const planningDoc = document({
+      id: "planning",
+      title: "[Guide] MCP 연결 전 준비사항",
+      summary: "반드시 정할 항목과 뒤로 미룰 항목",
+      contentHtml: "<p>반드시 지금 정할 것과 뒤로 미뤄도 되는 것을 나눠서 정리합니다.</p>",
+    });
+
+    expect(getTopSearchWikiDocumentsIn([conceptDoc, setupDoc, troubleshootDoc, planningDoc], "mcp가 뭐지?", 1).map((doc) => doc.id)).toEqual(["concept"]);
+    expect(getTopSearchWikiDocumentsIn([conceptDoc, setupDoc, troubleshootDoc, planningDoc], "mcp 설치 방법", 1).map((doc) => doc.id)).toEqual(["setup"]);
+    expect(getTopSearchWikiDocumentsIn([conceptDoc, setupDoc, troubleshootDoc, planningDoc], "오류가 나서 설정이 안 돼", 1).map((doc) => doc.id)).toEqual(["troubleshoot"]);
+    expect(getTopSearchWikiDocumentsIn([conceptDoc, setupDoc, troubleshootDoc, planningDoc], "프로젝트 설계 시작하기 전에 어떤 준비를 해야 하나?", 1).map((doc) => doc.id)).toEqual(["planning"]);
+  });
+
+  it("keeps the most relevant document ahead of section ordering", () => {
     const guideDoc = document({
       id: "guide",
-      category: "guides",
       title: "Generic Guide",
       summary: "Generic content",
       contentHtml: "<p>Generic content only.</p>",
     });
     const faqDoc = document({
       id: "faq",
-      category: "faq",
+      metadata: { ...document().metadata, docType: "faq" },
       title: "Codex CLI install",
       summary: "How to install Codex in CLI environments",
       contentHtml: "<p>Install Codex in CLI environments.</p>",
@@ -146,6 +278,7 @@ describe("wiki document graph helpers", () => {
         title: "[Guide] Codex Index",
         metadata: {
           ...document().metadata,
+          docType: "nav",
           related: ["codex-mcp"],
         },
       }),
@@ -158,12 +291,49 @@ describe("wiki document graph helpers", () => {
       document({
         id: "other-index",
         slug: "faq-index",
-        category: "faq",
+        metadata: { ...document().metadata, docType: "nav" },
         title: "[FAQ] Index",
       }),
     ], "codex mcp 설정", 4);
 
     expect(results.map((result) => result.id)).toEqual(["codex-mcp"]);
+  });
+
+  it("keeps index-first expansion active for concept-style questions", () => {
+    const indexDoc = document({
+      id: "mcp-index",
+      slug: "guide-mcp-index",
+      metadata: {
+        ...document().metadata,
+        docType: "nav",
+      },
+      title: "[Guide] MCP Index",
+      summary: "MCP 개요와 하위 문서를 모은 인덱스",
+      contentHtml: "<p>MCP 개요를 정리합니다.</p>",
+    });
+    const overviewDoc = document({
+      id: "mcp-overview",
+      slug: "guide-mcp-overview",
+      metadata: {
+        ...document().metadata,
+        docType: "guide",
+      },
+      title: "[Guide] MCP란 무엇인가",
+      summary: "MCP 개념 설명",
+      contentHtml: "<p>MCP의 정의와 역할을 설명합니다.</p>",
+    });
+    const setupDoc = document({
+      id: "mcp-setup",
+      parentId: "mcp-index",
+      slug: "guide-mcp-setup",
+      title: "[Guide] MCP 개요 흐름",
+      summary: "개념을 따라 읽는 하위 문서",
+      contentHtml: "<p>MCP 개요와 읽는 순서를 정리합니다.</p>",
+    });
+
+    const results = getIndexFirstSearchWikiDocumentsIn([setupDoc, overviewDoc, indexDoc], "mcp가 뭐지?", 2);
+
+    expect(results.map((result) => result.id)).toEqual(expect.arrayContaining(["mcp-overview", "mcp-setup"]));
   });
 
   it("does not expand matched indexes into unrelated same-category pages", () => {
@@ -174,6 +344,7 @@ describe("wiki document graph helpers", () => {
         title: "[Guide] Codex Index",
         metadata: {
           ...document().metadata,
+          docType: "nav",
           related: ["linked-guide"],
         },
       }),
@@ -192,5 +363,47 @@ describe("wiki document graph helpers", () => {
     ], "codex mcp 설정", 4);
 
     expect(results.map((result) => result.id)).toEqual(["linked-guide"]);
+  });
+
+  it("expands search context through graph neighbors and reverse links", () => {
+    const seed = document({
+      id: "seed",
+      parentId: "parent",
+      metadata: {
+        ...document().metadata,
+        prerequisites: ["prereq"],
+        next: ["next"],
+        related: ["related"],
+      },
+    });
+    const parent = document({ id: "parent", title: "Parent" });
+    const prereq = document({ id: "prereq", title: "Prereq" });
+    const next = document({ id: "next", title: "Next" });
+    const related = document({ id: "related", title: "Related" });
+    const child = document({ id: "child", parentId: "seed", title: "Child" });
+    const reverse = document({
+      id: "reverse",
+      title: "Reverse",
+      metadata: {
+        ...document().metadata,
+        related: ["seed"],
+      },
+    });
+
+    const results = expandSearchContextDocuments(
+      [seed, parent, prereq, next, related, child, reverse],
+      [seed],
+      10,
+    );
+
+    expect(results.map((item) => item.id)).toEqual([
+      "seed",
+      "parent",
+      "prereq",
+      "next",
+      "related",
+      "child",
+      "reverse",
+    ]);
   });
 });

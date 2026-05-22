@@ -5,3 +5,5 @@ export * from "./lib/confluenceSnapshots";
 export * from "./lib/wikiDataSource";
 export * from "./lib/confluenceClient";
 export * from "./lib/aiAsk";
+export * from "./lib/githubClient";
+export * from "./lib/playbookLogger";

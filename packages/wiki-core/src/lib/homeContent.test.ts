@@ -7,7 +7,7 @@ import {
 } from "./homeContent";
 
 describe("HOME_CONTENT", () => {
-  it("keeps the required card and list counts", () => {
+  it("keeps the required card and search example counts", () => {
     const results = validateHomePageContent(HOME_CONTENT);
 
     expect(results.every((result) => result.pass)).toBe(true);

@@ -1,4 +1,4 @@
-import type { CategorySlug, WikiDocument } from "./wikiDocuments";
+import type { WikiDocument } from "./wikiDocuments";
 
 export type RawConfluencePage = {
   id: string;
@@ -10,17 +10,7 @@ export type RawConfluencePage = {
   bodyHtml: string;
   sourceUrl: string;
   metadata: {
-    docType:
-      | "overview"
-      | "concept"
-      | "tutorial"
-      | "howto"
-      | "reference"
-      | "troubleshooting"
-      | "example"
-      | "ops"
-      | "policy";
-    visibility: "public" | "internal";
+    docType: "guide" | "page" | "faq" | "library" | "policy" | "nav" | "ops" | "playbook";
     audience: "beginner" | "intermediate" | "advanced";
     status: "draft" | "reviewed" | "published";
     prerequisites: string[];
@@ -64,28 +54,24 @@ export function extractHeadingsFromHtml(inputHtml: string) {
 
 export function normalizeConfluencePage(
   page: RawConfluencePage,
-  category: CategorySlug,
   slug: string,
 ): WikiDocument {
   const contentHtml = sanitizeConfluenceHtml(page.bodyHtml);
-  const headings = extractHeadingsFromHtml(contentHtml);
+  const headings = extractHeadingsFromHtml(contentHtml).filter(
+    (h) => h.text !== "wiki.metadata",
+  );
   const plainText = htmlToPlainText(contentHtml);
 
   return {
     id: page.id,
     ...(page.parentId ? { parentId: page.parentId } : {}),
     slug,
-    category,
     title: page.title,
     summary: plainText.slice(0, 140).trim(),
     updatedAt: page.updatedAt,
     sourceUrl: page.sourceUrl,
     metadata: {
-      docType:
-        page.metadata.docType === "ops" || page.metadata.docType === "policy"
-          ? "reference"
-          : page.metadata.docType,
-      visibility: "public",
+      docType: page.metadata.docType,
       audience: page.metadata.audience,
       status: "published",
       prerequisites: page.metadata.prerequisites,

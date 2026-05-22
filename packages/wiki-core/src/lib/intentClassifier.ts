@@ -68,13 +68,17 @@ export function classifyQuestionIntent(question: string): QuestionIntent {
   }
 
   // Comparison signals
-  if (/(비교|차이|vs|대신|중에|선택|고를|추천)/.test(normalized)) {
+  if (/(비교|차이|vs|대신|중에|선택|고를|추천|다르|달라|달리)/.test(normalized)) {
     scores.comparison += 4;
   }
 
   // Setup action signals — action VERBS only, no tool names
   if (/(설치|설정|구성|세팅|연결|연동|로그인|login|install|configure|setup|enable)/.test(normalized)) {
     scores.setup += 4;
+  }
+  // Goal-oriented how-to signals — "읽으려면", "쓰려면", "활용하려면" 등
+  if (/(읽으려면|읽는 법|읽을 수 있|활용하려면|쓰려면|하려면|하는 법|하는 방법)/.test(normalized)) {
+    scores.setup += 3;
   }
   // Usage/how-to signals — "어떻게 사용하는지", "사용법", "쓰는 법" 등
   // concept만큼 강하지 않지만 실행 가이드 쪽으로 유도
@@ -108,7 +112,6 @@ export function classifyQuestionIntent(question: string): QuestionIntent {
 
 export function extractQuestionSubjects(question: string): string[] {
   const normalized = question.trim().toLocaleLowerCase("ko-KR");
-
   return KNOWN_SUBJECTS.filter((subject) => subjectMatchesIn(normalized, subject));
 }
 
