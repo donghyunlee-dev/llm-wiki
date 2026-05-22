@@ -46,8 +46,8 @@ export function SiteHeader() {
   return (
     <header className="site-header">
       <Link className="site-brand" to="/">
-        <span className="site-brand-mark">W</span>
-        <span className="site-brand-text">LLM Wiki</span>
+        <span className="site-brand-mark">S</span>
+        <span className="site-brand-text">SFOOD AI WIKI</span>
       </Link>
       <ThemeToggle />
     </header>

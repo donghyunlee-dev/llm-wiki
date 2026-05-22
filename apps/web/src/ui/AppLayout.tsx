@@ -8,14 +8,10 @@ export function AppLayout() {
     <ThemeProvider>
       <WikiDataProvider>
         <div className="site-layout">
-          <div className="site-shell">
-            <div className="site-surface">
-              <SiteHeader />
-              <main>
-                <Outlet />
-              </main>
-            </div>
-          </div>
+          <SiteHeader />
+          <main className="site-main">
+            <Outlet />
+          </main>
         </div>
       </WikiDataProvider>
     </ThemeProvider>
