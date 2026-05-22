@@ -10,20 +10,13 @@ export type StructuredAnswerBlock =
 export function normalizeAnswerText(text: string) {
   const trimmed = text.trim();
 
-  if (!trimmed.startsWith("{")) {
-    return stripStructuredResponseArtifacts(trimmed);
-  }
+  const candidates = [trimmed, maybeUnescapeJsonLikeText(trimmed)];
 
-  const rawResult = normalizeStructuredJsonLikeText(trimmed);
-  if (rawResult !== null) {
-    return rawResult;
-  }
+  for (const candidate of candidates) {
+    const normalized = normalizeStructuredJsonLikeText(candidate);
 
-  const unescaped = maybeUnescapeJsonLikeText(trimmed);
-  if (unescaped !== trimmed) {
-    const unescapedResult = normalizeStructuredJsonLikeText(unescaped);
-    if (unescapedResult !== null) {
-      return unescapedResult;
+    if (normalized !== null) {
+      return normalized;
     }
   }
 
@@ -68,35 +61,31 @@ export function filterVisibleAnswerBlocks(blocks: StructuredAnswerBlock[]) {
 }
 
 function normalizeStructuredJsonLikeText(text: string) {
-  const answerFieldMatch = text.match(/^\{\s*"answer"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
-  if (answerFieldMatch?.[1]) {
+  const jsonCandidate = extractBalancedJsonObjectText(text) ?? (text.includes("{") ? text.slice(text.indexOf("{")) : "");
+
+  if (jsonCandidate) {
+    const answerFieldMatch = jsonCandidate.match(/^\{\s*"answer"\s*:\s*"((?:[^"\\]|\\.)*)"/s);
+    if (answerFieldMatch?.[1]) {
+      try {
+        const decoded = JSON.parse(`"${answerFieldMatch[1]}"`) as string;
+        return stripStructuredResponseArtifacts(decoded);
+      } catch {
+        // Fall through to object parsing.
+      }
+    }
+
     try {
-      const decoded = JSON.parse(`"${answerFieldMatch[1]}"`) as string;
-      return stripStructuredResponseArtifacts(decoded);
+      const parsed = JSON.parse(jsonCandidate) as Record<string, unknown>;
+
+      if (typeof parsed.answer === "string") {
+        return stripStructuredResponseArtifacts(parsed.answer);
+      }
     } catch {
-      // Fall back to the JSON object path below.
+      // Fall through to plain-text cleanup.
     }
   }
 
-  const cleaned = stripStructuredResponseArtifacts(text);
-
-  if (!cleaned.startsWith("{")) {
-    return cleaned;
-  }
-
-  const candidate = extractBalancedJsonObjectText(cleaned) ?? cleaned;
-
-  try {
-    const parsed = JSON.parse(candidate) as Record<string, unknown>;
-
-    if (typeof parsed.answer === "string") {
-      return stripStructuredResponseArtifacts(parsed.answer);
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
+  return stripStructuredResponseArtifacts(text);
 }
 
 function maybeUnescapeJsonLikeText(text: string) {
@@ -162,6 +151,7 @@ function extractBalancedJsonObjectText(text: string) {
 
 export function stripStructuredResponseArtifacts(text: string) {
   let cleaned = text.replace(/\r\n/g, "\n");
+  cleaned = stripVisibleAnswerPrefix(cleaned);
 
   const artifactMarkers = [
     "\nconfluenceData\n",
@@ -180,8 +170,13 @@ export function stripStructuredResponseArtifacts(text: string) {
   }
 
   cleaned = cleaned.replace(/\s*PMID:.*$/s, "").trim();
+  cleaned = cleaned.replace(/\s*\([가-힣\s,·]{2,20}\)/g, "");
 
   return cleaned;
+}
+
+function stripVisibleAnswerPrefix(text: string) {
+  return text.replace(/^\s*(짧답|짧은 답변|간단히|가장 짧게|요약|핵심 요약|짧게 먼저 정리하면|짧게 요약하면|짧게 말하면|간단히 말하면|먼저 정리하면)\s*[:：]?\s*/i, "");
 }
 
 export function splitAnswerBlocks(text: string): StructuredAnswerBlock[] {
@@ -290,6 +285,16 @@ export function splitAnswerBlocks(text: string): StructuredAnswerBlock[] {
       flushAllText();
       const level = Math.min(4, headingMatch[1].length) as 2 | 3 | 4;
       blocks.push({ type: "heading", level, text: headingMatch[2].trim() });
+      continue;
+    }
+
+    // [질문 텍스트] 라인 → h3 heading으로 처리 (단일 또는 [Q1][Q2] 연속 모두 지원)
+    // [text](url) 마크다운 링크 및 [[nested] text] 는 제외
+    if (/^(\[[^\[\]]+\]\s*)+$/.test(trimmed)) {
+      for (const m of trimmed.matchAll(/\[([^\[\]]+)\]/g)) {
+        flushAllText();
+        blocks.push({ type: "heading", level: 3, text: m[1].trim() });
+      }
       continue;
     }
 

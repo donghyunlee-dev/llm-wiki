@@ -1,4 +1,4 @@
-import { getIndexFirstSearchWikiDocumentsIn, getWikiDocumentByIdFrom, type WikiDocument } from "@sfood/wiki-core";
+import { getIndexFirstSearchWikiDocumentsIn, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
 
 export type SearchDocumentSummary = {
   id: string;
@@ -8,16 +8,19 @@ export type SearchDocumentSummary = {
 };
 
 type SearchAnswerLike = {
+  policyNotice?: {
+    isPolicyRelated: boolean;
+    message: string;
+  };
   confluenceData?: Array<{
     pageId: string;
   }>;
   recommendedDocuments?: SearchDocumentSummary[];
-  guideDocuments?: SearchDocumentSummary[];
+  relatedDocuments?: SearchDocumentSummary[];
 };
 
 export function resolveSearchRecommendedDocuments(
   answer: SearchAnswerLike | null,
-  documents: WikiDocument[],
   fallbackDocuments: SearchDocumentSummary[],
 ) {
   const resolvedDocuments: SearchDocumentSummary[] = [];
@@ -32,15 +35,9 @@ export function resolveSearchRecommendedDocuments(
     resolvedDocuments.push(document);
   };
 
-  for (const document of resolveDocumentsFromPageIds(answer?.confluenceData ?? [], documents)) {
-    addDocument(document);
-  }
+  const recommendedDocuments = answer?.recommendedDocuments ?? [];
 
-  for (const document of answer?.recommendedDocuments ?? []) {
-    addDocument(document);
-  }
-
-  for (const document of answer?.guideDocuments ?? []) {
+  for (const document of recommendedDocuments) {
     addDocument(document);
   }
 
@@ -51,26 +48,42 @@ export function resolveSearchRecommendedDocuments(
   return resolvedDocuments.slice(0, 6);
 }
 
-export function buildFallbackRecommendedDocuments(documents: WikiDocument[], query: string) {
-  return getIndexFirstSearchWikiDocumentsIn(documents, query, 6).map((document) => ({
-    id: document.id,
-    title: document.title,
-    summary: document.summary,
-    href: `/${document.category}/${document.slug}`,
-  }));
+export function resolveSearchDocumentSections(
+  answer: SearchAnswerLike | null,
+  fallbackDocuments: SearchDocumentSummary[],
+) {
+  // 서버가 relatedDocuments를 명시적으로 보내면 그대로 사용 (추천/관련 분리 경로)
+  if (answer?.relatedDocuments !== undefined) {
+    const recommendedDocuments = answer.recommendedDocuments?.length
+      ? answer.recommendedDocuments
+      : fallbackDocuments.slice(0, 4);
+    return {
+      recommendedDocuments,
+      relatedDocuments: answer.relatedDocuments,
+    };
+  }
+
+  // fallback: 이전 방식 (통합 목록을 3/나머지로 분리)
+  const allDocuments = resolveSearchRecommendedDocuments(answer, fallbackDocuments);
+  const recommendedDocuments = allDocuments.slice(0, 3);
+  const relatedDocuments = allDocuments.slice(3);
+
+  return {
+    recommendedDocuments,
+    relatedDocuments,
+  };
 }
 
-function resolveDocumentsFromPageIds(
-  items: Array<{ pageId: string }>,
-  documents: WikiDocument[],
-) {
-  return items
-    .map((item) => getWikiDocumentByIdFrom(documents, item.pageId))
-    .filter((document): document is NonNullable<typeof document> => Boolean(document))
+export function buildFallbackRecommendedDocuments(documents: WikiDocument[], query: string) {
+  return getIndexFirstSearchWikiDocumentsIn(documents, query, 6)
+    .filter((document) => {
+      const dt = document.metadata.docType;
+      return dt !== "policy" && dt !== "ops" && dt !== "nav";
+    })
     .map((document) => ({
       id: document.id,
       title: document.title,
       summary: document.summary,
-      href: `/${document.category}/${document.slug}`,
+      href: getWikiDocumentHref(document) ?? `/search?q=${encodeURIComponent(document.title)}`,
     }));
 }
