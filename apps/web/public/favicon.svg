@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- SFOOD AI WIKI favicon: red background + open book -->
+  <rect width="32" height="32" rx="6" fill="#e4002B"/>
+  <!-- Left page -->
+  <path d="M5 12 Q5 11 6.5 10.5 L14.5 10 L14.5 22.5 L6.5 23 Q5 23.5 5 22.5 Z" fill="white"/>
+  <!-- Right page (slightly less bright for depth) -->
+  <path d="M17.5 10 L25.5 10.5 Q27 11 27 12 L27 22.5 Q27 23.5 25.5 23 L17.5 22.5 Z" fill="rgba(255,255,255,0.82)"/>
+  <!-- Spine (red gap between pages) -->
+  <rect x="14.5" y="10" width="3" height="12.5" fill="#e4002B"/>
+  <!-- Binding arc at top -->
+  <path d="M5 12 Q16 8.5 27 12" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
