@@ -1,21 +1,15 @@
 import type { WikiDocument } from "@sfood/wiki-core";
 import { Link } from "react-router-dom";
 
-export const CATEGORY_LABELS: Record<WikiDocument["category"], string> = {
-  guides: "가이드",
-  projects: "프로젝트",
-  library: "자료실",
-  faq: "FAQ",
-};
-
 export const DOC_TYPE_LABELS: Record<WikiDocument["metadata"]["docType"], string> = {
-  overview: "개요",
-  concept: "개념",
-  tutorial: "튜토리얼",
-  howto: "방법",
-  reference: "레퍼런스",
-  troubleshooting: "문제 해결",
-  example: "예시",
+  guide: "가이드",
+  page: "페이지",
+  faq: "FAQ",
+  library: "자료실",
+  policy: "정책",
+  nav: "탐색",
+  ops: "운영",
+  playbook: "플레이북",
 };
 
 export const AUDIENCE_LABELS: Record<WikiDocument["metadata"]["audience"], string> = {
@@ -53,18 +47,11 @@ export function WikiDocumentListItem({
       <p className="document-summary line-clamp-2">
         {document.summary}
       </p>
-      <div className="mt-2.5 flex flex-wrap gap-1.5 text-xs text-muted-fg">
-        {showCategory ? (
-          <span className="document-chip">{CATEGORY_LABELS[document.category]}</span>
-        ) : null}
-        <span className="document-chip">
-          {DOC_TYPE_LABELS[document.metadata.docType]}
-        </span>
-        <span className="document-chip">
-          {AUDIENCE_LABELS[document.metadata.audience]}
-        </span>
-        <span className="document-chip">{document.updatedAt}</span>
-      </div>
+      {showCategory ? (
+        <div className="mt-2.5 flex flex-wrap gap-1.5 text-xs text-muted-fg">
+          <span className="document-chip">{DOC_TYPE_LABELS[document.metadata.docType]}</span>
+        </div>
+      ) : null}
     </Link>
   );
 }

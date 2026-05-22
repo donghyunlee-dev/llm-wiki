@@ -8,12 +8,22 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Link } from "react-router-dom";
-import { getWikiDocumentByIdFrom, type WikiDocument } from "@sfood/wiki-core";
+import { getWikiDocumentByIdFrom, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
+import { getPolicyNoticeMessage, shouldShowPolicyNotice } from "../../lib/policyNotice";
 import { StructuredAnswerView } from "../StructuredAnswerView";
 
 type AskResult = {
   answer: string;
   supportedByContext: boolean;
+  policyNotice: {
+    isPolicyRelated: boolean;
+    message: string;
+    sources?: Array<{
+      id: string;
+      title: string;
+      href: string;
+    }>;
+  };
   confluenceData: Array<{
     pageId: string;
     title: string;
@@ -219,33 +229,6 @@ function ArticleAskResult({
         <StructuredAnswerView text={result.answer} variant="article" />
       </div>
 
-      {result.suggestedNextPages.length ? (
-        <div>
-          <h3>추천 문서</h3>
-          <ul>
-            {result.suggestedNextPages.map((item) => {
-              const document = getWikiDocumentByIdFrom(documents, item.pageId);
-
-              return (
-                <li key={`${item.pageId}-${item.reason}`}>
-                  {document ? (
-                    <Link to={`/${document.category}/${document.slug}`} target="_blank" rel="noreferrer">
-                      <strong>{item.title}</strong>
-                      <span>{item.reason}</span>
-                    </Link>
-                  ) : (
-                    <>
-                      <strong>{item.title}</strong>
-                      <span>{item.reason}</span>
-                    </>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : null}
-
       {result.unsupportedClaims.length ? (
         <div>
           <h3>확인 필요</h3>
@@ -253,6 +236,51 @@ function ArticleAskResult({
             {result.unsupportedClaims.map((claim) => (
               <li key={claim}>{claim}</li>
             ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {shouldShowPolicyNotice(result.policyNotice) ? (
+        <div className="answer-policy-notice" role="note" aria-label="정책 반영 안내">
+          <strong>정책 반영</strong>
+          <p>{getPolicyNoticeMessage(result.policyNotice)}</p>
+          {result.policyNotice.sources?.length ? (
+            <div className="answer-policy-sources" aria-label="정책 원천 페이지">
+              {result.policyNotice.sources.map((source) => (
+                <a key={source.id} href={source.href} target="_blank" rel="noreferrer">
+                  {source.title}
+                </a>
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {result.suggestedNextPages.length ? (
+        <div>
+          <h3>추천 페이지</h3>
+          <ul className="article-link-grid">
+            {result.suggestedNextPages.map((item) => {
+              const document = getWikiDocumentByIdFrom(documents, item.pageId);
+              const dt = document?.metadata.docType;
+              if (dt === "nav" || dt === "ops" || dt === "policy") {
+                return null;
+              }
+
+              return (
+                <li key={`${item.pageId}-${item.reason}`}>
+                  {document ? (
+                    <Link className="article-link-card" to={getWikiDocumentHref(document) ?? "#"} target="_blank" rel="noreferrer">
+                      <strong>{item.title}</strong>
+                    </Link>
+                  ) : (
+                    <div className="article-link-card">
+                      <strong>{item.title}</strong>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : null}
