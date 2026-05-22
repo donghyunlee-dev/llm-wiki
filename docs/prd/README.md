@@ -11,8 +11,10 @@ This folder is the local product document set for the `AI Wiki Portal Platform` 
 5. `data-spec.md`
 6. `api-spec.md`
 7. `ui-spec.md`
-8. `development-plan.md`
-9. `source-index.md`
+8. `search-flow-contract.md`
+9. `ai-ask-prompt-guide.md`
+10. `development-plan.md`
+11. `source-index.md`
 
 ## Product Constraint
 The core concept must not drift:
@@ -27,6 +29,8 @@ Implementation starts from the `Development Prompt` home screen concept. The att
 ## Session Continuity Rule
 - Every implementation step must update `implementation-status.md`.
 - If scope, ordering, or completion state changes, update `development-plan.md` in the same turn.
+- AI prompt changes must compare against `ai-ask-prompt-guide.md` before editing `aiAsk.ts`.
+- Search and guide-page changes must also compare against `search-flow-contract.md` before code is touched.
 - New sessions should read `implementation-status.md` before starting work.
 - Do not rely only on task workspace docs for project progress; PRD docs must carry the latest step state too.
 

@@ -39,6 +39,7 @@ Status: In Progress with shared read-only fixtures.
 - Add routes for guides, projects, library, FAQ, and article detail.
 - Feed section pages from normalized Confluence-derived content.
 - Keep Home compact; move exploration depth into internal pages.
+Current route note: `/guides`, `/faq`, and `/library` are category list routes. The fixed starting guide is available at `/guides/start`.
 
 ## Phase 4: Search Flow
 Status: In Progress with shared read-only fixtures.
@@ -55,6 +56,7 @@ Status: In Progress with first article graph block.
 - Read and validate `wiki.metadata`.
 - Enforce public visibility in the application layer.
 - Build prerequisite, next, related, and parent graph blocks.
+- Expose a guide index graph view that renders cached guide document relationships in one place.
 
 ## Phase 6: Read-only AI Ask
 Status: In Progress with local dev endpoint, article Ask panel, and policy-aware prompt context.
@@ -79,7 +81,36 @@ Status: In Progress with local dev endpoint, article Ask panel, and policy-aware
 
 ## Current Next Step
 - AWS/deployment work is paused by request.
-- Continue local development with policy-aware AI Ask quality tuning, search relevance refinement, parent/ancestor breadcrumb refinement, and repeatable search-vs-generic-answer evaluation against actual Confluence pages until the benchmark closes the remaining gap to the 90 similarity target.
+- Treat [`docs/prd/search-flow-contract.md`](/home/donghyunlee/projects/SFOOD-LLM-WIKI/docs/prd/search-flow-contract.md) as the governing contract before any further search or guide-page code changes.
+- If implementation diverges from the contract, update the contract first and only then change code.
+- Treat [`docs/prd/ai-ask-prompt-guide.md`](/home/donghyunlee/projects/SFOOD-LLM-WIKI/docs/prd/ai-ask-prompt-guide.md) as the first review stop before changing prompt text in `aiAsk.ts`.
+- Continue local development with policy-aware AI Ask quality tuning, intent-aware search relevance refinement, parent/ancestor breadcrumb refinement, and repeatable search-vs-generic-answer evaluation against actual Confluence pages until the benchmark closes the remaining gap to the 90 similarity target.
+- Immediate execution order for the next search session:
+  1. Baseline and contract cleanup:
+     - lock representative search questions and expected target pages
+     - remove misleading `semantic` wording where the implementation is still lexical
+     - decide whether `guideDocuments` remains necessary
+     - align API docs with the actual local runtime or implement the missing normalized `home/search` endpoints
+  2. Retrieval hardening:
+     - tighten lexical ranking, intent-aware ranking, and index-first expansion using the weak benchmark cases first
+     - keep guide index keyword hints, broad overview pages, and setup pages in the right order for concept vs setup questions
+     - keep the cache strategy memory-based, keyed by page ID and version, with TTL refresh and version invalidation
+     - add explicit regression coverage for concept, policy-sensitive, broad-planning, and troubleshooting queries
+  3. Policy-grounding verification:
+     - add policy-sensitive evaluation cases and a debug path that proves selected policy context shaped the answer
+  4. Search result UI completion:
+     - move the current chat-style result surface closer to a wiki/notion/confluence reading page
+     - keep answer steps, answer evidence, and linked wiki pages in the same reading flow instead of separating them into distant recommendation blocks
+  5. Retrieval and page-linking completion:
+     - make prerequisite/supporting Confluence pages appear in the same search answer flow without hardcoded keyword routing
+     - verify that public `library` and related guide pages are visible and connected strongly enough for dependency-oriented questions
+     - keep one representative guide page as the primary handoff target and treat the rest as secondary related reading
+     - validate that broad overview pages beat tool-specific setup pages on conceptual questions after a clean dev-server restart
+  6. Home-page page wiring:
+     - connect featured areas and section links to concrete pages only after search recommendations become stable enough to reuse
+   7. Contract review gate:
+      - compare the implementation against `search-flow-contract.md` before shipping every future search or guide-page change
+      - do not code first and document later
 
 ## No-DB Rule
 Throughout all phases:

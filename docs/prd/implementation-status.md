@@ -16,6 +16,310 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-05-22 (6)
+- **검색 추천/관련 페이지 랭킹 쿼리 불일치 버그 수정**: `vite.config.ts`에서 `rankingRecommendedDocuments` 계산 시 원래 한국어 질문(`searchQuestion`) 대신 Stage 1 이중언어 키워드(`searchQuery`)를 사용하도록 수정.
+  - 원인: Stage 2 컨텍스트 문서 검색은 `searchQuery`를 쓰는데, 추천/관련 페이지 랭킹은 `searchQuestion`을 사용 → "스킬" 토큰이 "skill"로 확장되지 않아 "Claude Code Skills" 같은 영어 제목 페이지가 누락됨
+  - 추가 수정: `searchKeywords` 빈 문자열 포함 배열에서 fallback이 누락되는 결함 제거 (Codex Medium 지적)
+  - 수정 후: "Claude Code 스킬과 Codex 스킬 차이점" 검색 시 "Claude Code Skills", "Claude Code Jira Skill Setup" 등이 추천/관련 페이지에 포함됨 ✅
+- 검증: `pnpm test` 전체 182개 통과, `pnpm typecheck` 통과, Playwright 추천 페이지 확인
+
+### 2026-05-21 (5)
+- **docType 노출 규칙 동결 및 `/guides` 목록 복원**: `/guides` 목록에서 `page` docType 문서를 제외하도록 `CategoryPage.tsx` 필터 복원. 이전 세션(2026-05-21 (2))의 "guide + page 모두 표시" 수정은 사용자 의도와 달랐음을 확인하고 되돌림.
+  - Surface별 docType 노출 규칙을 `CLAUDE.md`, `ui-spec.md`, `development-rules.md`, `development-prompt-reference.md`에 FROZEN으로 명시
+  - 규칙 요약: 홈 추천/`/guides` 목록은 `guide` only. 검색 답변(추천·관련·인라인 링크)은 `guide` + `page` 모두.
+  - `CategoryPage.test.tsx` 테스트명 및 검증 항목 복원
+- 검증: `pnpm test` 전체 통과, Playwright `/guides` 스냅샷 2개(guide only) 확인
+
+> **NOTE**: 2026-05-21 (2) 항목 "guide + page 모두 표시" 수정은 위에서 superseded됨. 현재 규칙은 guide only.
+
+### 2026-05-21 (4)
+- **playbook docType 검증 누락 버그 수정**: `wikiDataSource.ts`의 `readDocType`에 `"playbook"` 추가.
+  - 원인: `confluenceClient.ts`에는 `playbook`이 있었으나 `wikiDataSource.ts`에는 누락되어, Confluence API 응답에 playbook 페이지가 포함되면 전체 데이터 로딩 실패
+  - 결과: 5173 홈 추천 가이드 4개, /guides 129개, 검색 정상 동작 복구
+  - Codex 리뷰 반영: `wikiDataSource.test.ts`에 playbook 파싱/제외 회귀 테스트 추가
+- 검증: `pnpm test` 전체 182개 통과, `pnpm typecheck` 통과, Playwright 홈·가이드·검색 확인
+
+### 2026-05-21 (3)
+- **홈 추천 가이드 스펙 문서화**: `ui-spec.md`와 `development-prompt-reference.md`에 홈 추천 가이드 정의 추가 및 기존 잘못된 기술 수정.
+  - "추가 추천 가이드 5개" → "최대 4개 (guide 부족 시 있는 만큼)"로 수정
+  - **Home Recommended Guides Rules** 섹션 신규 추가: 소스(공개 corpus `guide` docType), 필터(온보딩 제외), 정렬(`updatedAt` 내림차순), 개수(최대 4개), 시작 가이드 중복 제거, 총 최대 5개 명시
+  - 시작 가이드 매핑 규칙: slug → title 패턴 2가지 → id 순 fallback, `nav` docType 허용, 홈+agent-start 라우트 한정 노출
+  - Guide List Rules: `/guides`가 `guide` + `page` docType 모두 표시, `page` 기준 public read model 조건 명시
+  - `development-prompt-reference.md`: "5개" → "최대 4개 (동적 선택)", "guide only" → "guide or page" 수정
+- 코드 변경 없음; 문서가 실제 코드(`buildFeaturedGuides`, `CategoryPage`)와 일치함을 확인
+- Codex 비판 리뷰 반영: 4가지 불일치 항목 모두 수정
+
+### 2026-05-21 (2)
+- **`page` docType 가이드 목록 노출 수정**: `/guides` 카테고리가 `guide` docType만 표시하고 `page` docType을 숨기던 버그 수정.
+  - `CategoryPage.tsx`: `guide`에게만 intro 필터 적용, `page`는 모두 통과하도록 조건 역전
+  - 스냅샷 모드 Playwright 확인: guide 2 + page 3 = 5개 정상 노출, intro 문서 숨김 유지
+  - Codex 비판 리뷰 반영: `isIntroGuideDocument`가 `page` 타입에 의도치 않게 적용되는 부작용 제거
+- **개발 프로세스 강제화 문서 추가**: 수정 지시 시 항상 ① 태스크 문서 → ② 구현 → ③ 단위 테스트 → ④ Playwright 리뷰 → ⑤ Codex 비판 리뷰 → ⑥ 완료 보고 순서를 `docs/ops/spec-driven-workflow.md`와 `CLAUDE.md`에 명시
+- 검증: `pnpm test` 전체 181개 통과 (134 wiki-core + 42 web + 5 serverless), Playwright guides 페이지 확인
+
+### 2026-05-21
+- **AI 검색 관련성 판단 개선**: SUBJECT COVERAGE GATE(단일 페이지 필수 텍스트 매칭)를 제거하고 AI 프롬프트 수준의 RELEVANCE CHECK로 교체.
+  - Case 1(비교 질문): A 페이지 + B 페이지 조합 허용 — "코덱스와 클로드의 skill 차이" 같은 질문이 두 페이지를 올바르게 조합해 답변 가능
+  - Case 2(복합 주제어): 특정 도구+기능은 단일 페이지 커버 요구 — "claude webhook" 질문에 무관한 Jira Setup 페이지 사용 금지
+- **intent 분류 개선** (`intentClassifier.ts`):
+  - 비교 패턴에 `다르|달라|달리` 추가 — "뭐가 다르지?" 같은 질문이 comparison으로 올바르게 분류
+  - 목표 지향적 how-to 패턴 `읽으려면|활용하려면|쓰려면|하려면` 추가 — "Jira 이슈를 읽으려면?" 같은 질문이 setup으로 분류
+- **운영 지침 강화** (`CLAUDE.md`, `ai-ask-prompt-guide.md`, `search-flow-contract.md`): AI 동작 수정 시 docs 먼저 확인 의무화, Gate/수동 매핑 금지 패턴 명시, 관련성 판단 위임 원칙 문서화
+- 검증: `pnpm test` 전체 171개 통과 (129 wiki-core + 37 web + 5 serverless), Codex 최종 리뷰 합격, 10개 질문 검증 8/10 PASS (나머지 2개는 실제 페이지 존재 여부 확인 필요)
+
+### 2026-05-20
+- Increased and separated search typography: search input text now renders at 15px, user questions at 14px, AI answer body/list text at 15px, and markdown answer headings at 17-19px with bold weight.
+- Verified the updated computed styles in Playwright and rechecked the web package test/typecheck.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과, Playwright computed style 확인.
+
+### 2026-05-20
+- Fixed policy notice visibility so search and article Ask responses show the policy source links whenever a policy-related response includes sources, even if the model leaves the notice message empty.
+- Added a default policy notice message for source-only policy notices and shared the same visibility helper across search and article Ask UI.
+- 검증: `pnpm --filter @sfood/web test` 통과, `pnpm --filter @sfood/web typecheck` 통과, `pnpm typecheck` 통과.
+
+### 2026-05-19
+- Added a `page-lookup` search answer intent so questions like `mcp 설정페이지가 있지 않아?` answer with whether a matching page was found and link the best/closest page before any topic explanation.
+- Updated the AI prompt guide and search flow contract so page/document/guide/link existence questions are treated as lookup/navigation questions, not generic concept or setup explanations.
+- 검증: `pnpm --filter @sfood/wiki-core test` 통과, `pnpm --filter @sfood/wiki-core typecheck` 통과, `pnpm typecheck` 통과, `pnpm test` 통과.
+
+### 2026-05-19
+- Added source policy links to `policyNotice`: the dev API now enriches policy-related search and page Ask responses with the selected policy context sources, and the UI renders those source pages inside the policy notice box.
+- 검증: `pnpm --filter @sfood/web test` 통과, `pnpm --filter @sfood/web typecheck` 통과, `pnpm typecheck` 통과, `pnpm test` 통과.
+
+### 2026-05-19
+- Updated inline page links inside structured search/article answers so they render as visible accent-colored badge links by default instead of only becoming obvious on hover.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과.
+
+### 2026-05-19
+- Corrected the previous search-answer simplification that made answers too thin: structured supplemental details are now preserved as same-style natural follow-up paragraphs/lists instead of being dropped.
+- Relaxed the search prompt from "empty arrays by default" to "answer must be useful on its own, with supplemental arrays only when they add detail", and explicitly prevents three-line teaser answers.
+- 검증: `pnpm --filter @sfood/web test` 통과, `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/wiki-core test` 통과, `pnpm --filter @sfood/wiki-core typecheck` 통과, `pnpm typecheck` 통과, `pnpm test` 통과.
+
+### 2026-05-19
+- Removed separately styled search answer support sections from the search page: `immediateActions`, `exampleCommands`, `verificationChecks`, and `cautions` are no longer rendered under the answer.
+- Strengthened search prompt rules so the answer body must not create fixed headings such as `바로 할 일`, `예시`, `확인`, `확인 포인트`, `주의`, or `확인 필요`; the answer should stay as short natural paragraphs or a very short list when necessary.
+- 검증: `pnpm --filter @sfood/web test` 통과, `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/wiki-core test` 통과, `pnpm --filter @sfood/wiki-core typecheck` 통과, `pnpm typecheck` 통과, `pnpm test` 통과.
+
+### 2026-05-19
+- Fixed duplicate search answer support sections: when the answer body already contains visible `바로 할 일`, `확인/확인 포인트`, or `주의` sections, the separately styled structured `immediateActions`, `verificationChecks`, and `cautions` blocks are suppressed.
+- Added web regression coverage so ordinary prose mentioning 확인/주의 is not mistaken for a duplicate section.
+- 검증: `pnpm --filter @sfood/web test` 통과(10 files / 35 tests), `pnpm --filter @sfood/web typecheck` 통과.
+
+### 2026-05-19
+- Adjusted search answer tone/readability rules so explanatory prose uses short vertical paragraphs with blank lines and avoids parenthetical side explanations.
+- Updated the AI answer guide and search-flow contract, strengthened `aiAsk.ts` search prompt requirements, and added UI-side paragraph splitting for long single-block chat answers.
+- 검증: `pnpm --filter @sfood/wiki-core test` 통과, `pnpm --filter @sfood/web test` 통과, `pnpm --filter @sfood/wiki-core typecheck` 통과, `pnpm --filter @sfood/web typecheck` 통과, `pnpm typecheck` 통과, `pnpm test` 통과.
+
+### 2026-05-19
+- Widened the Home recommendation and blueprint support frame from `max-w-3xl` to `max-w-4xl` so those secondary sections have less visible desktop side whitespace while the search box remains unchanged.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과, Playwright `1280x800`에서 search `672px`, recommendation/blueprint `896px` 확인.
+
+### 2026-05-19
+- Changed Playbook search logging from monthly child pages to KST daily child pages named `Playbook - YYYY-MM-DD`.
+- Reworked Playbook page content so each daily page keeps a single log table and appends each search as one row instead of creating one table per entry.
+- Added regression coverage for daily title creation, new-page table creation, and existing-page row append behavior.
+- 검증: `pnpm --filter @sfood/wiki-core test` 통과, `pnpm --filter @sfood/wiki-core typecheck` 통과, `pnpm typecheck` 통과, `pnpm test` 통과.
+
+### 2026-05-19
+- Re-centered the Home search hero with wider top/bottom breathing room, narrowed the search box to `max-w-2xl`, kept recommendation/blueprint as `max-w-3xl` support frames, and converted recommendation guides into one `시작 가이드` featured card plus four regular cards.
+- 검증: Playwright confirmed `1280x800` search `672px` vs support frames `768px`, a balanced four-card regular guide grid, widened card area `734px`, and no mobile horizontal overflow at `390x844`; `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과(9 files / 31 tests), `pnpm typecheck` 통과.
+
+### 2026-05-19
+- Restored the Home search box width to `max-w-3xl` after the guide list compression pass.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과.
+
+### 2026-05-19
+- Reduced only the Home recommended guide block height so the search block stays untouched while the guide list becomes denser.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과(9 files / 31 tests).
+
+### 2026-05-19
+- Renamed the `/guides` page title to `추천 가이드`, removed the extra guide filters, kept only the integrated search box, hid the guide index map button, and kept the list paginated.
+- Centered the Home search block more vertically, tightened the recommended guide block spacing, added icon-led rows, and turned the pinned recommendation into a stronger `추천 가이드` card.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과(9 files / 31 tests), `pnpm typecheck` 통과.
+
+### 2026-05-19
+- Updated `/guides` so it now shows only `metadata.docType === "guide"` documents, excludes intro-style guide pages, paginates long lists, and moves the guide index map to the bottom.
+- Added a focused render test to keep the guide-only filter and pagination behavior stable.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과(9 files / 31 tests), `pnpm typecheck` 통과.
+
+### 2026-05-19
+- Increased the Home recommended guide list so it now shows the pinned starting guide plus five additional guides.
+- Updated the Home render test to cover the six-item guide list and keep the starting guide at the top.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과(8 files / 30 tests), `pnpm typecheck` 통과.
+
+### 2026-05-19
+- Restored the blueprint CTA below the Home guide list.
+- Moved the `사내 지식 위키` label from the Home hero into the centered site header.
+- Updated the starting guide link to use the actual dedicated `guides/agent-start` route, with `/guides/start` kept as a compatibility alias.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과(8 files / 30 tests), `pnpm typecheck` 통과.
+
+### 2026-05-19
+- Simplified the Home screen so it now shows the search block first and a single recommended guide section second.
+- Removed the visible project examples, FAQ, library, and project design blocks from the Home screen.
+- Pinned the starting guide to the top of the recommended guide list and kept the dedicated start route resilient by resolving the guide document through slug/title/id fallback.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과(7 files / 29 tests), `pnpm typecheck` 통과.
+
+### 2026-05-19
+- Fixed the Home guides tab "전체 보기" route so `/guides` renders the full guide category list again instead of the fixed starting guide document.
+- Moved the fixed starting guide article view to `/guides/start` and updated the Home starting guide card to use that dedicated route.
+- 검증: `pnpm --filter @sfood/web typecheck` 통과, `pnpm --filter @sfood/web test` 통과(6 files / 28 tests), `pnpm typecheck` 통과.
+
+### 2026-05-12
+- docType 분류 체계를 12개 타입에서 5개 타입(`nav`, `guide`, `page`, `policy`, `ops`)으로 교체.
+- 타입 정의: `RawConfluencePage`, `WikiDocument` 모두 5-type union으로 변경.
+- 검색 스코어링: `isIndexWikiDocument`(nav 단일 체크), `getSearchDocTypeAffinity`(guide/page 모드별 가중치) 재작성, `rankSearchDocumentsIn`에 ops 사전 필터 추가.
+- UI 필터: `CategoryPage`의 `HIDDEN_DOC_TYPES`, `searchRecommendations` policy 필터, `ArticleAskPanel` nav/ops 조기 반환, `vite.config` API 핸들러 slug 패턴 제거 → docType 기반 필터.
+- 데이터 소스: `confluenceClient.ts`(`readDocType`, `resolveCategory`, `inferMetadataFromTitle`), `wikiDataSource.ts`(`readDocType`) 업데이트.
+- `confluenceSnapshots.ts` 스냅샷 픽스처 전체 신규 타입으로 매핑.
+- `WikiDocumentListItem.DOC_TYPE_LABELS` 5개 타입 레이블 업데이트.
+- 모든 테스트 파일의 mock/fixture docType 값 갱신(confluenceClient, wikiDataSource, wikiDocuments, guideIndexGraph, GuideIndexGraphPage, wikiPagesHandler).
+- 검증: `pnpm typecheck` 전체 통과, `pnpm test` 전체 통과(81/81: wiki-core 48, web 28, serverless 5).
+
+### 2026-05-12
+- GitHub 프로젝트 README 상세 페이지 구현.
+- `GitHubProject`에 `readmeMarkdown` 필드 추가 (10,000자 cap), `fetchRepoReadme`로 통합.
+- `ProjectDetailPage` 신규 생성: README 마크다운 렌더링 + GitHub 원본 링크.
+- `projects/:slug` 라우트를 `ProjectDetailPage`로 교체.
+- `ProjectsPage` 목록 카드를 GitHub 외부 링크 → 내부 `/projects/:slug`로 변경.
+- `HomePage` 추천 프로젝트도 내부 링크로 통일.
+- 검증: `pnpm typecheck` 통과, `pnpm test` 전체 통과(48/28/5).
+
+### 2026-05-11
+- Confluence 메타데이터 fetch 병렬화: `fetchConfluencePageRecords`의 순차 `for...await` 루프를 배치 크기 20의 청크 기반 `Promise.all()`로 교체.
+- 130페이지 기준 직렬 130+ API 호출 → 7라운드 병렬로 압축, 초기화 시간 수십 초 → 수 초 수준으로 단축 예상.
+- 검증: `pnpm test` 전체 통과(48/28/5), `pnpm typecheck`, `pnpm build` 성공.
+
+### 2026-05-11
+- 비개발자 사내 직원 대상 AI 답변 톤 강화: 기술 용어(MCP, CLI, npm 등) 첫 등장 시 괄호 설명 요구 지시, "친구에게 설명하듯" 비개발자 프로필을 검색·아티클 Ask 프롬프트 양쪽에 추가.
+- `docs/prd/ai-ask-prompt-guide.md`에 사용자 프로필 섹션 신설.
+- 추천/관련 페이지 분리 개선: 서버에서 AI 직접 선택 페이지를 `recommendedDocuments`(max 4), 랭킹 기반 나머지를 `relatedDocuments`(max 4)로 분리 반환.
+- `resolveSearchDocumentSections` 업데이트: server-provided `relatedDocuments` 우선 사용, 없으면 기존 방식 하위 호환.
+- 빈 검색어 UX 추가: `/search` 직접 접근 시 입력 안내 힌트, 빈 폼 제출 시 2.5초 시각적 힌트 표시.
+- 관련 테스트(aiAsk, searchRecommendations) 업데이트 및 신규 추가.
+- 검증: `pnpm test` 전체 통과(48/28/5), `pnpm typecheck`, `pnpm build` 성공.
+
+### 2026-05-11
+- Softened the search answer structure so `바로 할 일`, `예시`, `확인`, `주의`, and `확인 필요` are now optional helpers instead of a mandatory template.
+- Updated the search prompt and PRD guidance so natural prose is the default and section headings only appear when they materially help the reader.
+- Revalidated the prompt helper tests and workspace typecheck after updating the tone contract.
+
+### 2026-05-11
+- Rewrote the search and AI Ask prompt instructions so answers now speak in a friendlier, blog-like explanatory tone for 초·중급 AI 바이브코딩 users.
+- Kept the recommendation ordering and answer structure intact while making the opening explanation more teaching-oriented.
+- Added prompt-level regression coverage for the new tone language and fixed the web document type label map that typecheck exposed.
+
+### 2026-05-07
+- Reworked the search recommendation section so multiple strong pages can stay in `추천 페이지` in strongest-first order instead of forcing everything except the first card into `관련 페이지`.
+- Updated the search prompt guide and contract to treat index/overview family pages as a multi-card recommendation path, with the family entry page first and strong follow-up pages next.
+- Verified in Playwright that the cached `mcp가 뭐지?` result now renders three recommendation cards and three related cards, while the mobile overflow fix stays in place and the search/recommendation tests plus workspace typecheck still pass.
+
+### 2026-05-07
+- Fixed the search result page overflow regression by constraining answer sections and code-frame components with `min-width: 0` / `max-width: 100%`.
+- Confirmed the mobile `/search?q=mcp가 뭐지?` viewport no longer grows wider than the screen after the code example is rendered.
+
+### 2026-05-07
+- Verified the live `/search?q=mcp가 뭐지?` browser path and confirmed the visible answer starts cleanly without raw JSON or prefix labels.
+- Confirmed the recommendation sections render after the answer while keeping the visible schema keys hidden.
+
+### 2026-05-07
+- Reworked search recommendation selection so AI-recommended pages now stay first and generic fallback pages only fill the list when the model omits page links.
+- Removed evidence-page mixing from the visible recommendation list and revalidated the search recommendation tests plus full workspace typecheck.
+
+### 2026-05-07
+- Removed the concept-question shortcut from `getIndexFirstSearchWikiDocumentsIn` so search candidate selection now keeps the documented index-first expansion path active for every question family.
+- Added regression coverage for index-seeded concept searches and revalidated the wiki-core ranking suite plus typecheck.
+
+### 2026-05-07
+- Reconciled the search answer cleanup path so visible prefixes like `짧답:` and embedded JSON wrappers are stripped before rendering.
+- Centralized answer normalization across the search parser and structured answer renderer so the visible surface no longer depends on a single UI-only cleanup pass.
+
+### 2026-05-07
+- Reworked the guide index map from stacked cards into an Obsidian-style graph board with node circles, connecting lines, and a filterable network view.
+- Centered the graph board inside a bounded width and moved page labels below the circles so the graph itself is easier to read.
+- Replaced the large support sections with a compact numeric dashboard below the board so the page stays graph-first.
+
+### 2026-05-07
+- Added a guide index graph view route that reuses the cached guide corpus to inspect index, child, prerequisite, next, related, orphan, and broken-link structure from a single page.
+- Added a guides-category entry link to the new graph view so the structure map is reachable from the app.
+- Added helper and page tests for graph grouping and empty-state rendering, then revalidated the web test suite and workspace typecheck.
+
+### 2026-05-07
+- Updated the search contract to make index-first candidate selection, guide keyword hints, score tuning, and memory cache invalidation rules explicit.
+- Updated the AI prompt guide so search answers now explicitly follow the index-page expansion path before reading detailed pages.
+
+### 2026-05-07
+- Removed `ops` document input from AI prompt construction so AI answer generation now uses policy documents only.
+- Removed the `ops` prompt payload from the Vite dev API and kept the policy context smaller for faster prompt assembly.
+
+### 2026-05-07
+- Strengthened the search contract so it now states the search candidate exclusion rules, including onboarding Q&A pages and the public-only corpus boundary.
+
+### 2026-05-07
+- Made the onboarding exclusion explicit in the data spec and AI prompt guide so the read model and prompt rules both state that `s*-***` Q&A pages are not fetched.
+
+### 2026-05-07
+- Added a Korean AI answer guideline document so prompt edits now start from a markdown reference instead of only the source file.
+- Added a code breadcrumb in `aiAsk.ts` so future prompt changes are nudged to check the guideline first.
+- Updated the PRD reading order to include the new AI prompt guide alongside the search-flow contract.
+
+### 2026-05-07
+- Reconciled the PRD definition docs with the current implementation so the stable Home, API, data, and search contracts are now reflected outside the progress ledger.
+- Locked the current search-flow contract to the answer-first, no-evidence-quote, representative-page-above-related-page behavior used by the app.
+- Updated the API and data specs to match the current runtime endpoints, hidden policy targets, and visible-public-page filters.
+
+### 2026-05-06
+- Added a query-profile-aware search ranking layer that distinguishes concept, setup, troubleshooting, comparison, planning, and general questions instead of treating `mcp` as a single setup trigger.
+- Added doc-type-aware ranking boosts and penalties so broad overview pages can outrank tool-specific setup pages on conceptual questions.
+- Tightened index-page expansion so generic guide index tokens no longer leak unrelated pages into the same search family.
+- Added regression coverage showing that `mcp가 뭐지?` should prefer a broad overview page over tool-specific setup pages and that planning questions should not be misclassified as setup.
+- Revalidated the wiki-core and web test suites after the ranking change.
+- Confirmed the live dev API still needs a fresh server/cached-response check before shipping because the running local search endpoint can keep returning earlier cached answers until the process is restarted.
+
+### 2026-05-06
+- Verified the `guide-codex-cli-setup` page with Playwright MCP: the guide now shows one visible code frame for the command line, no separate related-page section under the article body, and TOC active highlighting stays in sync on click and at the bottom of the page.
+- Fixed Confluence code macro rendering so the guide page now extracts command text from the stored CDATA/comment payload and no longer renders empty `bash` code frames.
+- Rechecked the guide page with Playwright MCP and confirmed the `Guide Node.js Setup`, `Guide npm Setup`, and `Guide npx Setup` entries resolve to local wiki links.
+- Removed the visible active-selection highlight from the guide-page table of contents so the list behaves as plain navigation without a confusing selected state.
+- Removed the separate related-page block from guide/article pages, tightened TOC click behavior so the active heading updates immediately, and made guide callouts recurse through nested content so internal links and code blocks inside panels stay structured.
+- Changed guide-page anchor handling so internal Confluence links resolve to local wiki detail routes when possible and otherwise stay inside the wiki app through a local search route rather than exposing raw external URLs.
+- Simplified the shared wiki callout component to a Confluence-style bordered panel without the previous icon rail, and unified example commands into one combined shell code frame.
+- Extended guide-link resolution and collection to use the same anchor-matching fallback path for local wiki navigation, and moved guide TOC highlighting to a scroll-plus-hash sync model.
+- Consolidated code and callout rendering into shared `WikiCodeBlock` and `WikiCallout` components so the search answer surface and guide/article pages use one visual system.
+- Strengthened guide-page link resolution with `data-linked-resource-id`, `data-linked-resource-title`, anchor-text, and slug/title fallback matching.
+- Fixed the sticky guide TOC so clicking a heading updates the active highlight immediately and hash changes remain in sync.
+- Added a unit test for the guide-link resolution path using the `Guide Node.js Setup` example and revalidated the web package plus the workspace.
+- Reworked the search and guide rendering surfaces so code blocks now use a plain frame with only a top-right copy button, guide/recommendation cards no longer show `페이지 열기`, and the article link-badge pseudo-label was removed.
+- Hardened Confluence-to-wiki link conversion with title/slug fallback matching so embedded guide links are more likely to resolve to local detail routes.
+- Converted the search `주의` section into a visible warning callout so caution text does not disappear into a plain list item.
+- Revalidated the updated search and guide pages with the web typecheck, workspace typecheck, targeted tests, and a repo-wide scan for removed UI labels.
+- Reordered the search result surface so the representative guide card now comes after the support detail sections and before the related-page grid, matching the frozen contract.
+- Fixed the article page hook placement so the guide view always evaluates hooks unconditionally before early returns.
+- Froze the search and guide-page behavior into a canonical PRD contract so future changes must align with a stable source of truth before code is touched.
+- Added the contract review gate to the development plan and recorded that no future search or guide-page change should be coded before the contract is checked.
+
+### 2026-05-06
+- Started Phase 1 search completion work for policy-targeting and response-contract cleanup.
+- Made policy participation explicit in both AI answer schemas with a visible `policyNotice` field for search and page `AI Ask`.
+- Kept policy pages hidden from visible search results while recording that they are part of the hidden Confluence answer-generation target set.
+- Removed the duplicated search response field `guideDocuments` and kept `recommendedDocuments` as the single visible recommendation list.
+- Verified targeted tests and workspace typecheck after the contract and UI updates.
+- Hardened search response parsing so leaked schema-like sections can still recover `policyNotice`, evidence, and recommendations from malformed mixed-format model output.
+- Confirmed that parser recovery is now stronger, but the Claude CLI install query can still return a one-line answer, which leaves a separate generation-quality gap open.
+- Reworked the search AI contract so actionable results return structured fields for immediate actions, example commands, verification checks, and cautions.
+- Confirmed the reproduced Claude CLI install query now returns a detailed actionable result plus bottom guide links instead of relying on a single freeform paragraph.
+- Extended actionable search answer items with per-item related page ids and rendered answer evidence plus item-level wiki links directly in the search result surface.
+- Confirmed the same live local query now returns structured `relatedPageIds`, but prerequisite environment guides are still missing from the retrieved public Confluence candidate set.
+- Reworked the user-facing search flow again so the representative guide card appears after the support detail sections and before the related-page grid, with page-entry cards shown without summaries.
+- Removed visible evidence-quote rendering from the search screen and added clearer article code/callout rendering plus bottom related-page navigation on article pages.
+- Refined the visible wording and document rendering again: `추천 페이지` / `관련 페이지` labels now match the intended meaning, prefix-like lead-ins such as `짧답:` and `가장 짧게:` are stripped from the visible answer, Confluence internal links now rewrite to wiki detail routes, article summary/title duplication was reduced, and the sticky TOC now highlights the active section.
+
+### 2026-05-06
+- Added a dedicated analysis task workspace for the main search, page `AI Ask`, hidden policy context, and Home-page page-linking roadmap.
+- Confirmed the current search retrieval path is deterministic lexical scoring with heuristic index expansion, not a verified semantic retrieval stack.
+- Confirmed hidden `policy` pages are injected into both AI answer flows, but policy impact is not yet proven with dedicated benchmark cases.
+- Confirmed the Home screen still uses static `HOME_CONTENT` lists and does not yet resolve featured sections to concrete wiki pages.
+- Defined the next staged roadmap: baseline/contract cleanup, retrieval hardening, policy-grounding verification, wiki-like result UI, then Home-page data wiring.
+
 ### 2026-04-28
 - Created monorepo scaffold with `apps/web` and `packages/wiki-core`.
 - Added React/Vite/Tailwind/TypeScript/React Router stack.

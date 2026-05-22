@@ -12,34 +12,25 @@
 ## Home Prototype Baseline
 - Original prompt guidance described the header as `LLM Wiki` plus the theme selector.
 - Current implementation baseline is user-approved to use a compact top GNB with the four main section links.
+- The `사내 지식 위키` label now lives in the centered site header instead of the hero body.
 - Hero contains:
-  - `사내 지식 위키`
   - `사내 지식을 쉽게 찾아보세요`
   - `궁금한 내용을 입력하면 관련 문서와 사례, FAQ를 함께 확인할 수 있습니다.`
 - Search placeholder:
   - `예: 업무 자동화는 어떻게 시작하나요?`
-- Search examples:
-  - `업무 자동화 시작 방법`
-  - `프로젝트 사례 찾기`
-  - `자주 묻는 질문 확인`
-- Main action area contains exactly four entry cards:
-  - `시작 가이드`
-  - `프로젝트 사례`
-  - `자료실`
-  - `FAQ`
-- Featured guide list contains exactly three items.
-- Featured project example list contains exactly three items.
-- Bottom CTA remains secondary and uses:
-  - `만들고 싶은 방향이 정리되었나요?`
-  - `가이드와 사례를 확인한 뒤 만들고 싶은 내용을 설계로 정리하세요.`
-  - `시작하기`
+- Search help copy sits below the search box and the visible search examples were removed from the Home screen.
+- Featured guide list contains the pinned starting guide plus up to four additional guides (dynamically selected from the most recently updated `docType === "guide"` pages in the corpus, excluding the starting guide itself). Fewer than four is acceptable if not enough guide pages exist.
+- The starting guide is pinned as the first featured guide item.
+- The blueprint CTA returns as a secondary action below the guide list.
+- `/guides` uses the `추천 가이드` page title, shows only `metadata.docType === "guide"` documents, excludes intro-style guide pages, paginates long results, and keeps the guide index map at the bottom. `page` docType documents are excluded from this list and appear only in search answer surfaces (추천 페이지, 관련 페이지, 인라인 링크).
 
 ## Explicit UX Constraints
 - Original prompt said no top navigation menu links, but the current approved direction overrides this with a compact GNB.
 - No filter-like buttons below the search input.
-- Do not repeat the same navigation role in both header and main content.
 - Keep the Home screen short and focused.
-- Keep project-design CTA below the main search and entry actions.
+- Keep the Home screen centered on search first and featured guides second.
+- Keep the blueprint CTA below the guide list rather than beside the search box.
+- Keep the `/guides` page title as `추천 가이드` rather than `시작 가이드`.
 
 ## Visibility And Copy Constraints
 - Do not expose `Confluence`, `컨플루언스`, `DB`, `데이터베이스`.

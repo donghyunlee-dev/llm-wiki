@@ -20,9 +20,14 @@ Starter files live in `docs/tasks/_template/`.
 4. Task Breakdown: track implementation, test, and documentation work in `tasks.md`.
 5. Implement: change code only after spec and plan remove behavioral ambiguity.
 6. Validate: record executed checks in `test-result.md`.
-7. Report: summarize delivered scope, decisions, and gaps in `result.md`.
+   - 6a. Run unit tests and typecheck: `pnpm test` and `pnpm typecheck` must pass.
+   - 6b. Playwright review: use Playwright MCP to verify actual browser behavior for affected UI paths.
+   - 6c. Codex critical review: send the diff to Codex and collect critical feedback before closing the task.
+7. Report: summarize delivered scope, decisions, and gaps in `result.md`. Report completion to the user only after all validation steps pass.
 
 ## Gates
 - Do not implement before `spec.md` and `plan.md` are sufficient.
 - Do not mark work complete before `test-result.md` and `result.md` are updated.
 - Do not expand scope beyond what is documented and confirmed.
+- Do not report completion before Playwright review (6b) and Codex critical review (6c) are both done.
+- If Codex is unavailable, record that explicitly in `test-result.md` and proceed; do not skip silently.

@@ -1,61 +1,78 @@
-# Product PRD
+# 제품 PRD
 
-## Product Definition
-SFOOD Wiki is an internal knowledge wiki portal for employees. Users search or ask questions, review guides, project examples, library resources, and FAQ content, then move into project design when they are ready.
+## 제품 정의
 
-It is not a dashboard, not a project manager, and not a raw Confluence viewer. The product must present a guided, readable knowledge experience while hiding storage details from end users.
+SFOOD Wiki는 사내 직원을 위한 내부 지식 위키 포털이다. 사용자는 검색하거나 질문해서 가이드, 프로젝트 예시, 라이브러리 리소스, FAQ 콘텐츠를 읽고, 준비가 됐을 때 프로젝트 설계로 이어진다.
 
-## One-line Definition
-SFOOD Wiki helps employees search internal knowledge, review related guides, project examples, and FAQ answers, and continue into project design when needed.
+대시보드가 아니고, 프로젝트 관리 도구가 아니며, Confluence를 그대로 보여주는 뷰어가 아니다. 저장소 세부 사항은 사용자에게 감추고, 읽기 편한 가이드 중심의 지식 경험을 제공해야 한다.
 
-## Core Principles
-- Keep the main screen short, focused, and action-oriented.
-- Do not expose implementation storage terms such as `Confluence`, `DB`, or `database` in user-facing UI.
-- Do not introduce a separate application DB as the source of product truth.
-- Use Confluence documents as the canonical content system and LLM context base.
-- Treat project design as a secondary CTA after exploration, not the main entry behavior.
+## 한 문장 정의
 
-## Primary Users
-- General internal employees who need practical guidance.
-- Employees exploring automation or internal tooling ideas.
-- Operators who curate visible documents and manage publication quality.
+SFOOD Wiki는 사내 직원이 내부 지식을 검색하고, 관련 가이드·프로젝트 예시·FAQ 답변을 읽으며, 필요할 때 프로젝트 설계로 이어갈 수 있도록 돕는다.
 
-## User Flow
-1. User lands on Home.
-2. User searches or asks a question.
-3. User opens a guide, project example, library resource, or FAQ.
-4. User reviews related knowledge.
-5. User optionally proceeds to project design.
+## 핵심 원칙
 
-## MVP Goals
-- Deliver a clear Home page entry point.
-- Provide navigation into guides, project examples, library, and FAQ.
-- Establish read-only content delivery from Confluence-backed documents.
-- Prepare search and AI-assisted flows without forcing write-back or a separate product DB.
+- 메인 화면은 간결하고 목적 중심으로 유지한다.
+- `Confluence`, `DB`, `database` 같은 구현 저장소 용어를 사용자 화면에 노출하지 않는다.
+- 별도의 애플리케이션 DB를 제품 진실 원천으로 도입하지 않는다.
+- Confluence 문서를 정식 콘텐츠 시스템이자 LLM 컨텍스트 기반으로 사용한다.
+- 프로젝트 설계는 탐색 이후의 보조 CTA이지 주된 진입 동작이 아니다.
 
-## MVP In Scope
-- Home page
-- Theme switch: light, dark, system
-- Search input and search route structure
-- Four main entry cards
-- Featured guide list
-- Featured project example list
-- Project design CTA
-- Read-only category and article page architecture
-- Visibility-aware content normalization from Confluence
+## 주요 사용자
 
-## MVP Out Of Scope
-- User login-based personalization
-- Personal dashboards, progress, activity logs, notifications
-- Commenting or document editing in the product
-- Admin analytics dashboard
-- Separate relational product database
-- Automatic AI write-back from normal user flows
+- 실용적인 안내가 필요한 일반 사내 직원
+- AI 자동화나 내부 툴링 아이디어를 탐색하는 직원
+- 공개 문서를 관리하고 발행 품질을 유지하는 운영자
 
-## Information Architecture
+## 사용자 흐름
+
+1. 사용자가 Home에 진입한다.
+2. 사용자가 검색하거나 질문한다.
+3. AI 답변과 함께 추천 가이드, 프로젝트 예시, 라이브러리 리소스, FAQ를 읽는다.
+4. 관련 지식을 더 탐색한다.
+5. 선택적으로 프로젝트 설계로 이어진다.
+
+## MVP 목표
+
+- 명확한 Home 페이지 진입점 제공
+- 가이드, 프로젝트 예시, 라이브러리, FAQ 탐색 경로 제공
+- Confluence 기반 읽기 전용 콘텐츠 전달
+- AI 답변 흐름 (검색 AI 답변, 문서 AI Ask) 제공 — 별도 DB 없이
+
+## MVP 범위
+
+- Home 페이지
+- 테마 전환: 라이트, 다크, 시스템
+- AI 기반 검색 및 검색 라우트 (`/search?q=`)
+  - intent 분류 (개념·설정·계획·비교·문제해결·일반)
+  - 정책 컨텍스트 주입
+  - structured output 기반 AI 답변
+  - 멀티턴 대화 (이전 최근 3턴 history 유지)
+  - 추천 페이지 / 관련 페이지 분리 표시
+- 문서 AI Ask 패널 (아티클 페이지 내 대화형, 다중 턴)
+- 4개 주요 진입 카드
+- 추천 가이드 목록
+- 추천 프로젝트 목록
+- 프로젝트 설계 CTA
+- 가이드 인덱스 그래프 뷰 (`/guides/map`)
+- 읽기 전용 카테고리 및 아티클 페이지 구조
+- Confluence 기반 공개 범위 필터링 및 콘텐츠 정규화
+
+## MVP 외 범위
+
+- 로그인 기반 개인화
+- 개인 대시보드, 진행 상황, 활동 로그, 알림
+- 제품 내 댓글 또는 문서 편집
+- 관리자 분석 대시보드
+- 별도 관계형 제품 데이터베이스
+- 일반 사용자 흐름에서의 자동 AI 쓰기
+
+## 정보 구조
+
 - `/`
 - `/search?q=`
 - `/guides`
+- `/guides/map`
 - `/guides/{slug}`
 - `/projects`
 - `/projects/{slug}`
@@ -64,39 +81,55 @@ SFOOD Wiki helps employees search internal knowledge, review related guides, pro
 - `/faq/{slug}`
 - `/project-design/start`
 
-## Success Criteria
-- Users immediately understand the search-first purpose of the Home screen.
-- The four entry points are visible and distinct.
-- No user-facing copy leaks storage or internal implementation vocabulary.
-- The page stays compact rather than becoming a long landing page.
-- Theme switching works across desktop and mobile.
-- The product remains read-through on top of Confluence with no separate authoritative DB.
+## 성공 기준
 
-## Delivery Status
-### Completed
-- Monorepo workspace bootstrap
-- React/Vite web app skeleton
-- Shared wiki-core module
-- Home MVP baseline UI
-- Prototype-aligned Home compact layout
-- Shared top GNB across Home and internal pages
-- General site-style header with user and utility area
-- Shared typography and spacing baseline across Home and detail pages
-- Theme selection
-- Initial route shells for guides, projects, library, FAQ, search, and project design
-- Shared read-only wiki document model
-- Shared snapshot/remote wiki source abstraction
-- Remote source payload validation and public-space filtering
-- Category and article pages backed by shared async read-only data
-- Search results backed by shared async read-only data
-- Search results linked directly into matching documents
-- Search results grouped by guide, project example, FAQ, and library
-- Article pages show prerequisite, next, and related document navigation blocks
-- Category pages expose reading order and lightweight metadata cues
+- 사용자가 Home 화면에서 검색 우선 목적을 즉시 이해한다.
+- 4개 진입점이 보이고 명확하게 구분된다.
+- 사용자 화면 문구에 저장소나 내부 구현 용어가 드러나지 않는다.
+- 페이지가 긴 랜딩 페이지가 아닌 간결한 상태로 유지된다.
+- 테마 전환이 데스크톱과 모바일에서 동작한다.
+- 제품이 별도 권위 있는 DB 없이 Confluence 위에서 읽기 전용으로 동작한다.
 
-### Pending
-- Real endpoint value and CORS verification for remote read-only content loading
-- Metadata validation
-- Graph navigation
-- Read-only AI Ask
-- Operator review workflow
+## 납품 현황
+
+### 완료
+
+- 모노레포 워크스페이스 구성
+- React/Vite 웹 앱 뼈대
+- 공유 wiki-core 모듈
+- Home MVP 기본 UI
+- 프로토타입 정렬 Home 압축 레이아웃
+- Home 및 내부 페이지 공용 상단 GNB
+- 공유 타이포그래피 및 간격 기준 (Home·카테고리·아티클·검색)
+- 테마 선택
+- 가이드, 프로젝트, 라이브러리, FAQ, 검색, 프로젝트 설계 라우트 쉘
+- 공유 읽기 전용 위키 문서 모델
+- 스냅샷/원격 위키 소스 추상화
+- 원격 소스 페이로드 유효성 검사 및 공개 스페이스 필터링
+- 공유 비동기 읽기 전용 데이터로 동작하는 카테고리·아티클·검색 페이지
+- 검색 결과에서 일치하는 문서로의 직접 링크
+- Confluence `wiki.metadata` 속성 전체 130개 페이지 적용
+- 아티클 페이지의 선행·다음·관련 문서 탐색 블록
+- 카테고리 페이지의 읽기 순서 및 메타데이터 단서 표시
+- 가이드 인덱스 그래프 뷰 (인덱스·자식·관련 문서 구조 시각화)
+- AI 기반 검색 (`/api/wiki/ai/search`)
+  - intent 분류 기반 검색 후보 선정 (개념·설정·계획·비교·문제해결·일반)
+  - index 페이지 우선 확장 → 컨텍스트 문서 최대 14개
+  - policy 컨텍스트 숨김 주입
+  - structured output 기반 AI 답변 (OpenAI Responses API)
+  - 추천 페이지(AI 직접 선택) / 관련 페이지(랭킹 기반) 서버 분리
+  - 멀티턴 대화 (최근 3턴 history)
+  - 개발 서버 메모리 캐시 (위키 5분 TTL, AI 검색 답변 10분 TTL)
+- 문서 AI Ask (`/api/wiki/ai/ask`)
+  - 현재 문서·상위·prerequisites·next·related 컨텍스트 주입
+  - policy 컨텍스트 숨김 주입
+  - 멀티턴 대화 (아티클 페이지 내 고정 패널)
+- 검색 답변 톤: 비개발자 사내 직원 대상 친절한 블로그식 설명
+- GitHub 조직 프로젝트 목록 연동 (`/api/github/projects`)
+
+### 대기 중
+
+- 실제 엔드포인트 값 및 CORS 검증 (원격 읽기 전용 콘텐츠 로딩)
+- 메타데이터 유효성 검사 UI
+- 그래프 탐색 UI
+- 운영자 검토 워크플로
