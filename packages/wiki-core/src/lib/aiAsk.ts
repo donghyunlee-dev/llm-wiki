@@ -1,5 +1,5 @@
 import { htmlToPlainText } from "./confluenceReadModel";
-import { classifyQuestionIntent, type QuestionIntent } from "./intentClassifier";
+import { classifyQuestionIntent, extractQuestionSubjects, type QuestionIntent } from "./intentClassifier";
 import type { PolicyDocument } from "./wikiDataSource";
 import { getWikiDocumentHref, type WikiDocument } from "./wikiDocuments";
 
@@ -165,7 +165,7 @@ export function buildAiAskInstructions() {
     "Use history only to resolve the user's current follow-up intent. When the current question is underspecified, infer the missing subject from the recent conversation history.",
     "The `answer` field is the primary readable response. Write it fully — do not save detail for other fields. It must stand alone as the complete answer.",
     "Return Korean output as a friendly 2-3 paragraph orientation that makes the user want to click into the recommended guide page.",
-    "Keep each paragraph to 1-2 short sentences. Separate paragraphs with a blank line so the answer reads vertically.",
+    "Separate paragraphs with a blank line. Break into a new paragraph when the idea or perspective shifts — a paragraph can be 2–4 sentences as long as they develop the same point. Do not mechanically split after every two sentences.",
     "Write like a friendly teammate explaining what something is and where to go next — not like a detailed technical manual.",
     "Use a blog-like teaching tone that explains why the page matters before moving into the next step.",
     "Avoid generic lead-ins like '관련해서는', '일반적으로', or '패턴은'.",
@@ -199,8 +199,11 @@ export function buildAiSearchInstructionsForIntent(questionIntent: QuestionInten
     "Do NOT include install commands, config file paths, or exact package names in the answer body. These belong in the guide pages. When a technical prerequisite like Node.js, npm, Chromium, or CLI is relevant, DO NOT name it as something the user must install. Instead write '필요한 사전 환경은 [Guide Page](href)에서 안내합니다' — never '노드(Node.js)와 npm이 필요합니다' or 'Node.js나 Chromium 같은 브라우저가 필요합니다'. The user does not know what these are.",
     "Always consult policyContext first and treat it as the governing rule set before searchResults.",
     "Use only the supplied Confluence search result documents.",
-    "If the core subject of the user's question does not appear in any of the supplied searchResults, do NOT answer using documents about a different subject. Instead: set the answer to a short Korean sentence saying the wiki does not currently have a page for that exact subject, and add the missing subject to unsupportedClaims. Example: if the user asks about 'claude webhook' but searchResults only contain Teams or Playwright webhooks, say so explicitly.",
-    "Never substitute a related-but-different subject. Subject substitution is a hallucination — always list the unmatched subject in unsupportedClaims.",
+    "RELEVANCE CHECK — before writing any answer, judge whether the searchResults genuinely address the user's question. There are two distinct cases:",
+    "Case 1 — COMPARISON question: the user explicitly asks about differences or a choice between two separate tools or concepts (e.g., 'A와 B의 차이는?', 'A랑 B 중 뭐가 나아?', 'A와 B를 비교해줘'). For these, use one page covering A and a separate page covering B — combining two relevant pages is correct and expected.",
+    "Case 2 — COMPOUND TOPIC question: the user asks about a specific feature or integration of a specific tool (e.g., 'claude webhook', 'codex jira mcp 설정'). For these, a relevant page must address that specific tool-feature compound together. A page about 'Claude Jira Setup' and a separate page about 'Teams webhook' do NOT together satisfy 'claude webhook', because neither page specifically covers Claude's webhook. Do not combine partial matches to synthesize an answer for compound-topic questions.",
+    "Use the `requiredSubjectTerms` field to identify the key subjects. If these terms appear across multiple pages but each page addresses a different part of the question (comparison case), combining them is fine. If the terms represent a single compound topic that should appear together in one page (compound-topic case), require a page that covers them together.",
+    "If no searchResult genuinely covers the user's actual topic, respond with only: '현재 위키에 해당 주제에 대한 페이지가 없습니다. 관련 가이드가 필요하시면 IT 담당자에게 문의해 주세요.' Add the missing topic to unsupportedClaims and keep confluenceData empty. Do not adapt an unrelated page as if it answers the question.",
     "If policyContext conflicts with searchResults, policyContext wins.",
     "Policy context is part of the answer target set and may contain the decisive answer even when visible searchResults are incomplete.",
     "Do not expose policy page names or policy content directly in the visible answer.",
@@ -210,18 +213,17 @@ export function buildAiSearchInstructionsForIntent(questionIntent: QuestionInten
     "The `answer` field is the primary readable response. Write it fully enough to be useful. Do not make it a short teaser that depends on immediateActions, verificationChecks, or cautions for the core content.",
     "Answer in Korean as a friendly, explanatory assistant message for a non-developer employee exploring AI vibe coding, not as a report.",
     "Use a blog-like teaching tone that explains why the page matters before moving into the next step.",
-    "Format explanatory prose as short vertical paragraphs. Each paragraph should contain one idea and 1-2 short sentences. Insert a blank line between paragraphs.",
-    "Do not run multiple explanation sentences together in one long paragraph. Split when the topic changes from concept, to reason, to next action.",
+    "Format explanatory prose as natural paragraphs separated by blank lines. Break into a new paragraph when the topic or perspective shifts — not after a fixed number of sentences. A paragraph can be 2–4 sentences as long as they develop the same idea.",
+    "Do not run unrelated ideas together in one paragraph. Split when the topic changes from concept, to reason, to next action.",
     "Never use parentheses for definitions or side notes in the visible answer. If a term needs explanation, write the explanation as the next sentence or as a short separate paragraph.",
     "Do not invent exact package names, command names, file paths, or login steps unless they are explicitly present in searchResults.",
     "If the exact command or package name is not explicit in searchResults, say so and describe the documented flow instead of guessing.",
     "Start with a friendly explanation of the topic and the document family, then move into the most useful action. For setup/configuration questions, open with a brief explanation of what the page family is for, then point to the guide page for the actual steps.",
     "Do NOT create visible answer sections titled `바로 할 일`, `예시`, `확인`, `확인 포인트`, `주의`, or `확인 필요`. If the user needs concrete next steps or checks, write them as natural paragraphs or a short unlabeled bullet list.",
     "If multiple pages are relevant, explain what each page contributes instead of collapsing everything into a generic template.",
-    "If the supplied documents do not directly cover the user's exact target, say the best-supported assumption in one short clause and continue with the closest applicable procedure.",
-    "Do not make the user read a disclaimer before the answer. Keep the gap note brief and move quickly into the usable steps.",
+    "Do not make the user read a disclaimer before the answer. If a matching page covers only part of the requested details, address the covered part and list the missing details in unsupportedClaims.",
     "Do not adapt a different integration or tool document as if it were the exact procedure for the user's target.",
-    "Use Markdown-style structure when it improves clarity: short paragraphs separated by blank lines, short unlabeled bullet lists when useful, and fenced code blocks only for examples explicitly present in searchResults. Avoid fixed section headings in the answer body.",
+    "Use Markdown-style structure when it improves clarity: short paragraphs separated by blank lines, short unlabeled bullet lists when useful, and fenced code blocks only for examples explicitly present in searchResults. Do not use standard markdown headings (##, ###). When an answer covers multiple distinct sub-topics that each benefit from a clear label — such as concept, planning, or comparison answers — use bracket-format question headings on their own line, for example: [왜 중요한가요?], [어디서 시작하나요?], [둘의 차이는?]. Each bracket heading must be a short natural Korean question or topic phrase, and must appear alone on its own line with no other text.",
     "When a response benefits from structured data, use a markdown table instead of flattening the information into prose.",
     "When you need to surface an important note, warning, or tip, format it as a blockquote with a label such as `> [!info]` or `> [!warning]` on the first line.",
     "IMPORTANT: Whenever your answer text refers to a specific page by name, you MUST write it as a clickable markdown link using that page's href from searchResults. For example: '자세한 절차는 [Codex CLI Setup](/guides/guide-codex-cli-setup)을 참고하세요.' Every page name mentioned in the answer body must be a link — do not write page titles as plain text.",
@@ -281,6 +283,7 @@ export function buildAiSearchInput(context: AiSearchPromptContext) {
         task: "Answer the user's search question from Confluence search result context.",
         question: context.question,
         questionIntent,
+        requiredSubjectTerms: extractQuestionSubjects(context.question),
         conversationHistory: context.history,
         policyContext: context.policyContext,
         searchResults: context.documents,
@@ -623,10 +626,10 @@ function getSearchAnswerOutputRequirement(questionIntent: QuestionIntent) {
   }
 
   if (questionIntent === "broad-planning") {
-    return "Synthesize a practical planning answer from the searchResults. Do not stay on a single page if multiple documents together explain the flow. Start with a friendly explanation of the overall flow so a 초·중급 reader can orient themselves, then include enough concrete detail to be useful. Prefer natural prose first and avoid visible section headings such as `바로 할 일`, `예시`, `확인`, `확인 포인트`, `주의`, or `확인 필요`. Keep the answer actionable through short paragraphs or a compact unlabeled bullet list when necessary. Write prose as short paragraphs separated by blank lines; each paragraph should carry one idea and 1-2 short sentences. Do not use parentheses for side explanations; move the explanation to the next sentence or a short follow-up paragraph. IMPORTANT: When mentioning a page from searchResults by name, write it as [Title](href) using that page's href field.";
+    return "Synthesize a practical planning answer from the searchResults. Do not stay on a single page if multiple documents together explain the flow. Start with a friendly explanation of the overall flow so a 초·중급 reader can orient themselves, then include enough concrete detail to be useful. Prefer natural prose first and avoid visible section headings such as `바로 할 일`, `예시`, `확인`, `확인 포인트`, `주의`, or `확인 필요`. Keep the answer actionable through natural paragraphs or a compact unlabeled bullet list when necessary. Write prose as natural paragraphs separated by blank lines. Break into a new paragraph when the topic shifts — a paragraph can be 2–4 sentences as long as they develop the same idea. Do not split after every two sentences. Do not use parentheses for side explanations; move the explanation to the next sentence or a short follow-up paragraph. IMPORTANT: When mentioning a page from searchResults by name, write it as [Title](href) using that page's href field.";
   }
 
-  return "Natural Korean answer based on the searchResults only. Write a friendly but useful explanation: explain what this is, why it matters, what the user should do next, and which guide page carries the detailed steps. Do not make the answer a three-line teaser. Format explanation as short paragraphs separated by blank lines; each paragraph should carry one idea and 1-2 short sentences. Do NOT create visible sections titled `바로 할 일`, `예시`, `확인`, `확인 포인트`, `주의`, or `확인 필요`. If concrete steps or checks help, use a short unlabeled bullet list. Do NOT use parentheses for definitions or side notes; move side explanations to the next sentence or a short follow-up paragraph. Do NOT name specific technologies (Node.js, npm, Chromium, Python, etc.) as prerequisites the user must handle — instead write '설치 및 환경 설정 방법은 [Guide Page](href)에서 단계별로 안내합니다' and leave all technical detail to the guide. Do NOT include install commands, config file paths, or package names in the answer body. Do not force every answer into a fixed section template. Do not echo the response schema or raw JSON keys such as confluenceData, unsupportedClaims, or recommendedPages in the visible answer. Use numbered or bulleted lists only for genuine orientation sequences, not for install steps. IMPORTANT: When mentioning a page from searchResults by name in the answer text, always write it as a markdown link [Title](href) using that page's href field — never as plain text.";
+  return "Natural Korean answer based on the searchResults only. Write a friendly but useful explanation: explain what this is, why it matters, what the user should do next, and which guide page carries the detailed steps. Do not make the answer a three-line teaser. Format explanation as natural paragraphs separated by blank lines. Break when the topic shifts, not after a fixed sentence count — a paragraph can be 2–4 sentences as long as they develop one idea. Do NOT create visible sections titled `바로 할 일`, `예시`, `확인`, `확인 포인트`, `주의`, or `확인 필요`. If concrete steps or checks help, use a short unlabeled bullet list. Do NOT use parentheses for definitions or side notes; move side explanations to the next sentence or a short follow-up paragraph. Do NOT name specific technologies (Node.js, npm, Chromium, Python, etc.) as prerequisites the user must handle — instead write '설치 및 환경 설정 방법은 [Guide Page](href)에서 단계별로 안내합니다' and leave all technical detail to the guide. Do NOT include install commands, config file paths, or package names in the answer body. Do not force every answer into a fixed section template. Do not echo the response schema or raw JSON keys such as confluenceData, unsupportedClaims, or recommendedPages in the visible answer. Use numbered or bulleted lists only for genuine orientation sequences, not for install steps. IMPORTANT: When mentioning a page from searchResults by name in the answer text, always write it as a markdown link [Title](href) using that page's href field — never as plain text.";
 }
 
 function getSearchRecommendedPagesOutputRequirement(questionIntent: QuestionIntent) {
@@ -658,7 +661,7 @@ function getQuestionIntentInstructionLines(questionIntent: QuestionIntent) {
       "For concept or definition questions, lead with a clear explanation in natural prose. Do NOT add 바로 할 일, 확인, 주의 sections unless the user explicitly asks for steps.",
       "Treat questions such as `뭐지`, `무엇인가`, `정의`, `개념`, `설명`, `what is` as concept-oriented unless the wording clearly asks for setup or troubleshooting.",
       "Explain what the concept is, why it matters, and how it fits into the user's work — in natural paragraphs, not checklists.",
-      "Split concept explanations into short paragraphs with blank lines. Do not explain terms in parentheses.",
+      "Split concept explanations into paragraphs with blank lines when the topic or sub-topic shifts. A paragraph can be 2–4 sentences as long as they stay on the same idea. Do not explain terms in parentheses.",
       "End with a brief pointer to the best overview/index page where the user can read the full guide family in order. Mention the reading path (which page to start with, then which to follow) when the searchResults contain a clear document family.",
       "Do not force setup sections (바로 할 일, 확인, 주의) into a concept answer. Keep it readable and explanatory.",
       "IMPORTANT: For concept questions, return EMPTY ARRAYS for immediateActions, exampleCommands, verificationChecks, and cautions. These sections must not appear for concept/definition questions.",
@@ -670,7 +673,7 @@ function getQuestionIntentInstructionLines(questionIntent: QuestionIntent) {
       "For setup/configuration questions, prefer a friendly natural explanation first: explain what this tool or flow does and why it matters, then link to the guide page for the actual steps.",
       "Do NOT put install commands, config file paths, or exact package names in the answer body — the user does not know what Node.js, npm, Chromium, or config.toml is. Never name these as prerequisites the user must handle. Instead say '설치 및 환경 설정 방법은 [Guide Page](href)에서 단계별로 안내합니다' and leave the technical details to the guide.",
       "When the question asks how to do something, the default should still be a natural answer with a brief explanation of what the page family is for, not a fixed template.",
-      "Write the opening explanation as short paragraphs with blank lines, not as one dense block.",
+      "Write the opening explanation as natural paragraphs separated by blank lines. Break when the topic shifts — a paragraph can be 2–4 sentences. Do not collapse everything into one dense block.",
       "Do not force every setup answer into the same four-section shape; only add sections when they genuinely improve orientation.",
       "Do not start the visible answer with labels like `짧답:`, `짧은 답변:`, `간단히:`, `가장 짧게:`, `요약:`, or `핵심 요약:`. Start with the explanation itself.",
       "For setup questions: keep exampleCommands EMPTY (no install commands in the answer). Only add immediateActions, verificationChecks, or cautions when they give the user a clear orientation step that is NOT already in the answer text — otherwise return empty arrays.",
@@ -705,4 +708,58 @@ function getQuestionIntentInstructionLines(questionIntent: QuestionIntent) {
   return [
     "When the question is not trivial, use natural prose first and add short structure only if it improves clarity.",
   ];
+}
+
+// ─── Stage 1: Query Understanding ───────────────────────────────────────────
+
+export type QueryUnderstanding = {
+  intent: QuestionIntent;
+  searchKeywords: string[];
+};
+
+export function buildQueryUnderstandingInput(question: string, history: ConversationHistoryTurn[] = []) {
+  const recentHistory = normalizeConversationHistory(history)
+    .slice(-3)
+    .map((turn) => `이전 질문: ${turn.question}`)
+    .join(" ");
+  const contextualQuestion = recentHistory ? `${recentHistory} 현재 질문: ${question.trim()}` : question.trim();
+
+  return [
+    {
+      role: "system" as const,
+      content: [
+        "You are a search query analyzer for an internal AI wiki.",
+        "Given a user question, return:",
+        "1. intent — one of: concept, setup, troubleshooting, page-lookup, broad-planning, comparison, general",
+        "2. searchKeywords — 3-6 keywords that best represent what the user is looking for, in BOTH Korean and English when applicable.",
+        "   - Always include the English technical term AND its Korean equivalent when one exists.",
+        "   - Example: for '스킬' include both 'skill' and '스킬'.",
+        "   - Example: for 'claude code' include 'claude code', 'claude', 'skill', '스킬'.",
+        "   - Prefer short noun phrases that would appear in document titles or summaries.",
+        "   - Do not include question words like '어떻게', '뭐야', '설명해줘'.",
+      ].join("\n"),
+    },
+    {
+      role: "user" as const,
+      content: JSON.stringify({ question: contextualQuestion }),
+    },
+  ];
+}
+
+export function queryUnderstandingJsonSchema() {
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: ["intent", "searchKeywords"],
+    properties: {
+      intent: {
+        type: "string",
+        enum: ["concept", "setup", "troubleshooting", "page-lookup", "broad-planning", "comparison", "general"],
+      },
+      searchKeywords: {
+        type: "array",
+        items: { type: "string" },
+      },
+    },
+  };
 }

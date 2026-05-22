@@ -4,10 +4,12 @@ import {
   aiSearchJsonSchema,
   buildAiAskInput,
   buildAiAskPromptContext,
+  buildQueryUnderstandingInput,
   buildSearchFollowUpQuestion,
   buildPolicyPromptContext,
   buildAiSearchInput,
   buildAiSearchPromptContext,
+  queryUnderstandingJsonSchema,
 } from "./aiAsk";
 import type { PolicyDocument } from "./wikiDataSource";
 import type { WikiDocument } from "./wikiDocuments";
@@ -104,12 +106,12 @@ describe("aiAsk prompt helpers", () => {
     expect(input[0]?.content).toContain("friendly, explanatory assistant message for a non-developer employee");
     expect(input[0]?.content).toContain("Start with a friendly explanation of the topic and the document family");
     expect(input[0]?.content).toContain("blog-like teaching tone that explains why the page matters");
-    expect(input[0]?.content).toContain("short vertical paragraphs");
+    expect(input[0]?.content).toContain("natural paragraphs separated by blank lines");
     expect(input[0]?.content).toContain("Never use parentheses for definitions or side notes");
     expect(input[0]?.content).toContain("Do NOT create visible answer sections titled `바로 할 일`");
     expect(input[0]?.content).toContain("Keep the answer focused but not thin");
     expect(input[0]?.content).toContain("better than a three-line teaser");
-    expect(input[1]?.content).toContain("short paragraphs separated by blank lines");
+    expect(input[1]?.content).toContain("natural paragraphs separated by blank lines");
     expect(input[1]?.content).toContain("Do NOT use parentheses for definitions or side notes");
     expect(input[1]?.content).toContain("Do NOT create visible sections titled `바로 할 일`");
     expect(input[1]?.content).not.toContain("관련 페이지별 요약");
@@ -135,7 +137,7 @@ describe("aiAsk prompt helpers", () => {
     const input = buildAiSearchInput(context);
 
     expect(input[1]?.content).toContain("\"questionIntent\":\"broad-planning\"");
-    expect(input[0]?.content).toContain("Avoid fixed section headings in the answer body");
+    expect(input[0]?.content).toContain("Do not use standard markdown headings (##, ###)");
     expect(input[1]?.content).toContain("avoid visible section headings");
     expect(input[0]?.content).toContain("practical checklist");
   });
@@ -164,11 +166,47 @@ describe("aiAsk prompt helpers", () => {
     expect(input[1]?.content).toContain('"questionIntent":"concept"');
   });
 
-  it("includes subject-mismatch hallucination guard in search instructions", () => {
+  it("includes RELEVANCE CHECK with comparison vs compound-topic distinction", () => {
     const context = buildAiSearchPromptContext([document()], "claude webhook 사용법");
     const input = buildAiSearchInput(context);
-    expect(input[0]?.content).toContain("subject of the user's question does not appear");
+    expect(input[0]?.content).toContain("RELEVANCE CHECK");
+    expect(input[0]?.content).toContain("COMPARISON question");
+    expect(input[0]?.content).toContain("COMPOUND TOPIC question");
+    expect(input[0]?.content).toContain("현재 위키에 해당 주제에 대한 페이지가 없습니다");
     expect(input[0]?.content).toContain("unsupportedClaims");
+    expect(input[0]?.content).not.toContain("SUBJECT COVERAGE GATE");
+    expect(input[0]?.content).not.toContain("This gate is ABSOLUTE");
+    expect(input[0]?.content).not.toContain("closest applicable procedure");
+  });
+
+  it("distinguishes compound-topic from comparison: compound requires single page coverage", () => {
+    const context = buildAiSearchPromptContext([document()], "claude webhook 사용법");
+    const input = buildAiSearchInput(context);
+    expect(input[0]?.content).toContain("Claude Jira Setup");
+    expect(input[0]?.content).toContain("Teams webhook");
+    expect(input[0]?.content).toContain("do NOT together satisfy");
+  });
+
+  it("explicitly allows combining pages for comparison questions", () => {
+    const context = buildAiSearchPromptContext([document()], "코덱스와 클로드의 skill이 뭐가 다르지?");
+    const input = buildAiSearchInput(context);
+    expect(input[0]?.content).toContain("COMPARISON question");
+    expect(input[0]?.content).toContain("combining two relevant pages is correct and expected");
+  });
+
+  it("passes requiredSubjectTerms for known subjects in search input", () => {
+    const context = buildAiSearchPromptContext([document()], "claude webhook 사용법");
+    const input = buildAiSearchInput(context);
+    const parsed = JSON.parse(input[1]?.content ?? "{}");
+    expect(parsed.requiredSubjectTerms).toContain("claude");
+    expect(parsed.requiredSubjectTerms).toContain("webhook");
+  });
+
+  it("passes empty requiredSubjectTerms when no known subjects are present", () => {
+    const context = buildAiSearchPromptContext([document()], "업무 자동화를 어떻게 시작하나요?");
+    const input = buildAiSearchInput(context);
+    const parsed = JSON.parse(input[1]?.content ?? "{}");
+    expect(Array.isArray(parsed.requiredSubjectTerms)).toBe(true);
   });
 
   it("tailors search instructions for setup questions", () => {
@@ -263,5 +301,70 @@ describe("aiAsk prompt helpers", () => {
     expect(context.policyRules).toHaveLength(4);
     expect(context.selectedPolicies[0]?.sourceKind).toBe("policy");
     expect(context.selectedPolicies[0]?.title).toBe("Exact Answer Policy");
+  });
+});
+
+describe("buildQueryUnderstandingInput", () => {
+  it("builds a two-message input with system + user roles", () => {
+    const input = buildQueryUnderstandingInput("스킬이 뭐야?");
+    expect(input).toHaveLength(2);
+    expect(input[0]?.role).toBe("system");
+    expect(input[1]?.role).toBe("user");
+  });
+
+  it("embeds the question in the user message", () => {
+    const input = buildQueryUnderstandingInput("claude code 스킬이 뭐야?");
+    const parsed = JSON.parse(input[1]?.content ?? "{}");
+    expect(parsed.question).toContain("claude code 스킬이 뭐야?");
+  });
+
+  it("instructs the model to return both Korean and English keywords", () => {
+    const system = buildQueryUnderstandingInput("스킬이 뭐야?")[0]?.content ?? "";
+    expect(system).toContain("BOTH Korean and English");
+    expect(system).toContain("skill");
+    expect(system).toContain("스킬");
+  });
+
+  it("instructs the model to include all valid intent values", () => {
+    const system = buildQueryUnderstandingInput("test")[0]?.content ?? "";
+    expect(system).toContain("concept");
+    expect(system).toContain("setup");
+    expect(system).toContain("troubleshooting");
+    expect(system).toContain("page-lookup");
+    expect(system).toContain("broad-planning");
+    expect(system).toContain("comparison");
+    expect(system).toContain("general");
+  });
+
+  it("prepends conversation history to the question context", () => {
+    const input = buildQueryUnderstandingInput("스킬이 뭐야?", [{ question: "클로드 코드가 뭐야", answer: "..." }]);
+    const parsed = JSON.parse(input[1]?.content ?? "{}");
+    expect(parsed.question).toContain("이전 질문");
+    expect(parsed.question).toContain("클로드 코드가 뭐야");
+  });
+});
+
+describe("queryUnderstandingJsonSchema", () => {
+  it("requires intent and searchKeywords", () => {
+    const schema = queryUnderstandingJsonSchema();
+    expect(schema.required).toContain("intent");
+    expect(schema.required).toContain("searchKeywords");
+  });
+
+  it("enumerates all intent values", () => {
+    const schema = queryUnderstandingJsonSchema();
+    const intentEnum = (schema.properties.intent as { enum: string[] }).enum;
+    expect(intentEnum).toContain("concept");
+    expect(intentEnum).toContain("setup");
+    expect(intentEnum).toContain("troubleshooting");
+    expect(intentEnum).toContain("page-lookup");
+    expect(intentEnum).toContain("broad-planning");
+    expect(intentEnum).toContain("comparison");
+    expect(intentEnum).toContain("general");
+  });
+
+  it("defines searchKeywords as array of strings", () => {
+    const schema = queryUnderstandingJsonSchema();
+    expect((schema.properties.searchKeywords as { type: string }).type).toBe("array");
   });
 });
