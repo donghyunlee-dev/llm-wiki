@@ -1,10 +1,12 @@
 import { buildSearchFollowUpQuestion } from "@sfood/wiki-core";
-import { startTransition, useEffect, useRef, useState, type FormEvent } from "react";
+import { startTransition, useEffect, useRef, useState, useCallback, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
+import { getPolicyNoticeMessage, shouldShowPolicyNotice } from "../../lib/policyNotice";
 import { StructuredAnswerView } from "../StructuredAnswerView";
 import {
   buildFallbackRecommendedDocuments,
+  resolveSearchDocumentSections,
   resolveSearchRecommendedDocuments,
   type SearchDocumentSummary,
 } from "../searchRecommendations";
@@ -12,14 +14,36 @@ import { WikiStatePanel } from "./WikiStatePanel";
 
 type SearchAnswer = {
   answer: string;
+  policyNotice: {
+    isPolicyRelated: boolean;
+    message: string;
+    sources?: Array<{
+      id: string;
+      title: string;
+      href: string;
+    }>;
+  };
+  immediateActions: Array<{
+    text: string;
+    relatedPageIds: string[];
+  }>;
+  exampleCommands: string[];
+  verificationChecks: Array<{
+    text: string;
+    relatedPageIds: string[];
+  }>;
+  cautions: Array<{
+    text: string;
+    relatedPageIds: string[];
+  }>;
   confluenceData: Array<{
     pageId: string;
     title: string;
     quote: string;
   }>;
   unsupportedClaims: string[];
-  guideDocuments?: SearchDocumentSummary[];
   recommendedDocuments?: SearchDocumentSummary[];
+  relatedDocuments?: SearchDocumentSummary[];
 };
 
 type SearchConversationItem = {
@@ -32,22 +56,10 @@ type SearchConversationItem = {
 };
 
 const SEARCH_LOADING_STAGES = [
-  {
-    title: "문서를 불러오는 중",
-    detail: "질문과 맞는 문서 묶음을 먼저 찾고 있습니다.",
-  },
-  {
-    title: "관련 문서를 고르는 중",
-    detail: "가장 직접적인 가이드를 우선순위로 추리고 있습니다.",
-  },
-  {
-    title: "질문 문맥을 정리하는 중",
-    detail: "이전 대화가 있으면 함께 묶어서 해석하고 있습니다.",
-  },
-  {
-    title: "답변을 구성하는 중",
-    detail: "바로 따라 할 수 있는 순서로 정리하고 있습니다.",
-  },
+  "문서를 찾는 중",
+  "관련 문서를 추리는 중",
+  "맥락을 정리하는 중",
+  "답변을 구성하는 중",
 ] as const;
 
 export function SearchPage() {
@@ -57,6 +69,8 @@ export function SearchPage() {
   const { documents, errorMessage, isLoading } = useWikiData();
   const [draftQuestion, setDraftQuestion] = useState(query);
   const [conversation, setConversation] = useState<SearchConversationItem[]>([]);
+  const [showEmptyHint, setShowEmptyHint] = useState(false);
+  const emptyHintTimerRef = useRef<number | null>(null);
   const requestedQuestionsRef = useRef(new Set<string>());
 
   useEffect(() => {
@@ -140,11 +154,22 @@ export function SearchPage() {
       });
   }, [documents, errorMessage, isLoading, query]);
 
+  const triggerEmptyHint = useCallback(() => {
+    setShowEmptyHint(true);
+    if (emptyHintTimerRef.current !== null) {
+      window.clearTimeout(emptyHintTimerRef.current);
+    }
+    emptyHintTimerRef.current = window.setTimeout(() => {
+      setShowEmptyHint(false);
+    }, 2500);
+  }, []);
+
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const nextQuestion = draftQuestion.trim();
 
     if (!nextQuestion) {
+      triggerEmptyHint();
       return;
     }
 
@@ -176,8 +201,18 @@ export function SearchPage() {
   return (
     <div className="page-shell">
       <div className="chat-search-shell">
+        {!query && conversation.length === 0 ? (
+          <div className="chat-empty-hint">
+            <p>궁금한 내용을 입력하면 관련 가이드와 함께 답변을 드립니다.</p>
+          </div>
+        ) : null}
+
         {conversation.map((item) => {
-          const recommendedDocuments = resolveSearchRecommendedDocuments(item.answer ?? null, documents, item.fallbackDocuments);
+          const recommendedDocuments = resolveSearchRecommendedDocuments(item.answer ?? null, item.fallbackDocuments);
+          const { recommendedDocuments: primaryRecommendations, relatedDocuments } = resolveSearchDocumentSections(
+            item.answer ?? null,
+            item.fallbackDocuments,
+          );
 
           return (
             <div className="chat-turn" key={item.id}>
@@ -189,7 +224,11 @@ export function SearchPage() {
                 {item.status === "loading" ? (
                   <SearchLoadingState />
                 ) : item.status === "complete" && item.answer ? (
-                  <SearchAnswerView answer={item.answer} recommendedDocuments={recommendedDocuments} />
+                  <SearchAnswerView
+                    answer={item.answer}
+                    recommendedDocuments={primaryRecommendations}
+                    relatedDocuments={relatedDocuments}
+                  />
                 ) : (
                   <div>
                     <p>{item.errorMessage ?? "답변을 준비하지 못했습니다."}</p>
@@ -203,26 +242,41 @@ export function SearchPage() {
           );
         })}
 
-        <form className="chat-input-bar" onSubmit={submit}>
-          <input
-            value={draftQuestion}
-            onChange={(event) => setDraftQuestion(event.target.value)}
-            placeholder="궁금한 내용을 입력하세요"
-            aria-label="검색 질문"
-          />
-          <button type="submit" aria-label="질문 전송" title="질문 전송">
-            <svg aria-hidden="true" viewBox="0 0 20 20">
-              <path
-                d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.7"
+      </div>
+      <div className="chat-input-dock">
+        <div className="chat-input-dock-inner">
+          <div className="chat-input-area">
+            <form className="chat-input-bar" onSubmit={submit}>
+              <input
+                value={draftQuestion}
+                onChange={(event) => {
+                  setDraftQuestion(event.target.value);
+                  if (showEmptyHint) setShowEmptyHint(false);
+                }}
+                placeholder="궁금한 내용을 입력하세요"
+                aria-label="검색 질문"
+                aria-describedby={showEmptyHint ? "chat-empty-input-hint" : undefined}
               />
-            </svg>
-          </button>
-        </form>
+              <button type="submit" aria-label="질문 전송" title="질문 전송">
+                <svg aria-hidden="true" viewBox="0 0 20 20">
+                  <path
+                    d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="1.7"
+                  />
+                </svg>
+              </button>
+            </form>
+            {showEmptyHint ? (
+              <p id="chat-empty-input-hint" className="chat-input-hint" role="alert">
+                검색어를 입력해 주세요.
+              </p>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -231,19 +285,128 @@ export function SearchPage() {
 function SearchAnswerView({
   answer,
   recommendedDocuments,
+  relatedDocuments,
 }: {
   answer: SearchAnswer;
   recommendedDocuments: SearchDocumentSummary[];
+  relatedDocuments: SearchDocumentSummary[];
 }) {
+  const supplementalAnswerText = buildSupplementalAnswerText(answer);
+
   return (
     <div className="chat-answer">
-      <StructuredAnswerView text={sanitizeSearchAnswerText(answer.answer)} variant="chat" />
+      <StructuredAnswerView text={answer.answer} variant="chat" />
+      {supplementalAnswerText ? (
+        <StructuredAnswerView text={supplementalAnswerText} variant="chat" />
+      ) : null}
+
+      {answer.unsupportedClaims.length ? (
+        <section>
+          <h2>확인 필요</h2>
+          <ul className="chat-action-list">
+            {answer.unsupportedClaims.map((claim) => (
+              <li key={claim} className="chat-action-item">{claim}</li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
+      {shouldShowPolicyNotice(answer.policyNotice) ? (
+        <PolicyNoticeView policyNotice={answer.policyNotice} />
+      ) : null}
 
       {recommendedDocuments.length ? (
-        <section className="chat-answer-related-docs">
+        <section>
           <h2>추천 페이지</h2>
           <SearchResultSummary documents={recommendedDocuments} />
         </section>
+      ) : null}
+
+      {relatedDocuments.length ? (
+        <section>
+          <h2>관련 페이지</h2>
+          <SearchResultSummary documents={relatedDocuments} />
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+export function buildSupplementalAnswerText(answer: SearchAnswer) {
+  const answerKey = normalizeAnswerTextForComparison(answer.answer);
+  const lines: string[] = [];
+  const actions = answer.immediateActions
+    .map((item) => item.text.trim())
+    .filter((text) => text && !answerKey.includes(normalizeAnswerTextForComparison(text)));
+  const checks = answer.verificationChecks
+    .map((item) => item.text.trim())
+    .filter((text) => text && !answerKey.includes(normalizeAnswerTextForComparison(text)));
+  const cautions = answer.cautions
+    .map((item) => item.text.trim())
+    .filter((text) => text && !answerKey.includes(normalizeAnswerTextForComparison(text)));
+  const commands = answer.exampleCommands
+    .map((item) => item.trim())
+    .filter((text) => text && !answer.answer.includes(text));
+
+  if (actions.length) {
+    lines.push("이어서 보면 좋은 흐름은 아래처럼 정리할 수 있어요.");
+    lines.push(...actions.map((item) => `- ${item}`));
+  }
+
+  if (checks.length) {
+    if (lines.length) lines.push("");
+    lines.push("마지막에는 아래 항목만 가볍게 확인하면 됩니다.");
+    lines.push(...checks.map((item) => `- ${item}`));
+  }
+
+  if (cautions.length) {
+    if (lines.length) lines.push("");
+    lines.push("진행 전에 놓치기 쉬운 점도 함께 보면 좋아요.");
+    lines.push(...cautions.map((item) => `- ${item}`));
+  }
+
+  if (commands.length) {
+    if (lines.length) lines.push("");
+    lines.push("문서에 있는 예시는 아래처럼 확인할 수 있습니다.");
+    lines.push("```shell");
+    lines.push(...commands);
+    lines.push("```");
+  }
+
+  return lines.join("\n").trim();
+}
+
+function normalizeAnswerTextForComparison(text: string) {
+  return text
+    .toLocaleLowerCase("ko-KR")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+function PolicyNoticeView({
+  policyNotice,
+}: {
+  policyNotice: {
+    isPolicyRelated: boolean;
+    message: string;
+    sources?: Array<{
+      id: string;
+      title: string;
+      href: string;
+    }>;
+  };
+}) {
+  return (
+    <div className="answer-policy-notice" role="note" aria-label="정책 반영 안내">
+      <strong>정책 반영</strong>
+      <p>{getPolicyNoticeMessage(policyNotice)}</p>
+      {policyNotice.sources?.length ? (
+        <div className="answer-policy-sources" aria-label="정책 원천 페이지">
+          {policyNotice.sources.map((source) => (
+            <a key={source.id} href={source.href} target="_blank" rel="noreferrer">
+              {source.title}
+            </a>
+          ))}
+        </div>
       ) : null}
     </div>
   );
@@ -258,7 +421,7 @@ function SearchLoadingState() {
     const timers = SEARCH_LOADING_STAGES.slice(1).map((_, index) =>
       window.setTimeout(() => {
         setStageIndex(index + 1);
-      }, 700 * (index + 1)),
+      }, 800 * (index + 1)),
     );
 
     return () => {
@@ -268,30 +431,14 @@ function SearchLoadingState() {
     };
   }, []);
 
-  const activeStage = SEARCH_LOADING_STAGES[stageIndex] ?? SEARCH_LOADING_STAGES[0];
+  const stageText = SEARCH_LOADING_STAGES[stageIndex] ?? SEARCH_LOADING_STAGES[0];
 
   return (
     <div className="chat-loading" role="status" aria-live="polite" aria-atomic="true">
       <div className="chat-loading-row">
         <span className="chat-spinner" aria-hidden="true" />
-        <div className="chat-loading-copy">
-          <p className="chat-loading-title">{activeStage.title}</p>
-          <p className="chat-loading-detail">{activeStage.detail}</p>
-        </div>
+        <span className="chat-loading-stage">{stageText}</span>
       </div>
-      <ol className="chat-loading-steps" aria-label="검색 진행 단계">
-        {SEARCH_LOADING_STAGES.map((stage, index) => {
-          const state =
-            index < stageIndex ? "complete" : index === stageIndex ? "active" : "pending";
-
-          return (
-            <li key={stage.title} className={`chat-loading-step chat-loading-step-${state}`}>
-              <span className="chat-loading-step-index">{index + 1}</span>
-              <span className="chat-loading-step-text">{stage.title}</span>
-            </li>
-          );
-        })}
-      </ol>
       <div className="chat-loading-bar" aria-hidden="true">
         <span />
       </div>
@@ -312,9 +459,8 @@ function SearchResultSummary({
     <ul className="chat-guide-list">
       {documents.map((document) => (
         <li key={document.id}>
-          <Link to={document.href} target="_blank" rel="noreferrer">
+          <Link className="chat-guide-card" to={document.href} target="_blank" rel="noreferrer">
             <strong>{document.title}</strong>
-            <span>{document.summary || "요약이 비어 있는 문서입니다."}</span>
           </Link>
         </li>
       ))}
@@ -324,11 +470,4 @@ function SearchResultSummary({
 
 function normalizeQuestionKey(question: string) {
   return question.trim().toLocaleLowerCase("ko-KR").replace(/\s+/g, " ");
-}
-
-function sanitizeSearchAnswerText(text: string) {
-  return text
-    .replace(/\\"/g, '"')
-    .replace(/\\n/g, "\n")
-    .replace(/\\\\/g, "\\");
 }
