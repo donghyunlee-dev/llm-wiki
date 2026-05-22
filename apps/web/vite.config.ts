@@ -9,7 +9,11 @@ import {
   buildAiAskPromptContext,
   buildAiSearchInput,
   buildAiSearchPromptContext,
+  buildQueryUnderstandingInput,
   buildSearchFollowUpQuestion,
+  queryUnderstandingJsonSchema,
+  type ConversationHistoryTurn,
+  type QueryUnderstanding,
 } from "../../packages/wiki-core/src/lib/aiAsk.ts";
 import { classifyQuestionIntent } from "../../packages/wiki-core/src/lib/intentClassifier.ts";
 import { fetchConfluencePageRecords } from "../../packages/wiki-core/src/lib/confluenceClient.ts";
@@ -206,7 +210,9 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
             ...resolveWikiDocumentsByIdsFrom(documents, document.metadata.next),
             ...resolveWikiDocumentsByIdsFrom(documents, document.metadata.related),
           ].filter((item, index, array): item is NonNullable<typeof item> =>
-            Boolean(item) && array.findIndex((candidate) => candidate?.id === item.id) === index,
+            Boolean(item) &&
+            !isIndexWikiDocument(item) &&
+            array.findIndex((candidate) => candidate?.id === item.id) === index,
           );
 
           const promptContext = buildAiAskPromptContext(document, relatedDocuments, cache.policyDocuments, question, history);
@@ -293,14 +299,28 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
           }
 
           const cache = await loadVisibleDevWikiCache(env);
-          const questionIntent = classifyQuestionIntent(searchQuestion);
+
+          // Stage 1: AI query understanding — intent + bilingual keywords
+          // Falls back to regex classifier + raw question when AI call fails
+          const queryUnderstanding = await fetchQueryUnderstanding(env, searchQuestion, history);
+          const questionIntent = queryUnderstanding?.intent ?? classifyQuestionIntent(searchQuestion);
+          const searchKeywords = queryUnderstanding?.searchKeywords
+            ?.map((keyword) => keyword.trim())
+            .filter(Boolean);
+          const searchQuery = searchKeywords?.length
+            ? searchKeywords.join(" ")
+            : searchQuestion;
+
+          // Stage 2: Lexical page search using Stage 1 keywords
           const topDocuments = (questionIntent === "broad-planning" || questionIntent === "concept")
             ? uniqueWikiDocuments([
-                ...getTopSearchWikiDocumentsIn(cache.documents, searchQuestion, 10),
-                ...getIndexFirstSearchWikiDocumentsIn(cache.documents, searchQuestion, 10),
+                ...getTopSearchWikiDocumentsIn(cache.documents, searchQuery, 10),
+                ...getIndexFirstSearchWikiDocumentsIn(cache.documents, searchQuery, 10),
               ]).slice(0, 10)
-            : getIndexFirstSearchWikiDocumentsIn(cache.documents, searchQuestion, 8);
-          const contextDocuments = expandSearchContextDocuments(cache.documents, topDocuments, 14);
+            : getIndexFirstSearchWikiDocumentsIn(cache.documents, searchQuery, 8);
+          // nav 문서는 인덱스 확장 단계 전용 — AI 답변 컨텍스트에서 제외 (search-flow-contract.md)
+          const contextDocuments = expandSearchContextDocuments(cache.documents, topDocuments, 14)
+            .filter((document) => !isIndexWikiDocument(document));
 
           if (!topDocuments.length) {
             response.end(JSON.stringify({
@@ -364,7 +384,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
             ? { ...rawResult, immediateActions: [], exampleCommands: [], verificationChecks: [], cautions: [] }
             : rawResult;
 
-          const rankingRecommendedDocuments = getIndexFirstSearchWikiDocumentsIn(cache.documents, searchQuestion, 8)
+          const rankingRecommendedDocuments = getIndexFirstSearchWikiDocumentsIn(cache.documents, searchQuery, 8)
             .filter((document) => !isIndexWikiDocument(document))
             .map((document) => ({
               id: document.id,
@@ -383,7 +403,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
             .filter((document) => {
               if (!recommendedPageIds.has(document.id)) return false;
               const dt = document.metadata.docType;
-              if (dt === "nav" || dt === "ops" || dt === "policy") return false;
+              if (dt === "nav" || dt === "ops" || dt === "policy" || dt === "playbook") return false;
               return true;
             })
             .map((document) => ({
@@ -658,6 +678,47 @@ function normalizeAiSearchResponsePayload(payload: unknown) {
     answer,
     policyNotice,
   };
+}
+
+async function fetchQueryUnderstanding(
+  env: Record<string, string>,
+  question: string,
+  history: ConversationHistoryTurn[],
+): Promise<QueryUnderstanding | null> {
+  try {
+    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.OPENAI_API_KEY || env.VITE_OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: env.VITE_OPENAI_MODEL || env.OPENAI_MODEL || "gpt-5-mini",
+        input: buildQueryUnderstandingInput(question, history),
+        max_output_tokens: 200,
+        text: {
+          format: {
+            type: "json_schema",
+            name: "query_understanding",
+            strict: true,
+            schema: queryUnderstandingJsonSchema(),
+          },
+        },
+      }),
+    });
+
+    if (!aiResponse.ok) return null;
+
+    const payload = await aiResponse.json();
+    const text = extractResponseText(payload);
+    const parsed = JSON.parse(text) as QueryUnderstanding;
+
+    if (!parsed.intent || !Array.isArray(parsed.searchKeywords)) return null;
+
+    return parsed;
+  } catch {
+    return null;
+  }
 }
 
 function enrichPolicyNoticeSources<T extends Record<string, unknown>>(
