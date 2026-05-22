@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"]
+    },
+    "codex": {
+    "command": "npx",
+    "args": ["-y", "@openai/codex", "mcp-server"]
+    }
+  }
+}
