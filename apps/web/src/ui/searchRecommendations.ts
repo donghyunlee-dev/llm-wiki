@@ -74,8 +74,12 @@ export function resolveSearchDocumentSections(
   return { faqDocuments, recommendedDocuments, relatedDocuments };
 }
 
+function isFaqIndexDocument(document: WikiDocument) {
+  return /\bindex\b/i.test(document.slug) || /\bindex\b/i.test(document.title);
+}
+
 export function buildFaqRecommendations(documents: WikiDocument[], query: string): SearchDocumentSummary[] {
-  const faqDocs = documents.filter((d) => d.metadata.docType === "faq");
+  const faqDocs = documents.filter((d) => d.metadata.docType === "faq" && !isFaqIndexDocument(d));
   return getTopSearchWikiDocumentsIn(faqDocs, query, 3).map((document) => ({
     id: document.id,
     title: document.title,
