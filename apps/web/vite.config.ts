@@ -36,6 +36,11 @@ import {
 } from "../../packages/wiki-core/src/lib/wikiDocuments.ts";
 import { fetchGitHubOrgProjects, type GitHubProject } from "../../packages/wiki-core/src/lib/githubClient.ts";
 import { logSearchToPlaybook, type PlaybookSearchEntry } from "../../packages/wiki-core/src/lib/playbookLogger.ts";
+import {
+  EMPTY_PROMPT_RULES,
+  loadPromptRulesFromConfluence,
+  type DynamicPromptRules,
+} from "../../packages/wiki-core/src/lib/promptRulesLoader.ts";
 
 const WIKI_CACHE_TTL_MS = 30 * 60 * 1000;
 const GITHUB_CACHE_TTL_MS = 30 * 60 * 1000;
@@ -63,6 +68,13 @@ let wikiCachePromise: Promise<WikiCache> | null = null;
 const aiSearchCache = new Map<string, AiSearchCacheEntry>();
 let githubCache: GitHubCache | null = null;
 let githubCachePromise: Promise<GitHubCache> | null = null;
+
+type PromptRulesCache = {
+  expiresAt: number;
+  rules: DynamicPromptRules;
+};
+let promptRulesCache: PromptRulesCache | null = null;
+let promptRulesCachePromise: Promise<PromptRulesCache> | null = null;
 
 function hasConfluenceConfig(env: Record<string, string>) {
   return Boolean(
@@ -341,11 +353,17 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
             return;
           }
 
+          const dynamicRulesResult = env.CONFLUENCE_PROMPT_RULES_PAGE_ID
+            ? await loadDevPromptRulesCache(env)
+            : null;
+          const dynamicRules = dynamicRulesResult?.rules ?? EMPTY_PROMPT_RULES;
+
           const promptContext = buildAiSearchPromptContext(
             contextDocuments,
             question,
             cache.policyDocuments,
             history,
+            dynamicRules,
           );
           const aiResponse = await fetch("https://api.openai.com/v1/responses", {
             method: "POST",
@@ -354,11 +372,11 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              model: env.VITE_OPENAI_MODEL || env.OPENAI_MODEL || "gpt-5-mini",
+              model: env.VITE_OPENAI_MODEL || env.OPENAI_MODEL || "o4-mini",
               input: buildAiSearchInput(promptContext),
               max_output_tokens: 2800,
               reasoning: {
-                effort: "minimal",
+                effort: "low",
               },
               text: {
                 format: {
@@ -445,7 +463,6 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
           }
         } catch (error) {
           const message = error instanceof Error ? error.message : "Failed to answer search question.";
-
           response.statusCode = 502;
           response.end(JSON.stringify({ message, code: "AI_PROVIDER_UNAVAILABLE" }));
         }
@@ -529,6 +546,43 @@ async function loadVisibleDevWikiCache(env: Record<string, string>) {
 
   wikiCache = await wikiCachePromise;
   return wikiCache;
+}
+
+async function loadDevPromptRulesCache(env: Record<string, string>): Promise<PromptRulesCache> {
+  const now = Date.now();
+
+  if (promptRulesCache && promptRulesCache.expiresAt > now) {
+    return promptRulesCache;
+  }
+
+  if (promptRulesCachePromise) {
+    return promptRulesCachePromise;
+  }
+
+  promptRulesCachePromise = loadPromptRulesFromConfluence(
+    {
+      siteName: env.ATLASSIAN_SITE_NAME,
+      userEmail: env.ATLASSIAN_USER_EMAIL,
+      apiToken: env.ATLASSIAN_API_TOKEN,
+    },
+    env.CONFLUENCE_PROMPT_RULES_PAGE_ID,
+  )
+    .then((rules) => {
+      promptRulesCache = { expiresAt: Date.now() + WIKI_CACHE_TTL_MS, rules };
+      return promptRulesCache;
+    })
+    .catch((error) => {
+      console.error("[promptRulesCache] Failed to load prompt rules from Confluence:", error);
+      if (!promptRulesCache) {
+        promptRulesCache = { expiresAt: Date.now() + WIKI_CACHE_TTL_MS, rules: EMPTY_PROMPT_RULES };
+      }
+      return promptRulesCache;
+    })
+    .finally(() => {
+      promptRulesCachePromise = null;
+    });
+
+  return promptRulesCachePromise;
 }
 
 async function fetchAndBuildWikiCache(env: Record<string, string>): Promise<WikiCache> {

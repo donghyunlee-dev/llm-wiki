@@ -44,6 +44,7 @@ export function collectReferencedWikiDocuments(
   const document = new DOMParser().parseFromString(html, "text/html");
   rewriteConfluenceRichNodes(document, documents);
   rewriteAnchorTargets(document, documents);
+  rewritePlainTextWikiTitleReferences(document, documents);
   const seen = new Set<string>();
 
   return Array.from(document.querySelectorAll("a[href]"))
@@ -80,6 +81,7 @@ function parseArticleBlocks(
   const document = new DOMParser().parseFromString(html, "text/html");
   rewriteConfluenceRichNodes(document, documents);
   rewriteAnchorTargets(document, documents);
+  rewritePlainTextWikiTitleReferences(document, documents);
   let headingIndex = 0;
   let skippedDuplicateTitle = false;
   const nodes = Array.from(document.body.childNodes);
@@ -228,9 +230,10 @@ function renderNode(
 
   if (tagName === "blockquote") {
     const calloutKind = resolveCalloutKind(node.className);
+    const calloutTitle = node.getAttribute("data-callout-title") ?? undefined;
 
     return (
-      <WikiCallout key={key} tone={calloutKind}>
+      <WikiCallout key={key} tone={calloutKind} title={calloutTitle}>
         {renderChildNodes(node, key, documents)}
       </WikiCallout>
     );
@@ -305,12 +308,15 @@ function rewriteConfluenceRichNodes(document: Document, documents: WikiDocument[
 
   for (const macroNode of Array.from(document.querySelectorAll("ac\\:structured-macro"))) {
     const element = macroNode as Element;
-    if ((element.getAttribute("ac:name") ?? "") !== "code") {
-      continue;
-    }
+    const name = element.getAttribute("ac:name") ?? "";
 
-    const replacement = resolveConfluenceCodeElement(document, element);
-    element.replaceWith(replacement);
+    if (name === "code") {
+      const replacement = resolveConfluenceCodeElement(document, element);
+      element.replaceWith(replacement);
+    } else if (name === "info" || name === "tip" || name === "note" || name === "warning") {
+      const replacement = resolveConfluenceCalloutElement(document, element);
+      element.replaceWith(replacement);
+    }
   }
 }
 
@@ -364,6 +370,33 @@ function resolveConfluenceLinkElement(document: Document, linkNode: Element, doc
   anchor.textContent = linkedTitle;
 
   return anchor;
+}
+
+const CONFLUENCE_CALLOUT_LABELS: Record<string, string> = {
+  info: "안내",
+  tip: "팁",
+  note: "참고",
+  warning: "주의",
+};
+
+function resolveConfluenceCalloutElement(document: Document, macroNode: Element) {
+  const macroName = macroNode.getAttribute("ac:name") ?? "info";
+  const richBody = macroNode.querySelector("ac\\:rich-text-body");
+  const customTitle = macroNode.querySelector("ac\\:parameter[ac\\:name='title']")?.textContent?.trim();
+
+  const blockquote = document.createElement("blockquote");
+  blockquote.className = macroName;
+
+  const title = customTitle || CONFLUENCE_CALLOUT_LABELS[macroName];
+  if (title) {
+    blockquote.setAttribute("data-callout-title", title);
+  }
+
+  if (richBody) {
+    blockquote.innerHTML = richBody.innerHTML;
+  }
+
+  return blockquote;
 }
 
 function resolveConfluenceCodeElement(document: Document, macroNode: Element) {
@@ -486,6 +519,52 @@ function rewriteAnchorTargets(document: Document, documents: WikiDocument[]) {
   }
 }
 
+function rewritePlainTextWikiTitleReferences(document: Document, documents: WikiDocument[]) {
+  for (const li of Array.from(document.querySelectorAll("li"))) {
+    const pEl = li.children.length === 1 && li.children[0]?.tagName.toLowerCase() === "p"
+      ? (li.children[0] as HTMLElement)
+      : null;
+    const target = pEl ?? li;
+
+    if (target.querySelector("a")) {
+      continue;
+    }
+
+    const text = target.textContent?.trim() ?? "";
+    if (!text) {
+      continue;
+    }
+
+    const normalizedText = normalizeLinkToken(text);
+    const strippedText = stripDocTypePrefix(normalizedText);
+
+    const matched = documents.find((doc) => {
+      const normalizedTitle = normalizeLinkToken(doc.title);
+      const strippedTitle = stripDocTypePrefix(normalizedTitle);
+      return normalizedText === normalizedTitle || strippedText === strippedTitle;
+    });
+
+    if (!matched) {
+      continue;
+    }
+
+    const href = getWikiDocumentHref(matched);
+    if (!href) {
+      continue;
+    }
+
+    const anchor = document.createElement("a");
+    anchor.setAttribute("href", href);
+    anchor.setAttribute("data-wiki-link", "true");
+    anchor.setAttribute("target", "_blank");
+    anchor.setAttribute("rel", "noreferrer");
+    anchor.textContent = text;
+
+    target.textContent = "";
+    target.appendChild(anchor);
+  }
+}
+
 export function resolveWikiDocumentFromAnchor(anchor: HTMLAnchorElement, documents: WikiDocument[]) {
   const rawHref = anchor.getAttribute("href") ?? "";
 
@@ -544,8 +623,9 @@ export function resolveWikiDocumentFromAnchor(anchor: HTMLAnchorElement, documen
       const matchedByTitle = documents.find((document) => {
         const normalizedTitle = normalizeLinkToken(document.title);
         const normalizedSlug = normalizeLinkToken(document.slug);
+        const strippedTitle = stripDocTypePrefix(normalizedTitle);
 
-        return matchesLinkToken(normalizedSegment, normalizedTitle) || matchesLinkToken(normalizedSegment, normalizedSlug);
+        return matchesLinkToken(normalizedSegment, normalizedTitle) || matchesLinkToken(normalizedSegment, normalizedSlug) || matchesLinkToken(normalizedSegment, strippedTitle);
       });
 
       if (matchedByTitle) {
@@ -561,8 +641,9 @@ export function resolveWikiDocumentFromAnchor(anchor: HTMLAnchorElement, documen
     const matchedByText = documents.find((document) => {
       const normalizedTitle = normalizeLinkToken(document.title);
       const normalizedSlug = normalizeLinkToken(document.slug);
+      const strippedTitle = stripDocTypePrefix(normalizedTitle);
 
-      return matchesLinkToken(anchorText, normalizedTitle) || matchesLinkToken(anchorText, normalizedSlug);
+      return matchesLinkToken(anchorText, normalizedTitle) || matchesLinkToken(anchorText, normalizedSlug) || matchesLinkToken(anchorText, strippedTitle);
     });
 
     if (matchedByText) {
@@ -577,8 +658,9 @@ export function resolveWikiDocumentFromAnchor(anchor: HTMLAnchorElement, documen
     const matchedByLinkedTitle = documents.find((document) => {
       const normalizedTitle = normalizeLinkToken(document.title);
       const normalizedSlug = normalizeLinkToken(document.slug);
+      const strippedTitle = stripDocTypePrefix(normalizedTitle);
 
-      return matchesLinkToken(linkedTitle, normalizedTitle) || matchesLinkToken(linkedTitle, normalizedSlug);
+      return matchesLinkToken(linkedTitle, normalizedTitle) || matchesLinkToken(linkedTitle, normalizedSlug) || matchesLinkToken(linkedTitle, strippedTitle);
     });
 
     if (matchedByLinkedTitle) {
@@ -625,6 +707,10 @@ function matchesLinkToken(left: string, right: string) {
   }
 
   return left === right;
+}
+
+function stripDocTypePrefix(normalizedTitle: string) {
+  return normalizedTitle.replace(/^(guide|page|faq|library|project|playbook|ops|policy|nav)\s+/, "");
 }
 
 function isInternalWikiLink(anchor: HTMLAnchorElement, rawHref: string) {

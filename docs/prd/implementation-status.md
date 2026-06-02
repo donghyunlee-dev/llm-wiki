@@ -16,6 +16,16 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-05-28 (7) — 자가 개선 프롬프트 시스템
+- **자가 개선 루프 구축**: Playbook 누적 데이터 → AI 프롬프트 자동 개선 → 서비스 재배포 없이 반영
+  - `promptRulesLoader.ts` 신규: Confluence "Prompt Rules" 페이지 파싱 (`parsePromptRulesFromHtml`, `loadPromptRulesFromConfluence`, `buildInitialPromptRulesPageHtml`)
+  - `playbookAnalyzer.ts` 신규: Playbook 일별 테이블에서 "부족" 패턴 집계 (`analyzeRecentPlaybookFailures`, `parsePlaybookRows`, `extractFailurePatterns`)
+  - `aiAsk.ts` 수정: `AiSearchPromptContext.dynamicRules` 필드 추가, `buildAiSearchInstructionsForIntent`에 동적 규칙 주입 (`buildDynamicRuleLines` 내부 헬퍼)
+  - `vite.config.ts` 수정: `promptRulesCache` + `loadDevPromptRulesCache()` 추가, 검색 핸들러에서 TTL 캐시 기반 동적 규칙 로드
+  - Claude schedule 루틴 등록: 매일 20:00 KST, Playbook 7일치 분석 → "Prompt Rules - Search" Confluence 페이지 자동 갱신 (ID: `trig_018dn6jkaABXrxrkHpKhcriL`)
+  - 환경 변수 `CONFLUENCE_PROMPT_RULES_PAGE_ID` 추가 (미설정 시 기존 프롬프트로 폴백)
+- 검증: `pnpm test` 전체 202개 통과 (신규 20개 포함), `pnpm typecheck` 통과
+
 ### 2026-05-22 (6)
 - **검색 추천/관련 페이지 랭킹 쿼리 불일치 버그 수정**: `vite.config.ts`에서 `rankingRecommendedDocuments` 계산 시 원래 한국어 질문(`searchQuestion`) 대신 Stage 1 이중언어 키워드(`searchQuery`)를 사용하도록 수정.
   - 원인: Stage 2 컨텍스트 문서 검색은 `searchQuery`를 쓰는데, 추천/관련 페이지 랭킹은 `searchQuestion`을 사용 → "스킬" 토큰이 "skill"로 확장되지 않아 "Claude Code Skills" 같은 영어 제목 페이지가 누락됨

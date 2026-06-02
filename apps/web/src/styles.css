@@ -975,15 +975,19 @@ a {
   }
 
   .wiki-callout-content {
-    @apply grid gap-1.5;
+    @apply flex items-start gap-2.5;
   }
 
-  .wiki-callout-title {
-    @apply text-[13px] font-semibold text-page-fg;
+  .wiki-callout-icon {
+    @apply mt-0.5 size-4 shrink-0;
   }
 
   .wiki-callout-body {
-    @apply text-[13px] leading-5 text-muted-fg;
+    @apply flex-1 text-[13px] leading-5 text-muted-fg;
+  }
+
+  .wiki-callout-body > p:first-child {
+    @apply mt-0;
   }
 
   .wiki-callout-body ul {
@@ -994,20 +998,40 @@ a {
     @apply border-accent/20 bg-accent-soft/40;
   }
 
+  .wiki-callout-info .wiki-callout-icon {
+    @apply text-accent;
+  }
+
   .wiki-callout-warning {
     @apply border-amber-400/30 bg-amber-50;
+  }
+
+  .wiki-callout-warning .wiki-callout-icon {
+    @apply text-amber-500;
   }
 
   .wiki-callout-tip {
     @apply border-emerald-400/30 bg-emerald-50;
   }
 
+  .wiki-callout-tip .wiki-callout-icon {
+    @apply text-emerald-500;
+  }
+
   .wiki-callout-note {
     @apply border-panel-border bg-panel-bg;
   }
 
+  .wiki-callout-note .wiki-callout-icon {
+    @apply text-muted-fg;
+  }
+
   .wiki-callout-success {
     @apply border-emerald-400/30 bg-emerald-50;
+  }
+
+  .wiki-callout-success .wiki-callout-icon {
+    @apply text-emerald-500;
   }
 
   .article-rule {

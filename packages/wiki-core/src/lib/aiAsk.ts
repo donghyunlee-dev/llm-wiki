@@ -1,5 +1,6 @@
 import { htmlToPlainText } from "./confluenceReadModel";
 import { classifyQuestionIntent, extractQuestionSubjects, type QuestionIntent } from "./intentClassifier";
+import { EMPTY_PROMPT_RULES, type DynamicPromptRules } from "./promptRulesLoader";
 import type { PolicyDocument } from "./wikiDataSource";
 import { getWikiDocumentHref, type WikiDocument } from "./wikiDocuments";
 
@@ -56,6 +57,7 @@ export type AiSearchPromptContext = {
   }>;
   policyContext: PolicyPromptContext;
   history: ConversationHistoryTurn[];
+  dynamicRules?: DynamicPromptRules;
 };
 
 export type { QuestionIntent as QuestionIntent } from "./intentClassifier";
@@ -130,6 +132,7 @@ export function buildAiSearchPromptContext(
   question: string,
   policyDocuments: PolicyDocument[] = [],
   history: ConversationHistoryTurn[] = [],
+  dynamicRules?: DynamicPromptRules,
 ): AiSearchPromptContext {
   return {
     question: question.trim(),
@@ -139,6 +142,7 @@ export function buildAiSearchPromptContext(
     })),
     policyContext: buildPolicyPromptContext(policyDocuments, question),
     history: normalizeConversationHistory(history),
+    dynamicRules,
   };
 }
 
@@ -183,7 +187,10 @@ export function buildAiSearchInstructions() {
   return buildAiSearchInstructionsForIntent("general");
 }
 
-export function buildAiSearchInstructionsForIntent(questionIntent: QuestionIntent) {
+export function buildAiSearchInstructionsForIntent(
+  questionIntent: QuestionIntent,
+  dynamicRules: DynamicPromptRules = EMPTY_PROMPT_RULES,
+) {
   const intentLines = getQuestionIntentInstructionLines(questionIntent);
 
   return [
@@ -239,6 +246,7 @@ export function buildAiSearchInstructionsForIntent(questionIntent: QuestionInten
     "Return recommendedPages in strongest-first order. When the searchResults clearly form an index/overview family, do not stop at a single page: return the primary overview/index page first and then 1-3 strong supporting pages from the same family when they directly help the user's question.",
     "If the supplied search results do not fully answer the question, list the missing parts in unsupportedClaims.",
     "immediateActions, exampleCommands, verificationChecks, and cautions are supplemental. Use them only for details that genuinely add value, but make sure the main answer remains useful on its own.",
+    ...buildDynamicRuleLines(dynamicRules),
   ].join("\n");
 }
 
@@ -275,7 +283,7 @@ export function buildAiSearchInput(context: AiSearchPromptContext) {
   return [
     {
       role: "system" as const,
-      content: buildAiSearchInstructionsForIntent(questionIntent),
+      content: buildAiSearchInstructionsForIntent(questionIntent, context.dynamicRules),
     },
     {
       role: "user" as const,
@@ -744,6 +752,30 @@ export function buildQueryUnderstandingInput(question: string, history: Conversa
       content: JSON.stringify({ question: contextualQuestion }),
     },
   ];
+}
+
+function buildDynamicRuleLines(rules: DynamicPromptRules): string[] {
+  const lines: string[] = [];
+
+  if (rules.additionalInstructions.length > 0) {
+    lines.push(
+      "Additional search guidelines (auto-updated from recurring search failure patterns — follow these alongside the base instructions above):",
+    );
+    for (const instruction of rules.additionalInstructions) {
+      lines.push(`- ${instruction}`);
+    }
+  }
+
+  if (rules.keywordHints.length > 0) {
+    lines.push(
+      "Keyword expansion hints (when the question contains these Korean terms, also consider the mapped English equivalents when searching for relevant pages):",
+    );
+    for (const hint of rules.keywordHints) {
+      lines.push(`- ${hint}`);
+    }
+  }
+
+  return lines;
 }
 
 export function queryUnderstandingJsonSchema() {
