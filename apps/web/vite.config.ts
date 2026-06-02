@@ -409,6 +409,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
               title: document.title,
               summary: document.summary,
               href: getWikiDocumentHref(document) ?? "#",
+              docType: document.metadata.docType,
             }));
           const recommendedPageIds = Array.isArray(result.recommendedPages)
             ? new Set(
@@ -429,6 +430,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
               title: document.title,
               summary: document.summary,
               href: getWikiDocumentHref(document) ?? "#",
+              docType: document.metadata.docType,
             }));
           // 추천 페이지: AI가 직접 선택한 페이지 (없으면 랭킹 상위)
           const recommendedDocuments = (aiRecommendedDocuments.length ? aiRecommendedDocuments : rankingRecommendedDocuments)

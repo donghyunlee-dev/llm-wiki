@@ -918,7 +918,7 @@ a {
   }
 
   .wiki-code-frame {
-    @apply relative mt-4 w-full max-w-full overflow-hidden rounded-[var(--radius-md)] border pt-10;
+    @apply relative mt-4 w-full max-w-full overflow-hidden rounded-[var(--radius-md)] border;
     border-color: var(--code-frame-border);
     background: var(--code-frame-bg);
   }

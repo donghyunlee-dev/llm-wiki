@@ -315,7 +315,22 @@ function rewriteConfluenceRichNodes(document: Document, documents: WikiDocument[
       element.replaceWith(replacement);
     } else if (name === "info" || name === "tip" || name === "note" || name === "warning") {
       const replacement = resolveConfluenceCalloutElement(document, element);
-      element.replaceWith(replacement);
+      const parent = element.parentElement;
+      const parentClass = parent?.className?.toLowerCase() ?? "";
+      const parentIsWrapper =
+        parent?.tagName.toLowerCase() === "div" &&
+        [
+          "confluence-information-macro",
+          "confluence-warning-macro",
+          "confluence-note-macro",
+          "confluence-tip-macro",
+          "confluence-success-macro",
+        ].some((t) => parentClass.includes(t));
+      if (parentIsWrapper && parent) {
+        parent.replaceWith(replacement);
+      } else {
+        element.replaceWith(replacement);
+      }
     }
   }
 }
@@ -446,7 +461,7 @@ function renderChildNodes(node: Element, keyPrefix: string, documents?: WikiDocu
 }
 
 function looksLikeCallout(node: Element) {
-  const className = node.className.toLowerCase();
+  const classTokens = node.className.toLowerCase().split(/\s+/);
   return [
     "confluence-information-macro",
     "confluence-warning-macro",
@@ -455,7 +470,7 @@ function looksLikeCallout(node: Element) {
     "confluence-success-macro",
     "panel",
     "callout",
-  ].some((token) => className.includes(token));
+  ].some((token) => classTokens.includes(token));
 }
 
 function looksLikeCodeBlock(node: Element) {

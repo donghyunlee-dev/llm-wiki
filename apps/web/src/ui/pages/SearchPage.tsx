@@ -6,6 +6,7 @@ import { getPolicyNoticeMessage, shouldShowPolicyNotice } from "../../lib/policy
 import { StructuredAnswerView } from "../StructuredAnswerView";
 import {
   buildFallbackRecommendedDocuments,
+  buildFaqRecommendations,
   resolveSearchDocumentSections,
   resolveSearchRecommendedDocuments,
   type SearchDocumentSummary,
@@ -209,10 +210,13 @@ export function SearchPage() {
 
         {conversation.map((item) => {
           const recommendedDocuments = resolveSearchRecommendedDocuments(item.answer ?? null, item.fallbackDocuments);
-          const { recommendedDocuments: primaryRecommendations, relatedDocuments } = resolveSearchDocumentSections(
+          const directFaqDocuments = buildFaqRecommendations(documents, item.question);
+          const { faqDocuments: aiFaqDocuments, recommendedDocuments: primaryRecommendations, relatedDocuments } = resolveSearchDocumentSections(
             item.answer ?? null,
             item.fallbackDocuments,
           );
+          const faqSeenIds = new Set(aiFaqDocuments.map((d) => d.id));
+          const faqDocuments = [...aiFaqDocuments, ...directFaqDocuments.filter((d) => !faqSeenIds.has(d.id))];
 
           return (
             <div className="chat-turn" key={item.id}>
@@ -226,6 +230,7 @@ export function SearchPage() {
                 ) : item.status === "complete" && item.answer ? (
                   <SearchAnswerView
                     answer={item.answer}
+                    faqDocuments={faqDocuments}
                     recommendedDocuments={primaryRecommendations}
                     relatedDocuments={relatedDocuments}
                   />
@@ -258,14 +263,13 @@ export function SearchPage() {
                 aria-describedby={showEmptyHint ? "chat-empty-input-hint" : undefined}
               />
               <button type="submit" aria-label="질문 전송" title="질문 전송">
-                <svg aria-hidden="true" viewBox="0 0 20 20">
+                <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
                   <path
-                    d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
-                    fill="none"
+                    d="M10 15V5M5.5 9.5L10 5l4.5 4.5"
                     stroke="currentColor"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth="1.7"
+                    strokeWidth="1.8"
                   />
                 </svg>
               </button>
@@ -284,10 +288,12 @@ export function SearchPage() {
 
 function SearchAnswerView({
   answer,
+  faqDocuments,
   recommendedDocuments,
   relatedDocuments,
 }: {
   answer: SearchAnswer;
+  faqDocuments: SearchDocumentSummary[];
   recommendedDocuments: SearchDocumentSummary[];
   relatedDocuments: SearchDocumentSummary[];
 }) {
@@ -313,6 +319,13 @@ function SearchAnswerView({
 
       {shouldShowPolicyNotice(answer.policyNotice) ? (
         <PolicyNoticeView policyNotice={answer.policyNotice} />
+      ) : null}
+
+      {faqDocuments.length ? (
+        <section>
+          <h2>자주 묻는 질문</h2>
+          <SearchResultSummary documents={faqDocuments} />
+        </section>
       ) : null}
 
       {recommendedDocuments.length ? (

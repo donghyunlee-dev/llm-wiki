@@ -59,9 +59,12 @@ function SearchHero() {
             <button
               type="submit"
               className="home-search-button"
-              aria-label="Search"
+              aria-label="검색"
             >
-              🔍
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-5 w-5">
+                <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" strokeWidth="1.6" />
+                <path d="M13 13L16.5 16.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
             </button>
           </div>
         </form>

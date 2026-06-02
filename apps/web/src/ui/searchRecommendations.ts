@@ -1,10 +1,11 @@
-import { getIndexFirstSearchWikiDocumentsIn, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
+import { getIndexFirstSearchWikiDocumentsIn, getTopSearchWikiDocumentsIn, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
 
 export type SearchDocumentSummary = {
   id: string;
   title: string;
   summary: string;
   href: string;
+  docType?: string;
 };
 
 type SearchAnswerLike = {
@@ -54,24 +55,34 @@ export function resolveSearchDocumentSections(
 ) {
   // 서버가 relatedDocuments를 명시적으로 보내면 그대로 사용 (추천/관련 분리 경로)
   if (answer?.relatedDocuments !== undefined) {
-    const recommendedDocuments = answer.recommendedDocuments?.length
+    const allRecommended = answer.recommendedDocuments?.length
       ? answer.recommendedDocuments
       : fallbackDocuments.slice(0, 4);
-    return {
-      recommendedDocuments,
-      relatedDocuments: answer.relatedDocuments,
-    };
+    const faqDocuments = allRecommended.filter((d) => d.docType === "faq");
+    const recommendedDocuments = allRecommended.filter((d) => d.docType !== "faq");
+    const relatedDocuments = answer.relatedDocuments.filter((d) => d.docType !== "faq");
+    return { faqDocuments, recommendedDocuments, relatedDocuments };
   }
 
   // fallback: 이전 방식 (통합 목록을 3/나머지로 분리)
   const allDocuments = resolveSearchRecommendedDocuments(answer, fallbackDocuments);
-  const recommendedDocuments = allDocuments.slice(0, 3);
-  const relatedDocuments = allDocuments.slice(3);
+  const faqDocuments = allDocuments.filter((d) => d.docType === "faq");
+  const nonFaqDocuments = allDocuments.filter((d) => d.docType !== "faq");
+  const recommendedDocuments = nonFaqDocuments.slice(0, 3);
+  const relatedDocuments = nonFaqDocuments.slice(3);
 
-  return {
-    recommendedDocuments,
-    relatedDocuments,
-  };
+  return { faqDocuments, recommendedDocuments, relatedDocuments };
+}
+
+export function buildFaqRecommendations(documents: WikiDocument[], query: string): SearchDocumentSummary[] {
+  const faqDocs = documents.filter((d) => d.metadata.docType === "faq");
+  return getTopSearchWikiDocumentsIn(faqDocs, query, 3).map((document) => ({
+    id: document.id,
+    title: document.title,
+    summary: document.summary,
+    href: getWikiDocumentHref(document) ?? `/search?q=${encodeURIComponent(document.title)}`,
+    docType: document.metadata.docType,
+  }));
 }
 
 export function buildFallbackRecommendedDocuments(documents: WikiDocument[], query: string) {
@@ -85,5 +96,6 @@ export function buildFallbackRecommendedDocuments(documents: WikiDocument[], que
       title: document.title,
       summary: document.summary,
       href: getWikiDocumentHref(document) ?? `/search?q=${encodeURIComponent(document.title)}`,
+      docType: document.metadata.docType,
     }));
 }
