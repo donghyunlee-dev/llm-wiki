@@ -294,6 +294,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
         try {
           const body = await readJsonBody(request);
           const question = typeof body.question === "string" ? body.question.trim() : "";
+          const persona = typeof body.persona === "string" ? body.persona.trim() : "";
           const history = parseConversationHistory(body.history);
           const searchQuestion = buildSearchFollowUpQuestion(question, history);
 
@@ -432,20 +433,33 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
               href: getWikiDocumentHref(document) ?? "#",
               docType: document.metadata.docType,
             }));
+          const isFullyUnsupportedResult =
+            Array.isArray(result.confluenceData) &&
+            result.confluenceData.length === 0 &&
+            Array.isArray(result.unsupportedClaims) &&
+            result.unsupportedClaims.length > 0;
           // 추천 페이지: AI가 직접 선택한 페이지 (없으면 랭킹 상위)
-          const recommendedDocuments = (aiRecommendedDocuments.length ? aiRecommendedDocuments : rankingRecommendedDocuments)
-            .slice(0, 4);
+          const recommendedDocuments = isFullyUnsupportedResult
+            ? []
+            : (aiRecommendedDocuments.length ? aiRecommendedDocuments : rankingRecommendedDocuments).slice(0, 4);
           // 관련 페이지: 랭킹 기반 페이지 중 추천 페이지에 없는 것
           const recommendedIds = new Set(recommendedDocuments.map((d) => d.id));
-          const relatedDocuments = rankingRecommendedDocuments
-            .filter((d) => !recommendedIds.has(d.id))
-            .slice(0, 4);
+          const relatedDocuments = isFullyUnsupportedResult
+            ? []
+            : rankingRecommendedDocuments
+                .filter((d) => !recommendedIds.has(d.id))
+                .slice(0, 4);
           const { recommendedPages: _recommendedPages, ...responseWithoutRawPages } = result as {
             recommendedPages?: unknown;
             [key: string]: unknown;
           };
+          const unsupportedForSufficiency = Array.isArray(responseWithoutRawPages.unsupportedClaims)
+            ? responseWithoutRawPages.unsupportedClaims
+            : [];
+          const sufficiency = unsupportedForSufficiency.length === 0 && recommendedDocuments.length >= 2 ? "충분" : "부족";
           const responsePayload = {
             ...responseWithoutRawPages,
+            sufficiency,
             policyNotice: enrichPolicyNoticeSources(
               { policyNotice: responseWithoutRawPages.policyNotice },
               promptContext.policyContext.selectedPolicies,
@@ -459,7 +473,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
 
           // Fire-and-forget: log to Playbook after response is sent
           if (env.CONFLUENCE_PLAYBOOK_PAGE_ID) {
-            firePlaybookLog(env, question, responsePayload).catch((err) => {
+            firePlaybookLog(env, question, persona, responsePayload).catch((err) => {
               console.error("[playbook]", err instanceof Error ? err.message : err);
             });
           }
@@ -476,6 +490,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
 function firePlaybookLog(
   env: Record<string, string>,
   question: string,
+  persona: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
   const answer = typeof payload.answer === "string" ? payload.answer : "";
@@ -495,13 +510,12 @@ function firePlaybookLog(
 
   const missingKeywords: string[] = isSufficient
     ? []
-    : unsupportedClaims.length > 0
-      ? unsupportedClaims.filter((c): c is string => typeof c === "string").slice(0, 5)
-      : [question];
+    : unsupportedClaims.filter((c): c is string => typeof c === "string").slice(0, 5);
 
   const entry: PlaybookSearchEntry = {
     timestamp: new Date(),
     question,
+    persona,
     answerSummary,
     recommendedDocuments,
     sufficiency,

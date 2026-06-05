@@ -9,6 +9,7 @@ import {
 export type PlaybookSearchEntry = {
   timestamp: Date;
   question: string;
+  persona?: string;
   answerSummary: string;
   recommendedDocuments: Array<{ title: string; href: string }>;
   sufficiency: "충분" | "부족";
@@ -32,6 +33,7 @@ export function buildPlaybookEntryRowHtml(entry: PlaybookSearchEntry): string {
     "    <tr>",
     `      <td>${escapeHtml(timestamp)}</td>`,
     `      <td>${escapeHtml(entry.question)}</td>`,
+    `      <td>${escapeHtml(entry.persona?.trim() || "-")}</td>`,
     `      <td>${escapeHtml(entry.answerSummary)}</td>`,
     `      <td>${recommendedList}</td>`,
     `      <td>${entry.sufficiency}</td>`,
@@ -47,6 +49,7 @@ export function buildPlaybookLogTableHtml(entry: PlaybookSearchEntry): string {
     "    <tr>",
     "      <th>검색 일시</th>",
     "      <th>질문</th>",
+    "      <th>페르소나</th>",
     "      <th>응답 요약</th>",
     "      <th>추천 문서</th>",
     "      <th>충분도</th>",
@@ -106,6 +109,7 @@ function appendPlaybookEntryRow(bodyHtml: string, entryRowHtml: string): string 
       "    <tr>",
       "      <th>검색 일시</th>",
       "      <th>질문</th>",
+      "      <th>페르소나</th>",
       "      <th>응답 요약</th>",
       "      <th>추천 문서</th>",
       "      <th>충분도</th>",
@@ -138,7 +142,7 @@ function formatKstDate(date: Date): string {
 }
 
 function formatKstTimestamp(date: Date): string {
-  return date.toLocaleString("ko-KR", {
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
     year: "numeric",
     month: "2-digit",
@@ -146,7 +150,9 @@ function formatKstTimestamp(date: Date): string {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
-  });
+  }).formatToParts(date);
+  const v = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${v.year}-${v.month}-${v.day} ${v.hour}:${v.minute}`;
 }
 
 function escapeHtml(text: string): string {
