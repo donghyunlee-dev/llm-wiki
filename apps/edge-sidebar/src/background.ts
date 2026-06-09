@@ -31,9 +31,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const targetKey = getPanelTargetKey(tabId, windowId);
   const currentOpen = panelOpenByTarget.get(targetKey) === true;
   const action = getToggleAction(currentOpen, message.action ?? "toggle");
-  const closePanel = chrome.sidePanel.close;
   const request = action === "close"
-    ? closeSidePanel(closePanel, tabId, windowId)
+    ? closeSidePanel(tabId, windowId)
     : openSidePanel(tabId, windowId);
 
   request
@@ -74,13 +73,9 @@ async function openSidePanel(tabId?: number, windowId?: number) {
   await Promise.all([optionsPromise, openPromise]);
 }
 
-async function closeSidePanel(
-  closePanel: typeof chrome.sidePanel.close | undefined,
-  tabId?: number,
-  windowId?: number
-) {
-  if (typeof closePanel === "function" && typeof windowId === "number") {
-    await closePanel({ windowId });
+async function closeSidePanel(tabId?: number, windowId?: number) {
+  if (typeof chrome.sidePanel.close === "function" && typeof windowId === "number") {
+    await chrome.sidePanel.close({ windowId });
     return;
   }
 
