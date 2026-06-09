@@ -18,14 +18,16 @@ const SAMPLE_TABLE_HTML = `
 <table>
   <thead>
     <tr>
-      <th>검색 일시</th><th>질문</th><th>응답 요약</th>
-      <th>추천 문서</th><th>충분도</th><th>부족 키워드</th>
+      <th>검색 일시</th><th>질문</th><th>청중</th><th>페르소나</th>
+      <th>응답 요약</th><th>추천 문서</th><th>충분도</th><th>부족 키워드</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td>2026-05-28 10:00</td>
       <td>jira 이슈를 읽으려면?</td>
+      <td>전문</td>
+      <td>백엔드 엔지니어</td>
       <td>현재 위키에 해당 주제에 대한 페이지가 없습니다.</td>
       <td>없음</td>
       <td>부족</td>
@@ -34,6 +36,8 @@ const SAMPLE_TABLE_HTML = `
     <tr>
       <td>2026-05-28 11:00</td>
       <td>MCP 설정 방법은?</td>
+      <td>-</td>
+      <td>-</td>
       <td>MCP 설정은 가이드 페이지를 참고하세요.</td>
       <td>Guide MCP Setup</td>
       <td>충분</td>
@@ -42,6 +46,8 @@ const SAMPLE_TABLE_HTML = `
     <tr>
       <td>2026-05-28 12:00</td>
       <td>지라 연동 어떻게 해?</td>
+      <td>초급·중급 학습자</td>
+      <td>-</td>
       <td>현재 위키에 해당 주제에 대한 페이지가 없습니다.</td>
       <td>없음</td>
       <td>부족</td>

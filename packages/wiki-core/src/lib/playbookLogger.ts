@@ -9,6 +9,7 @@ import {
 export type PlaybookSearchEntry = {
   timestamp: Date;
   question: string;
+  audience?: string;
   persona?: string;
   answerSummary: string;
   recommendedDocuments: Array<{ title: string; href: string }>;
@@ -33,6 +34,7 @@ export function buildPlaybookEntryRowHtml(entry: PlaybookSearchEntry): string {
     "    <tr>",
     `      <td>${escapeHtml(timestamp)}</td>`,
     `      <td>${escapeHtml(entry.question)}</td>`,
+    `      <td>${escapeHtml(entry.audience?.trim() || "-")}</td>`,
     `      <td>${escapeHtml(entry.persona?.trim() || "-")}</td>`,
     `      <td>${escapeHtml(entry.answerSummary)}</td>`,
     `      <td>${recommendedList}</td>`,
@@ -49,6 +51,7 @@ export function buildPlaybookLogTableHtml(entry: PlaybookSearchEntry): string {
     "    <tr>",
     "      <th>검색 일시</th>",
     "      <th>질문</th>",
+    "      <th>청중</th>",
     "      <th>페르소나</th>",
     "      <th>응답 요약</th>",
     "      <th>추천 문서</th>",
@@ -109,6 +112,7 @@ function appendPlaybookEntryRow(bodyHtml: string, entryRowHtml: string): string 
       "    <tr>",
       "      <th>검색 일시</th>",
       "      <th>질문</th>",
+      "      <th>청중</th>",
       "      <th>페르소나</th>",
       "      <th>응답 요약</th>",
       "      <th>추천 문서</th>",

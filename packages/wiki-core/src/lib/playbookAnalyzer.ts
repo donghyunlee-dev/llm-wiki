@@ -71,12 +71,12 @@ export function parsePlaybookRows(html: string): PlaybookRow[] {
     }
 
     const cells = extractTableCells(match[1]);
-    // columns: timestamp(0), question(1), answerSummary(2), recommendedDocs(3), sufficiency(4), missingKeywords(5)
-    if (cells.length < 6) continue;
+    // columns: timestamp(0), question(1), audience(2), persona(3), answerSummary(4), recommendedDocs(5), sufficiency(6), missingKeywords(7)
+    if (cells.length < 8) continue;
 
     const question = cells[1].trim();
-    const sufficiency = cells[4].trim();
-    const missingRaw = cells[5].trim();
+    const sufficiency = cells[6].trim();
+    const missingRaw = cells[7].trim();
     const missingKeywords =
       missingRaw === "-" || missingRaw === ""
         ? []
