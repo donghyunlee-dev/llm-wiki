@@ -64,15 +64,14 @@ export function getPanelTargetKey(tabId?: number, windowId?: number) {
 }
 
 async function openSidePanel(tabId?: number, windowId?: number) {
-  if (typeof tabId === "number") {
-    await chrome.sidePanel.setOptions({
-      tabId,
-      path: SIDEPANEL_PATH,
-      enabled: true
-    });
-  }
-
-  await chrome.sidePanel.open({ tabId, windowId });
+  // await 없이 두 IPC를 같은 JS 턴에 dispatch한다.
+  // Chrome IPC는 순서가 보장되므로 브라우저는 setOptions(enable) → open(show) 순으로 처리한다.
+  // open() 호출 전에 await가 없으므로 user gesture 토큰이 유지된다.
+  const optionsPromise = typeof tabId === "number"
+    ? chrome.sidePanel.setOptions({ tabId, path: SIDEPANEL_PATH, enabled: true })
+    : Promise.resolve();
+  const openPromise = chrome.sidePanel.open({ tabId, windowId });
+  await Promise.all([optionsPromise, openPromise]);
 }
 
 async function closeSidePanel(
