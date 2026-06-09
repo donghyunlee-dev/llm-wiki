@@ -13,7 +13,7 @@ export function getToggleAction(
 }
 
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((error: unknown) => {
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: false }).catch((error: unknown) => {
     console.error("Failed to configure side panel action behavior.", error);
   });
 });
@@ -56,6 +56,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
 
   return true;
+});
+
+chrome.action.onClicked.addListener((tab) => {
+  const tabId = tab.id;
+  const windowId = tab.windowId;
+
+  if (typeof tabId !== "number" && typeof windowId !== "number") {
+    return;
+  }
+
+  const targetKey = getPanelTargetKey(tabId, windowId);
+  const currentOpen = panelOpenByTarget.get(targetKey) === true;
+  const resolvedAction = getToggleAction(currentOpen, "toggle");
+
+  const request = resolvedAction === "close"
+    ? closeSidePanel(tabId, windowId)
+    : openSidePanel(tabId, windowId);
+
+  request.then(() => {
+    panelOpenByTarget.set(targetKey, resolvedAction === "open");
+    void persistToggleState();
+  }).catch(() => {
+    panelOpenByTarget.set(targetKey, resolvedAction === "close");
+    void persistToggleState();
+  });
 });
 
 export function getPanelTargetKey(tabId?: number, windowId?: number) {
