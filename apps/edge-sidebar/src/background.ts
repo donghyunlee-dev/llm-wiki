@@ -1,5 +1,8 @@
 const panelOpenByTarget = new Map<string, boolean>();
 const SIDEPANEL_PATH = "sidepanel.html";
+const SESSION_STATE_KEY = "sfoodWikiSidebar.panelOpenByTarget";
+
+void restoreToggleState();
 
 export function getToggleAction(
   currentOpen: boolean,
@@ -37,13 +40,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   request
     .then(() => {
-      const ok = true;
       const panelOpen = action === "open";
       panelOpenByTarget.set(targetKey, panelOpen);
-      sendResponse({ ok, panelOpen });
+      void persistToggleState();
+      sendResponse({ ok: true, panelOpen });
     })
     .catch((error: unknown) => {
       panelOpenByTarget.set(targetKey, action === "close");
+      void persistToggleState();
       sendResponse({
         ok: false,
         panelOpen: action === "close",
@@ -85,6 +89,38 @@ async function closeSidePanel(tabId?: number, windowId?: number) {
   }
 
   throw new Error("Failed to close side panel.");
+}
+
+async function restoreToggleState(): Promise<void> {
+  try {
+    const stored = await chrome.storage.session.get(SESSION_STATE_KEY);
+    const entries = stored[SESSION_STATE_KEY];
+    if (!Array.isArray(entries)) {
+      return;
+    }
+
+    for (const entry of entries as unknown[]) {
+      if (
+        Array.isArray(entry) &&
+        typeof entry[0] === "string" &&
+        typeof entry[1] === "boolean"
+      ) {
+        panelOpenByTarget.set(entry[0], entry[1]);
+      }
+    }
+  } catch {
+    // Non-critical: empty state is safe
+  }
+}
+
+async function persistToggleState(): Promise<void> {
+  try {
+    await chrome.storage.session.set({
+      [SESSION_STATE_KEY]: [...panelOpenByTarget.entries()]
+    });
+  } catch {
+    // Non-critical
+  }
 }
 
 function isOpenSidePanelMessage(message: unknown): message is { type: "OPEN_SFOOD_WIKI_SIDE_PANEL"; action?: "open" | "close" | "toggle" } {
