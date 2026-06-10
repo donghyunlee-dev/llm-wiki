@@ -249,10 +249,67 @@ function readSidebarDocument(value: unknown): SidebarDocumentRaw | null {
         : typeof nestedPage?.summary === "string"
           ? nestedPage.summary
           : "",
-    contentHtml: rawContentHtml,
+    contentHtml: rewriteConfluenceStorageLinks(rawContentHtml),
     relatedDocuments: [],
     relatedIds,
   };
+}
+
+export function rewriteConfluenceStorageLinks(html: string): string {
+  return html.replace(/<ac:link([^>]*)>([\s\S]*?)<\/ac:link>/gi, (_match, attrs, inner) => {
+    const anchorMatch = attrs.match(/ac:anchor="([^"]+)"/i);
+    if (anchorMatch) {
+      const anchorId = anchorMatch[1] as string;
+      const linkText = extractConfluenceLinkText(inner as string) || anchorId;
+      return `<a href="#${anchorId}">${escapeHtml(linkText)}</a>`;
+    }
+
+    const pageIdMatch =
+      (inner as string).match(/ri:content-id="([^"]+)"/i) ||
+      (inner as string).match(/ri:page-id="([^"]+)"/i);
+    const pageId = pageIdMatch?.[1]?.trim() ?? "";
+
+    const linkText =
+      extractConfluenceLinkText(inner as string) ||
+      ((inner as string).match(/ri:content-title="([^"]+)"/i)?.[1]?.trim() ?? "");
+
+    if (!linkText) {
+      return "";
+    }
+
+    if (pageId) {
+      return `<a href="/wiki/${pageId}">${escapeHtml(linkText)}</a>`;
+    }
+
+    return escapeHtml(linkText);
+  });
+}
+
+function extractConfluenceLinkText(inner: string): string {
+  const cdataMatch = inner.match(
+    /<ac:plain-text-link-body[^>]*><!\[CDATA\[([\s\S]*?)\]\]><\/ac:plain-text-link-body>/i,
+  );
+  if (cdataMatch?.[1]?.trim()) {
+    return cdataMatch[1].trim();
+  }
+
+  const plainMatch = inner.match(
+    /<ac:plain-text-link-body[^>]*>([\s\S]*?)<\/ac:plain-text-link-body>/i,
+  );
+  if (plainMatch?.[1]?.trim()) {
+    return plainMatch[1].trim();
+  }
+
+  const linkBodyMatch = inner.match(/<ac:link-body[^>]*>([\s\S]*?)<\/ac:link-body>/i);
+  if (linkBodyMatch?.[1]?.trim()) {
+    return linkBodyMatch[1].trim();
+  }
+
+  return "";
+}
+
+function escapeHtml(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function parseWikiHref(baseUrl: string, href: string) {

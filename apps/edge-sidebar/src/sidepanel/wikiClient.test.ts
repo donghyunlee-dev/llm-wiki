@@ -6,7 +6,8 @@ import {
   findWikiDocumentByHref,
   normalizeWikiBaseUrl,
   normalizeWikiSearchResponse,
-  resolveWikiHref
+  resolveWikiHref,
+  rewriteConfluenceStorageLinks
 } from "./wikiClient";
 
 describe("wiki sidebar client helpers", () => {
@@ -176,5 +177,88 @@ describe("wiki sidebar client helpers", () => {
     });
 
     expect(result.sources).toEqual([{ title: "Claude Code Worktrees", href: "/wiki/95780877" }]);
+  });
+});
+
+describe("rewriteConfluenceStorageLinks", () => {
+  it("CDATA plain-text-link-body와 page ID가 있는 ac:link를 <a> 태그로 변환한다", () => {
+    const html =
+      `<p><ac:link><ri:page ri:content-id="12345" /><ac:plain-text-link-body><![CDATA[Codex Index]]></ac:plain-text-link-body></ac:link></p>`;
+    expect(rewriteConfluenceStorageLinks(html)).toBe(
+      `<p><a href="/wiki/12345">Codex Index</a></p>`
+    );
+  });
+
+  it("ac:anchor 속성이 있는 ac:link를 페이지 내 해시 링크로 변환한다", () => {
+    const html =
+      `<ac:link ac:anchor="section-setup"><ac:plain-text-link-body><![CDATA[설치 섹션]]></ac:plain-text-link-body></ac:link>`;
+    expect(rewriteConfluenceStorageLinks(html)).toBe(
+      `<a href="#section-setup">설치 섹션</a>`
+    );
+  });
+
+  it("page ID 없이 content-title만 있는 경우 텍스트만 렌더링한다", () => {
+    const html =
+      `<ac:link><ri:page ri:content-title="Unknown Page" /></ac:link>`;
+    expect(rewriteConfluenceStorageLinks(html)).toBe("Unknown Page");
+  });
+
+  it("링크 텍스트가 없으면 빈 문자열로 변환한다", () => {
+    const html = `<ac:link><ri:page ri:content-id="99" /></ac:link>`;
+    expect(rewriteConfluenceStorageLinks(html)).toBe("");
+  });
+
+  it("ri:page-id 속성도 page ID로 인식한다", () => {
+    const html =
+      `<ac:link><ri:page ri:page-id="55555" /><ac:plain-text-link-body><![CDATA[다른 가이드]]></ac:plain-text-link-body></ac:link>`;
+    expect(rewriteConfluenceStorageLinks(html)).toBe(
+      `<a href="/wiki/55555">다른 가이드</a>`
+    );
+  });
+
+  it("일반 <a> 태그는 변경하지 않는다", () => {
+    const html = `<p><a href="https://example.com">외부 링크</a></p>`;
+    expect(rewriteConfluenceStorageLinks(html)).toBe(html);
+  });
+
+  it("여러 ac:link 요소를 각각 변환한다", () => {
+    const html = [
+      `<ac:link><ri:page ri:content-id="100" /><ac:plain-text-link-body><![CDATA[Page A]]></ac:plain-text-link-body></ac:link>`,
+      `<ac:link><ri:page ri:content-id="200" /><ac:plain-text-link-body><![CDATA[Page B]]></ac:plain-text-link-body></ac:link>`,
+    ].join(" ");
+    const result = rewriteConfluenceStorageLinks(html);
+    expect(result).toContain(`<a href="/wiki/100">Page A</a>`);
+    expect(result).toContain(`<a href="/wiki/200">Page B</a>`);
+  });
+
+  it("링크 텍스트의 HTML 특수문자를 이스케이프한다", () => {
+    const html =
+      `<ac:link><ri:page ri:content-id="77" /><ac:plain-text-link-body><![CDATA[A & B <Guide>]]></ac:plain-text-link-body></ac:link>`;
+    expect(rewriteConfluenceStorageLinks(html)).toBe(
+      `<a href="/wiki/77">A &amp; B &lt;Guide&gt;</a>`
+    );
+  });
+});
+
+describe("findWikiDocumentByHref — contentHtml link rewriting", () => {
+  it("가이드 본문의 ac:link를 <a href='/wiki/{id}'> 태그로 변환해서 반환한다", () => {
+    const document = findWikiDocumentByHref(
+      [
+        {
+          slug: "codex-cli-setup",
+          page: {
+            id: "95780877",
+            title: "Codex CLI Setup",
+            bodyHtml: `<h2>관련 문서</h2><p><ac:link><ri:page ri:content-id="12345" /><ac:plain-text-link-body><![CDATA[Codex Index]]></ac:plain-text-link-body></ac:link></p>`,
+            metadata: { related: [] }
+          }
+        }
+      ],
+      "http://localhost:5173",
+      "/guides/codex-cli-setup"
+    );
+
+    expect(document?.contentHtml).toContain(`<a href="/wiki/12345">Codex Index</a>`);
+    expect(document?.contentHtml).not.toContain("<ac:link>");
   });
 });
