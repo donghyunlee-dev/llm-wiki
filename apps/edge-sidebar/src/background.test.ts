@@ -1,6 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { getToggleAction, getPanelTargetKey } from "./background";
+import { closeSidePanel, getToggleAction, getPanelTargetKey } from "./background";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("getToggleAction", () => {
   it("닫힌 상태에서 toggle → 'open'", () => {
@@ -33,5 +37,23 @@ describe("getPanelTargetKey", () => {
 
   it("둘 다 없으면 'window:unknown' 반환", () => {
     expect(getPanelTargetKey(undefined, undefined)).toBe("window:unknown");
+  });
+});
+
+describe("closeSidePanel", () => {
+  it("tabId가 있으면 setOptions({ tabId, enabled: false })로 탭 단위 패널을 닫는다", async () => {
+    await closeSidePanel(123, 456);
+    expect(chrome.sidePanel.setOptions).toHaveBeenCalledWith({ tabId: 123, enabled: false });
+    expect(chrome.sidePanel.close).not.toHaveBeenCalled();
+  });
+
+  it("tabId 없고 windowId만 있으면 close({ windowId })를 사용한다", async () => {
+    await closeSidePanel(undefined, 456);
+    expect(chrome.sidePanel.close).toHaveBeenCalledWith({ windowId: 456 });
+    expect(chrome.sidePanel.setOptions).not.toHaveBeenCalled();
+  });
+
+  it("tabId, windowId 모두 없으면 에러를 던진다", async () => {
+    await expect(closeSidePanel(undefined, undefined)).rejects.toThrow("Failed to close side panel.");
   });
 });

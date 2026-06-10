@@ -7,6 +7,13 @@ vi.stubGlobal("chrome", {
   runtime: {
     onInstalled: { addListener: vi.fn() },
     onMessage: { addListener: vi.fn() },
+    onConnect: { addListener: vi.fn() },
+    connect: vi.fn().mockReturnValue({
+      name: "",
+      onDisconnect: { addListener: vi.fn() },
+      disconnect: vi.fn(),
+      postMessage: vi.fn()
+    }),
     lastError: undefined
   },
   sidePanel: {

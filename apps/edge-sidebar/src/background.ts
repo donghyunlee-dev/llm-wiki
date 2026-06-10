@@ -95,21 +95,33 @@ async function openSidePanel(tabId?: number, windowId?: number) {
   // await 없이 두 IPC를 같은 JS 턴에 dispatch한다.
   // Chrome IPC는 순서가 보장되므로 브라우저는 setOptions(enable) → open(show) 순으로 처리한다.
   // open() 호출 전에 await가 없으므로 user gesture 토큰이 유지된다.
+  // path에 tabId를 포함시켜 사이드 패널이 포트 이름 결정에 사용할 수 있도록 한다.
+  const path = typeof tabId === "number" ? `${SIDEPANEL_PATH}?tabId=${tabId}` : SIDEPANEL_PATH;
   const optionsPromise = typeof tabId === "number"
-    ? chrome.sidePanel.setOptions({ tabId, path: SIDEPANEL_PATH, enabled: true })
+    ? chrome.sidePanel.setOptions({ tabId, path, enabled: true })
     : Promise.resolve();
   const openPromise = chrome.sidePanel.open({ tabId, windowId });
   await Promise.all([optionsPromise, openPromise]);
 }
 
-async function closeSidePanel(tabId?: number, windowId?: number) {
-  if (typeof chrome.sidePanel.close === "function" && typeof windowId === "number") {
-    await chrome.sidePanel.close({ windowId });
+chrome.runtime.onConnect.addListener((port) => {
+  const PREFIX = "sfood-wiki:";
+  if (!port.name.startsWith(PREFIX)) return;
+  const key = port.name.slice(PREFIX.length);
+  port.onDisconnect.addListener(() => {
+    panelOpenByTarget.set(key, false);
+    void persistToggleState();
+  });
+});
+
+export async function closeSidePanel(tabId?: number, windowId?: number) {
+  if (typeof tabId === "number") {
+    await chrome.sidePanel.setOptions({ tabId, enabled: false });
     return;
   }
 
-  if (typeof tabId === "number") {
-    await chrome.sidePanel.setOptions({ tabId, enabled: false });
+  if (typeof chrome.sidePanel.close === "function" && typeof windowId === "number") {
+    await chrome.sidePanel.close({ windowId });
     return;
   }
 

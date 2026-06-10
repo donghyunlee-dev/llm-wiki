@@ -6,6 +6,13 @@ declare namespace chrome {
   }
 
   namespace runtime {
+    interface Port {
+      name: string;
+      sender?: { tab?: { id?: number; windowId?: number } };
+      onDisconnect: { addListener(callback: () => void): void };
+      disconnect(): void;
+      postMessage(message: unknown): void;
+    }
     const onInstalled: {
       addListener(callback: () => void): void;
     };
@@ -18,6 +25,10 @@ declare namespace chrome {
         ) => boolean | void
       ): void;
     };
+    const onConnect: {
+      addListener(callback: (port: Port) => void): void;
+    };
+    function connect(connectInfo?: { name?: string }): Port;
     function sendMessage(message: unknown, responseCallback?: (response: unknown) => void): void;
     const lastError: { message?: string } | undefined;
   }
