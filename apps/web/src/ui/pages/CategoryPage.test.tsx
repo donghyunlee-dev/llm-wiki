@@ -76,12 +76,16 @@ describe("CategoryPage", () => {
     );
 
     expect(markup).toContain("가이드 1");
+    expect(markup).toContain("<textarea");
     expect(markup).toContain("가이드 10");
     expect(markup).not.toContain("가이드 11");
     expect(markup).not.toContain("[Intro] 시작 안내");
     expect(markup).not.toContain("페이지형 문서");
-    expect(markup).toContain("[추천 가이드]");
-    expect(markup).toContain("통합 검색");
+    expect(markup).toContain("추천 가이드");
+    expect(markup).not.toContain("[추천 가이드]");
+    expect(markup).toContain('aria-label="홈으로 돌아가기"');
+    expect(markup).toContain("category-page-header");
+    expect(markup).toContain("category-home-link");
     expect(markup).toContain("이전");
     expect(markup).toContain("다음");
     expect(markup).not.toContain("대상");

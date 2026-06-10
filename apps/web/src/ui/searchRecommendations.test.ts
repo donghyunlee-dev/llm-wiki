@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { WikiDocument } from "@sfood/wiki-core";
 import {
   buildFallbackRecommendedDocuments,
+  isFullyUnsupportedSearchAnswer,
   resolveSearchDocumentSections,
   resolveSearchRecommendedDocuments,
 } from "./searchRecommendations";
@@ -66,6 +67,7 @@ describe("searchRecommendations", () => {
         title: "Codex Guide",
         summary: "Guide summary",
         href: "/guides/codex-guide",
+        docType: "guide",
       },
     ]);
   });
@@ -120,5 +122,64 @@ describe("searchRecommendations", () => {
 
     expect(result.recommendedDocuments.map((item) => item.id)).toEqual(["page-1", "page-2"]);
     expect(result.relatedDocuments).toEqual([]);
+  });
+
+  it("suppresses every page section for a fully unsupported answer", () => {
+    const answer = {
+      confluenceData: [],
+      unsupportedClaims: ["claude worktrees"],
+      recommendedDocuments: [
+        { id: "page-1", title: "Unrelated", summary: "Unrelated summary", href: "/guides/unrelated" },
+      ],
+      relatedDocuments: [
+        { id: "page-2", title: "Also unrelated", summary: "Unrelated summary", href: "/guides/also-unrelated" },
+      ],
+    };
+    const fallbackDocuments = [
+      { id: "page-3", title: "Fallback", summary: "Fallback summary", href: "/guides/fallback" },
+    ];
+
+    expect(isFullyUnsupportedSearchAnswer(answer)).toBe(true);
+    expect(resolveSearchRecommendedDocuments(answer, fallbackDocuments)).toEqual([]);
+    expect(resolveSearchDocumentSections(answer, fallbackDocuments)).toEqual({
+      faqDocuments: [],
+      recommendedDocuments: [],
+      relatedDocuments: [],
+    });
+  });
+
+  it("suppresses every page section when the visible answer says the topic page does not exist", () => {
+    const answer = {
+      answer: "현재 위키에 해당 주제에 대한 페이지가 없습니다. 관련 가이드가 필요하시면 IT 담당자에게 문의해 주세요.",
+      confluenceData: [],
+      unsupportedClaims: [],
+      recommendedDocuments: [
+        { id: "page-1", title: "Unrelated", summary: "Unrelated summary", href: "/guides/unrelated" },
+      ],
+      relatedDocuments: [
+        { id: "page-2", title: "Also unrelated", summary: "Unrelated summary", href: "/guides/also-unrelated" },
+      ],
+    };
+
+    expect(isFullyUnsupportedSearchAnswer(answer)).toBe(true);
+    expect(resolveSearchDocumentSections(answer, [])).toEqual({
+      faqDocuments: [],
+      recommendedDocuments: [],
+      relatedDocuments: [],
+    });
+  });
+
+  it("keeps page sections for a partially supported answer", () => {
+    const answer = {
+      confluenceData: [{ pageId: "page-1" }],
+      unsupportedClaims: ["one missing detail"],
+      recommendedDocuments: [
+        { id: "page-1", title: "Supported", summary: "Supported summary", href: "/guides/supported" },
+      ],
+      relatedDocuments: [],
+    };
+
+    expect(isFullyUnsupportedSearchAnswer(answer)).toBe(false);
+    expect(resolveSearchDocumentSections(answer, []).recommendedDocuments.map((item) => item.id)).toEqual(["page-1"]);
   });
 });

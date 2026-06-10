@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildFallbackSearchQuery,
   expandSearchContextDocuments,
   getIndexFirstSearchWikiDocumentsIn,
   getTopSearchWikiDocumentsIn,
@@ -68,6 +69,14 @@ describe("wiki document graph helpers", () => {
     ], "윈도우에서 gpt에 파일 시스템 mcp 어떻게 설정해?");
 
     expect(groups.guides[0]?.id).toBe("mcp");
+  });
+
+  it("builds a cleaner fallback query when stage-1 keyword extraction is unavailable", () => {
+    const fallback = buildFallbackSearchQuery("claude worktree를 설명하세요.");
+    expect(fallback).toContain("claude");
+    expect(fallback).toContain("worktree");
+    expect(fallback).toContain("worktrees");
+    expect(fallback).not.toContain("설명");
   });
 
   it("normalizes Korean particles and email synonyms in search terms", () => {
@@ -144,6 +153,34 @@ describe("wiki document graph helpers", () => {
     expect(
       getTopSearchWikiDocumentsIn([setupDoc, overviewDoc], "mcp가 뭐지?", 1).map((doc) => doc.id),
     ).toEqual(["overview"]);
+  });
+
+  it("rescues exact page-backed concept topics above broad neighboring guides", () => {
+    const broadGuide = document({
+      id: "guide",
+      metadata: {
+        ...document().metadata,
+        docType: "guide",
+      },
+      title: "[Guide] Claude Code로 자동화 워크플로우 만들기",
+      summary: "Claude Code workflow guide",
+      contentHtml: "<p>Claude Code로 자동화 흐름을 설명합니다.</p>",
+    });
+    const targetPage = document({
+      id: "worktree",
+      slug: "guide-claude-code-worktrees",
+      metadata: {
+        ...document().metadata,
+        docType: "page",
+      },
+      title: "[Guide] Claude Code Worktrees",
+      summary: "Claude Code worktree는 여러 작업을 서로 격리해 병렬로 진행하는 방법입니다.",
+      contentHtml: "<p>claude --worktree와 git worktree 차이를 설명합니다.</p>",
+    });
+
+    expect(
+      getTopSearchWikiDocumentsIn([broadGuide, targetPage], "claude worktree를 설명하세요.", 1).map((doc) => doc.id),
+    ).toEqual(["worktree"]);
   });
 
   it("keeps concept overview pages ahead of generic index pages for concept questions", () => {

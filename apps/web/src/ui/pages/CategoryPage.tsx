@@ -3,6 +3,7 @@ import { listWikiDocumentsBySectionFrom, type WikiDocument } from "@sfood/wiki-c
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
+import { PromptComposer } from "../PromptComposer";
 import { WikiStatePanel } from "./WikiStatePanel";
 import {
   WikiDocumentListItem,
@@ -27,6 +28,7 @@ const GUIDE_PAGE_SIZE = 10;
 
 export function CategoryPage({ section }: { section: WikiSection }) {
   const { documents, errorMessage, isLoading } = useWikiData();
+  const [draftQuery, setDraftQuery] = useState("");
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const copy = SECTION_COPY[section];
@@ -75,6 +77,11 @@ export function CategoryPage({ section }: { section: WikiSection }) {
   }, [query, section]);
 
   useEffect(() => {
+    setDraftQuery("");
+    setQuery("");
+  }, [section]);
+
+  useEffect(() => {
     if (page > pageCount) {
       setPage(pageCount);
     }
@@ -102,24 +109,61 @@ export function CategoryPage({ section }: { section: WikiSection }) {
   return (
     <div className="page-shell">
       <div className="page-width-narrow page-panel">
-        <Link className="text-link" to="/">
-          홈으로 돌아가기
-        </Link>
-        <h1 className="title-hero mt-6">
-          {section === "guides" ? "[추천 가이드]" : copy.title}
-        </h1>
-        <p className="body-copy mt-6 max-w-3xl">{copy.body}</p>
-        <div className="document-toolbar">
-          <label className="document-field document-field-grow">
-            <span>통합 검색</span>
-            <input
-              className="control-input"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="문서 제목, 요약, 목차를 검색"
-            />
-          </label>
+        <div className="category-page-header">
+          <h1 className="title-hero">
+            {copy.title}
+          </h1>
+          <Link
+            className="category-home-link"
+            to="/"
+            aria-label="홈으로 돌아가기"
+            title="홈으로 돌아가기"
+          >
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-4 w-4">
+              <path
+                d="M3.75 9.25 10 4l6.25 5.25"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M5.25 8.75V16h9.5V8.75"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path
+                d="M8.25 16V11.75h3.5V16"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Link>
         </div>
+        <PromptComposer
+          value={draftQuery}
+          onValueChange={setDraftQuery}
+          onSubmit={() => setQuery(draftQuery.trim())}
+          placeholder="문서 제목, 요약, 목차를 검색"
+          ariaLabel="가이드 검색"
+          buttonAriaLabel="가이드 검색"
+          buttonTitle="가이드 검색"
+          className="document-search-composer mt-5"
+          textareaClassName="document-search-input prompt-composer-textarea"
+          buttonClassName="document-search-button prompt-composer-button"
+          minRows={1}
+          maxRows={1}
+          buttonIcon={(
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-4 w-4">
+              <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M13 13L16.5 16.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          )}
+        />
 
         <p className="mt-3 text-[13px] text-muted-fg">
           전체 {sectionDocuments.length}개 중 {visibleDocuments.length}개 표시

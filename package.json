@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "pnpm --filter @sfood/web dev",
     "build": "pnpm --filter @sfood/web build",
+    "build:extension": "pnpm --filter @sfood/edge-sidebar build",
     "preview": "pnpm --filter @sfood/web preview",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",

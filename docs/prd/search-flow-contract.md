@@ -26,8 +26,10 @@
 ## 관련성 판단 규칙
 - 검색 결과의 관련성 판단은 **텍스트 매칭 Gate가 아니라 AI 프롬프트 수준에서 처리**한다.
 - `searchResults`에 질문과 의미 있게 관련된 페이지가 없으면 AI는 "현재 위키에 해당 주제에 대한 페이지가 없습니다"라고만 답한다.
+- AI가 관련 페이지가 없다고 판단해 `confluenceData`를 비우고 `unsupportedClaims`를 반환하면, FAQ·추천 페이지·관련 페이지를 모두 표시하지 않는다.
 - **비교·차이 질문**("A와 B의 차이는?")은 A 페이지와 B 페이지가 각각 있을 때 두 페이지를 함께 사용하는 것이 올바른 동작이다. 단일 페이지에 두 주제가 모두 포함되어야 한다는 조건을 적용하지 않는다.
 - 관련성 낮은 문서가 AI context에 포함되지 않도록, lexical scorer에서 다중 토큰 커버리지 점수를 적용한다. 질문의 핵심 토큰 중 일부만 포함하는 문서는 점수가 낮아져 자연스럽게 context에서 밀려난다.
+- Stage 1 query-understanding이 usable keyword를 반환하지 못하면, 서버는 원문 질문을 그대로 쓰지 말고 질문어 노이즈를 제거한 fallback 검색 쿼리를 만들어 lexical 검색에 사용한다.
 - 하드코딩된 도구 목록(`KNOWN_SUBJECTS` 스타일)이나 한국어→영어 수동 매핑 배열을 늘려 관련성을 개선하는 방식은 사용하지 않는다. 이 방식은 배포 후 새 도구 등록마다 코드 수정이 필요해 유지보수 불가 상태가 된다.
 
 ## 검색 탐색 규칙
@@ -113,6 +115,9 @@
 ## 서버 측 추천 목록 구성 규칙
 
 검색 API 응답의 `recommendedDocuments`와 `relatedDocuments`는 서버에서 다음 방식으로 구성한다.
+
+- 완전 미지원 응답(`confluenceData` 없음 + `unsupportedClaims` 있음)은 두 배열을 모두 비운다. 클라이언트도 fallback 추천과 FAQ를 추가하지 않는다.
+- AI가 보이는 답변에서 "현재 위키에 해당 주제에 대한 페이지가 없습니다"처럼 no-page 문구를 반환했는데 `unsupportedClaims`를 비워 둔 경우, 서버는 이를 완전 미지원 응답으로 정규화해야 한다.
 
 ### 추천 페이지 (`recommendedDocuments`, 최대 4개)
 1. AI가 선택한 `recommendedPages` 중 index·navigation·onboarding 페이지를 제외한 결과를 우선 사용한다.

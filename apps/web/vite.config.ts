@@ -24,6 +24,7 @@ import {
   parseRemoteWikiPageRecords,
 } from "../../packages/wiki-core/src/lib/wikiDataSource.ts";
 import {
+  buildFallbackSearchQuery,
   expandSearchContextDocuments,
   getIndexFirstSearchWikiDocumentsIn,
   getTopSearchWikiDocumentsIn,
@@ -36,6 +37,7 @@ import {
 } from "../../packages/wiki-core/src/lib/wikiDocuments.ts";
 import { fetchGitHubOrgProjects, type GitHubProject } from "../../packages/wiki-core/src/lib/githubClient.ts";
 import { logSearchToPlaybook, type PlaybookSearchEntry } from "../../packages/wiki-core/src/lib/playbookLogger.ts";
+import { isFullyUnsupportedSearchAnswerState, isNoPageStyleSearchAnswer } from "./src/lib/searchAnswerState";
 import {
   EMPTY_PROMPT_RULES,
   loadPromptRulesFromConfluence,
@@ -322,7 +324,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
             .filter(Boolean);
           const searchQuery = searchKeywords?.length
             ? searchKeywords.join(" ")
-            : searchQuestion;
+            : buildFallbackSearchQuery(searchQuestion) || searchQuestion;
 
           // Stage 2: Lexical page search using Stage 1 keywords
           const topDocuments = (questionIntent === "broad-planning" || questionIntent === "concept")
@@ -433,11 +435,12 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
               href: getWikiDocumentHref(document) ?? "#",
               docType: document.metadata.docType,
             }));
-          const isFullyUnsupportedResult =
-            Array.isArray(result.confluenceData) &&
-            result.confluenceData.length === 0 &&
-            Array.isArray(result.unsupportedClaims) &&
-            result.unsupportedClaims.length > 0;
+          const normalizedUnsupportedClaims = normalizeUnsupportedClaimsForSearchResult(result);
+          const normalizedResult = {
+            ...result,
+            unsupportedClaims: normalizedUnsupportedClaims,
+          };
+          const isFullyUnsupportedResult = isFullyUnsupportedSearchAnswerState(normalizedResult);
           // 추천 페이지: AI가 직접 선택한 페이지 (없으면 랭킹 상위)
           const recommendedDocuments = isFullyUnsupportedResult
             ? []
@@ -453,12 +456,12 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
             recommendedPages?: unknown;
             [key: string]: unknown;
           };
-          const unsupportedForSufficiency = Array.isArray(responseWithoutRawPages.unsupportedClaims)
-            ? responseWithoutRawPages.unsupportedClaims
-            : [];
-          const sufficiency = unsupportedForSufficiency.length === 0 && recommendedDocuments.length >= 2 ? "충분" : "부족";
+          const sufficiency = !isFullyUnsupportedResult && normalizedUnsupportedClaims.length === 0 && recommendedDocuments.length >= 2
+            ? "충분"
+            : "부족";
           const responsePayload = {
             ...responseWithoutRawPages,
+            unsupportedClaims: normalizedUnsupportedClaims,
             sufficiency,
             policyNotice: enrichPolicyNoticeSources(
               { policyNotice: responseWithoutRawPages.policyNotice },
@@ -765,7 +768,10 @@ async function fetchQueryUnderstanding(
       body: JSON.stringify({
         model: env.VITE_OPENAI_MODEL || env.OPENAI_MODEL || "gpt-5-mini",
         input: buildQueryUnderstandingInput(question, history),
-        max_output_tokens: 200,
+        max_output_tokens: 400,
+        reasoning: {
+          effort: "low",
+        },
         text: {
           format: {
             type: "json_schema",
@@ -789,6 +795,28 @@ async function fetchQueryUnderstanding(
   } catch {
     return null;
   }
+}
+
+function normalizeUnsupportedClaimsForSearchResult(
+  result: Pick<QueryUnderstanding, never> & {
+    answer?: unknown;
+    confluenceData?: unknown;
+    unsupportedClaims?: unknown;
+  },
+) {
+  const unsupportedClaims = Array.isArray(result.unsupportedClaims)
+    ? result.unsupportedClaims.filter((claim): claim is string => typeof claim === "string" && claim.trim().length > 0)
+    : [];
+
+  if (unsupportedClaims.length > 0) {
+    return unsupportedClaims;
+  }
+
+  if (isNoPageStyleSearchAnswer({ answer: typeof result.answer === "string" ? result.answer : "", confluenceData: Array.isArray(result.confluenceData) ? result.confluenceData as Array<{ pageId: string }> : [] })) {
+    return ["검색 결과에 질문을 직접 뒷받침하는 공개 문서가 없습니다."];
+  }
+
+  return unsupportedClaims;
 }
 
 function enrichPolicyNoticeSources<T extends Record<string, unknown>>(

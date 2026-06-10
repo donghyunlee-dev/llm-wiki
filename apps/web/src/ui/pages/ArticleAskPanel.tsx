@@ -4,13 +4,13 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type FormEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Link } from "react-router-dom";
 import { getWikiDocumentByIdFrom, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
 import { getPolicyNoticeMessage, shouldShowPolicyNotice } from "../../lib/policyNotice";
 import { StructuredAnswerView } from "../StructuredAnswerView";
+import { PromptComposer } from "../PromptComposer";
 
 type AskResult = {
   answer: string;
@@ -45,8 +45,8 @@ type AskTurn = {
   errorMessage?: string;
 };
 
-const COLLAPSED_HEIGHT = 64;
-const EXPANDED_HEIGHT = 280;
+const COLLAPSED_HEIGHT = 92;
+const EXPANDED_HEIGHT = 320;
 
 export function ArticleAskPanel({
   documents,
@@ -86,8 +86,7 @@ export function ArticleAskPanel({
     window.addEventListener("pointerup", stopResize);
   };
 
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submitQuestion = async () => {
     const trimmedQuestion = question.trim();
 
     if (!trimmedQuestion) {
@@ -163,7 +162,7 @@ export function ArticleAskPanel({
       onPointerDown={(event) => {
         const target = event.target as HTMLElement;
 
-        if (target.closest("input, button, a")) {
+        if (target.closest("textarea, button, a")) {
           return;
         }
 
@@ -193,16 +192,21 @@ export function ArticleAskPanel({
         </div>
       ) : null}
 
-      <form className="article-ask-form" onSubmit={submit}>
-        <input
-          value={question}
-          onChange={(event) => setQuestion(event.target.value)}
-          placeholder="이 문서에서 궁금한 내용을 입력하세요"
-        />
-        <button type="submit" aria-label="질문 전송" title="질문 전송">
-          <SendIcon />
-        </button>
-      </form>
+      <PromptComposer
+        value={question}
+        onValueChange={setQuestion}
+        onSubmit={submitQuestion}
+        className="article-ask-form"
+        textareaClassName="article-ask-form-textarea prompt-composer-textarea"
+        buttonClassName="article-ask-form-button prompt-composer-button"
+        ariaLabel="문서 질문"
+        buttonAriaLabel="질문 전송"
+        buttonTitle="질문 전송"
+        minRows={2}
+        maxRows={7}
+        placeholder="이 문서에서 궁금한 내용을 입력하세요"
+        buttonIcon={<SendIcon />}
+      />
     </section>
   );
 }

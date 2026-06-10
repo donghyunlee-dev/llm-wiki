@@ -112,6 +112,7 @@ describe("HomePage", () => {
     );
 
     expect(markup).toContain("사내 지식을 쉽게 찾아보세요");
+    expect(markup).toContain("<textarea");
     expect(markup).toContain("추천 가이드");
     expect(markup).toContain("시작 가이드");
     expect(markup).toContain("/guides/agent-start");

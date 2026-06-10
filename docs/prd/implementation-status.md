@@ -16,6 +16,135 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-06-09 — 브라우저 사이드바 확장 MVP 추가
+- 기존 위키 앱과 분리된 `apps/edge-sidebar` 워크스페이스 패키지를 추가.
+- Manifest V3 기반 side panel extension으로 구성:
+  - toolbar action 클릭 시 side panel 열기
+  - 로컬 기본 위키 URL `http://localhost:5173`
+  - multiline 질문 입력
+  - `/api/wiki/ai/search` 호출
+  - API 실패 시 `/search?q=` fallback 링크 제공
+- 로컬 로드 피드백 반영:
+  - 웹 favicon 기반 PNG 아이콘 4종 추가
+  - 웹 공통 CSS 변수 톤으로 사이드바 UI 재정렬
+  - 상단 URL/텍스트 제거
+  - 우측 상단 홈 아이콘 추가
+  - 답변 영역을 상단 full 영역으로 확장
+  - 검색 composer를 하단 고정
+  - 답변 markdown 링크와 참고 문서 링크를 새 탭으로 열도록 수정
+  - 검색 후 입력값 초기화 및 제출 질문을 답변 상단에 표시
+  - 참고 문서 링크 contrast 수정
+  - composer 내부 우측 하단 전송 버튼으로 변경
+  - `http://localhost:5173/*` 페이지에 draggable floating launcher 주입
+- 전역 브라우저 사이트로 범위를 넓혀 `"<all_urls>"`에서 플로팅 launcher가 보이도록 변경.
+- 플로팅 launcher는 hover 시 확장되며 wiki home 버튼과 환경 설정 popover를 제공.
+- hover 시 제목 텍스트는 표시하지 않고, 위에는 home 아래에는 settings 버튼을 분리해서 보여줌.
+- launcher 설정은 `chrome.storage.local`에 저장되어 사이트를 바꿔도 유지.
+- 사이드 패널 헤더에 launcher 복구 버튼을 추가해 숨김 상태를 다시 해제할 수 있게 함.
+- 가이드 결과를 선택하면 새 창 대신 side panel 내부의 오른쪽 슬라이드 영역으로 전환되며, 상단 뒤로 가기 버튼으로 검색 화면으로 복귀할 수 있게 함.
+- 가이드 슬라이드 영역은 전체 페이지 URL iframe 대신 `/api/wiki-pages`에서 찾은 문서의 본문 HTML만 렌더링하도록 변경.
+- 검색 답변과 가이드 본문 스크롤은 extension 전용 얇은 scrollbar 스타일로 조정.
+- 검색 화면 복귀 화살표를 가이드 화면의 상단 왼쪽 끝으로 이동.
+- 검색 답변은 단일 결과 교체가 아니라 side panel 세션 안에서 chat turn으로 누적되도록 변경. side panel을 닫거나 새로고침하면 초기화됨.
+- 질문 말풍선과 답변/참고문서/입력 영역 typography를 더 작고 촘촘하게 조정해 좁은 side panel에서 줄바꿈을 줄임.
+- 동일 제목 source 중 `/guides/...` 링크를 우선해 참고 문서 링크가 slide-in guide view로 열리도록 복구.
+- launcher hover 액션 배치를 위는 home, 아래는 settings로 정렬.
+- launcher를 Shadow DOM으로 전환해 일반 웹사이트 CSS가 버튼/아이콘/옵션 팝업 스타일을 깨지 않도록 격리.
+- 메인 책 버튼 pointer drag를 복구하고, 세로 이동 위치를 `chrome.storage.local`에 저장하도록 변경.
+- 옵션의 상단/하단 이동은 새로고침 없이 즉시 위치를 바꾸고 저장하도록 변경.
+- 플로팅 launcher의 흰 배경 패널을 제거하고 아이콘만 투명하게 노출되도록 단순화.
+- hover/expanded/drag 상태에서 home/settings와 메인 아이콘 투명도를 낮춰 페이지 콘텐츠를 덜 가리도록 조정.
+- launcher 확장 모델을 수정해 메인 아이콘은 항상 100% opacity로 유지하고, hover 시 home/settings 아이콘만 뒤에서 위/아래로 slide-out되도록 변경.
+- side panel 닫기 요청이 브라우저 API에서 실패하면 닫힘 상태를 storage에 저장하지 않도록 보정.
+- 직전 launcher CSS 회귀를 수정:
+  - settings popover가 초기 로드부터 떠 있던 문제 제거
+  - popover 버튼에 launcher absolute positioning이 새는 문제 제거
+  - 책 아이콘 크기를 다시 크게 표시
+  - 숨김 상태에서도 새로고침 후 오른쪽 핸들이 보이도록 조정
+- unpacked extension을 새로고침한 뒤 기존 탭에 남아 있던 stale content script가 `Extension context invalidated`를 던지는 문제를 완화:
+  - content script startup과 launcher action에서 invalidated context 예외를 잡아 uncaught rejection으로 남지 않도록 보정
+  - stale launcher는 자동 teardown 처리
+  - 다만 브라우저 탭 자체는 새 확장 context를 쓰기 위해 한 번 새로고침이 필요
+- 숨김 기능 추가 후 메인 런처 아이콘까지 화면 밖으로 밀려 기능이 죽은 것처럼 보이던 회귀를 수정:
+  - hidden 상태에서도 메인 책 아이콘은 그대로 보이고 클릭 가능
+  - hidden 상태는 home/settings 보조 아이콘만 막도록 단순화
+- 런처 열기/닫기 토글이 extension storage의 `sfoodWikiSidebar.panelOpen` 값에 종속되던 문제를 수정:
+  - 메인 런처 클릭은 저장값을 읽지 않고 background에 `toggle` 요청만 보냄
+  - background service worker가 탭 단위 메모리 상태로 open/close 방향을 결정
+  - 기존 `panelOpen` 저장 키는 startup에서 제거되어 더 이상 동작을 좌우하지 않음
+- side panel open/close 호환성 경로를 보강:
+  - open 전 현재 탭을 `setOptions(... enabled: true)`로 다시 활성화
+  - global side panel 닫기는 `windowId` 기준 `close()`를 우선 사용
+  - `close()`가 없는 브라우저에서는 `setOptions({ tabId, enabled: false })`로 현재 탭 패널을 숨김
+- 확장 표시 이름을 `SFOOD AI Wiki`로 변경.
+- 로컬 unpacked 설치 및 패키징 가이드를 `apps/edge-sidebar/README.md`에 추가.
+- 검증: `pnpm --filter @sfood/edge-sidebar test`, `pnpm --filter @sfood/edge-sidebar typecheck`, `pnpm --filter @sfood/edge-sidebar build`, `pnpm test`, `pnpm typecheck` 통과. MCP Playwright는 로컬 위키 페이지 접속은 확인했으나, MCP 브라우저 context에 unpacked extension이 로드되지 않아 설치 확장 UI의 직접 시각 검증은 사용자 브라우저에서 필요.
+
+### 2026-06-08 — `/guides` 검색 박스 중복 테두리 및 다크모드 버튼 가시성 수정
+- `/guides` 리스트에서 검색 입력을 감싸던 바깥 래퍼를 제거해 이중 테두리를 해소.
+- 공유 `PromptComposer` 버튼 스타일을 테마 변수 기반으로 바꿔 다크모드에서도 검색 버튼이 사라지지 않도록 수정.
+- 검색 입력 영역의 세로 여백을 소폭 조정해 리스트 상단 밀도를 유지.
+- 검증: `pnpm --filter @sfood/web test`, `pnpm --filter @sfood/web typecheck` 통과.
+
+### 2026-06-08 — `/guides` 헤더를 아이콘 홈 링크로 정리
+- `/guides` 페이지에서 `[추천 가이드]` 괄호 타이틀을 일반 `추천 가이드`로 교체.
+- 상단 `홈으로 돌아가기` 텍스트 링크를 오른쪽 정렬 아이콘 링크로 교체하고, 접근성용 `aria-label`/`title`을 유지.
+- `CategoryPage` 테스트를 새 레이아웃과 아이콘 링크 기준으로 갱신.
+- 검증: `pnpm --filter @sfood/web test -- --run src/ui/pages/CategoryPage.test.tsx`, `pnpm --filter @sfood/web typecheck` 통과.
+
+### 2026-06-08 — guide-like `page` 후보 메타데이터를 `guide`로 재분류
+- 조사에서 확인한 강한 guide-like `page` 후보 10개를 Confluence에서 직접 `wiki.metadata.docType=guide`로 변경.
+- 대상: `119930898`, `95846431`, `95715380`, `95748126`, `97124360`, `107708613`, `107675805`, `114294785`, `114163769`, `114294946`
+- 변경 후 동일 페이지들을 다시 읽어 `docType=guide`로 반영되었음을 확인.
+- 이 작업은 Confluence 메타데이터만 수정했고 본문은 변경하지 않음.
+
+### 2026-06-08 — guide-like `page` docType 후보 조사
+- Confluence space `63111172`의 current pages 321개를 읽고 `wiki.metadata.docType = page` 문서 중 guide-like 신호를 가진 후보를 조사.
+- 제목/본문 구조 기준으로 153개 후보를 추려냈고, 그중 `[Guide]` 접두사와 단계형 본문 구조를 가진 문서들이 추천 가이드/`/guides` 표면에서 누락될 가능성이 높음을 확인.
+- 대표 후보로 `119930898` `[Guide] Claude Code vs Codex 도구 비교 및 선택 가이드`, `95846431` `[Guide] Claude Code Checkpointing`, `95715380` `[Guide] Claude Code Sessions`, `107708613` `[Guide] Claude 모델 선택 가이드: Opus, Sonnet, Haiku 비교` 등을 확인.
+- 이 작업은 분석-only로 수행했으며 Confluence 메타데이터나 앱 코드는 변경하지 않음.
+
+### 2026-06-08 — 가이드 목차 계층 표시 및 HTML 엔티티 렌더 보정
+- 가이드/문서 우측 목차에서 하위 heading이 공백만 보이던 문제를 수정.
+  - level 2: `•`
+  - level 3: `—`
+  - level 4: `·`
+  marker와 단계별 padding을 추가해 구조가 한눈에 드러나도록 조정
+- Confluence read model에서 HTML entity 처리 보강:
+  - `contentHtml`: `&amp;entity;`를 `&entity;`로 한 단계 unescape
+  - `summary`, `headings.text`: `&mdash;`, `&nbsp;`, numeric entity 등을 실제 문자로 디코딩
+- 검증: `pnpm --filter @sfood/wiki-core test`, `pnpm --filter @sfood/web test`, `pnpm typecheck`, Playwright MCP 시작 가이드 목차 확인 통과.
+
+### 2026-06-08 — 검색 composer 멀티라인 UX 및 홈 밀도 조정
+- 홈 검색, 검색 결과 검색, 가이드 목록 검색, 문서 상세 Ask 패널을 공통 `PromptComposer` 기반 multiline textarea로 통일.
+- 입력 규칙 통일:
+  - plain `Enter` 제출/검색
+  - `Shift+Enter` 줄바꿈
+  - IME 조합 중 `Enter` submit 방지
+- 홈 화면 조정:
+  - 검색 폭을 추천 가이드 프레임과 동일한 `max-w-4xl`로 확장
+  - 검색 박스 라디우스를 추천 가이드 카드와 동일한 `8px`로 정렬
+  - hero 상하 여백과 검색-가이드 간격을 줄여 첫 화면에서 스크롤 없이 함께 보이도록 압축
+- 가이드 목록 검색은 `Enter` 확정형으로 바꾸고, 검색 textarea 높이를 키워 긴 질의 입력 가독성을 개선.
+- 검증: `pnpm --filter @sfood/web test`, `pnpm typecheck`, Playwright MCP 홈/검색/가이드/문서 상세 확인 통과.
+
+### 2026-06-08 — Rovo 수준 검색 답변 품질을 위한 retrieval 보강
+- `claude worktree를 설명하세요.` 같은 페이지-기반 개념 질문에서 broad Claude guide가 직접 대상 페이지를 이기는 문제를 수정.
+- 검색 스코어링 보강:
+  - 질문어 노이즈 토큰 제거 (`설명하세요`, `알려줘` 등)
+  - 영문 단복수 변형 보정 (`worktree` / `worktrees`)
+  - 다중 토큰 커버리지 및 title/slug 2-token 매치 보너스 추가
+  - concept 질문에서 direct subject coverage가 강한 `page` 문서가 broad guide보다 밀리지 않도록 보정
+- Stage 1 query-understanding이 usable keyword를 돌려주지 못할 때, raw 질문 대신 정제된 fallback 검색 쿼리를 사용하도록 수정.
+- AI가 보이는 답변에서 "현재 위키에 해당 주제에 대한 페이지가 없습니다"라고 말하면서 `unsupportedClaims`를 비워 두는 경우를 서버/클라이언트가 완전 미지원 응답으로 정규화하도록 수정.
+- 검증: `pnpm --filter @sfood/wiki-core test`, `pnpm --filter @sfood/web test`, `pnpm typecheck` 통과. 로컬 dev API 재현에서 `claude worktree를 설명하세요.`가 page `95780877`을 `confluenceData`와 `recommendedDocuments`에 포함해 답변함을 확인.
+
+### 2026-06-04 — 완전 미지원 검색 답변의 페이지 카드 숨김
+- AI가 `confluenceData`를 비우고 `unsupportedClaims`를 반환한 완전 미지원 검색 답변에서는 FAQ·추천 페이지·관련 페이지를 모두 숨기도록 수정.
+- 서버가 lexical fallback 추천/관련 문서를 붙이지 않도록 했고, 클라이언트도 직접 FAQ 랭킹과 fallback 추천을 추가하지 않도록 이중 방어 적용.
+- 부분 지원 답변은 기존 페이지 노출을 유지하도록 회귀 테스트 추가.
+- 검증: `pnpm test`, `pnpm typecheck`, Playwright MCP 동일 질의 재현 통과. `claude worktree 에 대해 설명해줘` 결과에서 무관한 페이지 카드가 더 이상 노출되지 않음.
+
 ### 2026-05-28 (7) — 자가 개선 프롬프트 시스템
 - **자가 개선 루프 구축**: Playbook 누적 데이터 → AI 프롬프트 자동 개선 → 서비스 재배포 없이 반영
   - `promptRulesLoader.ts` 신규: Confluence "Prompt Rules" 페이지 파싱 (`parsePromptRulesFromHtml`, `loadPromptRulesFromConfluence`, `buildInitialPromptRulesPageHtml`)

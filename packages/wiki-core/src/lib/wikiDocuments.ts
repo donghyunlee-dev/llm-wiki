@@ -1,5 +1,5 @@
 import { buildSnapshotWikiDocuments } from "./confluenceSnapshots";
-import { classifyQuestionIntent } from "./intentClassifier";
+import { classifyQuestionIntent, extractQuestionSubjects } from "./intentClassifier";
 
 export type WikiSection = "guides" | "faq" | "library";
 
@@ -60,6 +60,28 @@ export type SearchQuestionProfile = {
   normalizedQuestion: string;
   tokens: string[];
 };
+
+const GENERIC_SEARCH_TOKENS = new Set([
+  "설명",
+  "설명해",
+  "설명하",
+  "설명하세요",
+  "설명해줘",
+  "알려",
+  "알려줘",
+  "알려주세",
+  "말해",
+  "말해줘",
+  "대해",
+  "관련",
+  "관해",
+  "뭐",
+  "뭐야",
+  "뭐지",
+  "무엇",
+  "무엇인지",
+  "주세요",
+]);
 
 const WIKI_DOCUMENTS: WikiDocument[] = buildSnapshotWikiDocuments();
 
@@ -216,30 +238,40 @@ function scoreDocumentForSearch(
     return 120 + getSearchModeAffinity(profile.mode, signals, scope) + getSearchScopeAffinity(profile.mode, scope) + docTypeAffinity;
   }
 
-  const tokenScore = tokens.reduce((score, token) => {
+  const tokenMatches = tokens.map((token) => {
     const variants = expandSearchTokenVariants(token);
 
-    if (variants.some((variant) => title.includes(variant))) {
+    return {
+      title: variants.some((variant) => title.includes(variant)),
+      summary: variants.some((variant) => summary.includes(variant)),
+      headings: variants.some((variant) => headings.includes(variant)),
+      body: variants.some((variant) => body.includes(variant)),
+      slug: variants.some((variant) => slug.includes(variant)),
+      docType: variants.some((variant) => docType.includes(variant)),
+    };
+  });
+  const tokenScore = tokenMatches.reduce((score, match) => {
+    if (match.title) {
       return score + 12;
     }
 
-    if (variants.some((variant) => summary.includes(variant))) {
+    if (match.summary) {
       return score + 8;
     }
 
-    if (variants.some((variant) => headings.includes(variant))) {
+    if (match.headings) {
       return score + 6;
     }
 
-    if (variants.some((variant) => body.includes(variant))) {
+    if (match.body) {
       return score + 3;
     }
 
-    if (variants.some((variant) => slug.includes(variant))) {
+    if (match.slug) {
       return score + 2;
     }
 
-    if (variants.some((variant) => docType.includes(variant))) {
+    if (match.docType) {
       return score + 1;
     }
 
@@ -251,6 +283,29 @@ function scoreDocumentForSearch(
   }
 
   let score = tokenScore + getSearchModeAffinity(profile.mode, signals, scope) + getSearchScopeAffinity(profile.mode, scope) + docTypeAffinity;
+  const matchedTokenCount = tokenMatches.filter((match) =>
+    match.title || match.summary || match.headings || match.body || match.slug || match.docType
+  ).length;
+  const titleMatchedCount = tokenMatches.filter((match) => match.title || match.slug).length;
+  const strongFieldMatchedCount = tokenMatches.filter((match) =>
+    match.title || match.summary || match.headings || match.slug
+  ).length;
+
+  if (matchedTokenCount >= 2) {
+    score += matchedTokenCount * 8;
+  }
+
+  if (strongFieldMatchedCount >= 2) {
+    score += strongFieldMatchedCount * 4;
+  }
+
+  if (titleMatchedCount >= 2) {
+    score += 28;
+  }
+
+  if (profile.mode === "concept" && docType === "page" && titleMatchedCount >= 2) {
+    score += 18;
+  }
 
   if (document.parentId) {
     score += profile.mode === "planning" ? 3 : 1;
@@ -487,7 +542,8 @@ function tokenizeSearchTokens(query: string) {
     .split(/\s+/)
     .map((token) => normalizeSearchToken(token))
     .flatMap((token) => expandSearchTokenVariants(token))
-    .filter((token) => token.length >= 2);
+    .filter((token) => token.length >= 2)
+    .filter((token) => !isGenericSearchToken(token));
 }
 
 function normalizeSearchText(value: string) {
@@ -536,9 +592,41 @@ function expandSearchTokenVariants(token: string) {
 
   if (/^[a-z0-9]+$/i.test(normalized)) {
     variants.add(normalized.replace(/-/g, ""));
+    for (const stem of deriveEnglishTokenStems(normalized)) {
+      variants.add(stem);
+    }
   }
 
   return [...variants].filter(Boolean);
+}
+
+function deriveEnglishTokenStems(token: string) {
+  const stems = new Set<string>();
+
+  if (!/^[a-z][a-z0-9-]{2,}$/i.test(token)) {
+    return stems;
+  }
+
+  if (!token.endsWith("s")) {
+    stems.add(`${token}s`);
+    return stems;
+  }
+
+  if (token.length > 4 && !token.endsWith("ss")) {
+    stems.add(token.slice(0, -1));
+  }
+
+  if (token.endsWith("ies") && token.length > 4) {
+    stems.add(`${token.slice(0, -3)}y`);
+  }
+
+  return stems;
+}
+
+function isGenericSearchToken(token: string) {
+  return GENERIC_SEARCH_TOKENS.has(token) ||
+    /(설명|알려|말해)(하|해|줘|주세요)?/.test(token) ||
+    /(무엇|뭐)(인가|인지|야|지)?/.test(token);
 }
 
 function hasEmailSetupIntent(tokens: string[]) {
@@ -609,6 +697,14 @@ export function getTopSearchWikiDocumentsIn(
   return rankSearchDocumentsIn(documents, query)
     .slice(0, limit)
     .map((item) => item.document);
+}
+
+export function buildFallbackSearchQuery(question: string) {
+  const subjects = extractQuestionSubjects(question);
+  const tokens = tokenizeSearchTokens(question);
+  const orderedTokens = [...subjects, ...tokens];
+  const unique = Array.from(new Set(orderedTokens.filter(Boolean)));
+  return unique.join(" ").trim();
 }
 
 export function getIndexFirstSearchWikiDocumentsIn(

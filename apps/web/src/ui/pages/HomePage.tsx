@@ -1,7 +1,8 @@
 import { HOME_CONTENT, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
-import { startTransition, useMemo, useState, type FormEvent } from "react";
+import { startTransition, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
+import { PromptComposer } from "../PromptComposer";
 
 type FeaturedGuide = {
   title: string;
@@ -35,8 +36,7 @@ function SearchHero() {
   const navigate = useNavigate();
   const [keyword, setKeyword] = useState("");
 
-  const onSubmit = (event?: FormEvent<HTMLFormElement>) => {
-    event?.preventDefault();
+  const onSubmit = () => {
     const query = keyword.trim();
     startTransition(() => {
       navigate(query ? `/search?q=${encodeURIComponent(query)}` : "/search");
@@ -48,26 +48,26 @@ function SearchHero() {
       <div className="home-main-frame text-center">
         <h1 className="home-title">{HOME_CONTENT.hero.title}</h1>
 
-        <form className="home-search-box" onSubmit={onSubmit}>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <input
-              value={keyword}
-              onChange={(event) => setKeyword(event.target.value)}
-              placeholder={HOME_CONTENT.search.placeholder}
-              className="home-search-input"
-            />
-            <button
-              type="submit"
-              className="home-search-button"
-              aria-label="검색"
-            >
-              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-5 w-5">
-                <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" strokeWidth="1.6" />
-                <path d="M13 13L16.5 16.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-        </form>
+        <PromptComposer
+          value={keyword}
+          onValueChange={setKeyword}
+          onSubmit={onSubmit}
+          placeholder={HOME_CONTENT.search.placeholder}
+          ariaLabel="검색"
+          buttonAriaLabel="검색"
+          buttonTitle="검색"
+          className="home-search-box"
+          textareaClassName="home-search-input prompt-composer-textarea"
+          buttonClassName="home-search-button prompt-composer-button"
+          minRows={3}
+          maxRows={8}
+          buttonIcon={(
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-5 w-5">
+              <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M13 13L16.5 16.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          )}
+        />
 
       </div>
     </section>

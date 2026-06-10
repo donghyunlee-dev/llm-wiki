@@ -30,10 +30,15 @@ export function sanitizeConfluenceHtml(inputHtml: string) {
 }
 
 export function htmlToPlainText(inputHtml: string) {
-  return inputHtml
+  return decodeHtmlEntitiesForText(
+    inputHtml
     .replace(/<script[\s\S]*?>[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim(),
+  )
+    .replace(/\u00a0/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -56,7 +61,7 @@ export function normalizeConfluencePage(
   page: RawConfluencePage,
   slug: string,
 ): WikiDocument {
-  const contentHtml = sanitizeConfluenceHtml(page.bodyHtml);
+  const contentHtml = unescapeEscapedHtmlEntitiesInHtml(sanitizeConfluenceHtml(page.bodyHtml));
   const headings = extractHeadingsFromHtml(contentHtml).filter(
     (h) => h.text !== "wiki.metadata",
   );
@@ -82,6 +87,48 @@ export function normalizeConfluencePage(
     contentHtml,
   };
 }
+
+function unescapeEscapedHtmlEntitiesInHtml(inputHtml: string) {
+  return inputHtml.replace(/&amp;((?:#\d+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);)/g, "&$1");
+}
+
+function decodeHtmlEntitiesForText(input: string) {
+  return input.replace(/&(#\d+|#x[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);/g, (entity, token: string) => {
+    if (token.startsWith("#x") || token.startsWith("#X")) {
+      const value = Number.parseInt(token.slice(2), 16);
+      return Number.isFinite(value) ? String.fromCodePoint(value) : entity;
+    }
+
+    if (token.startsWith("#")) {
+      const value = Number.parseInt(token.slice(1), 10);
+      return Number.isFinite(value) ? String.fromCodePoint(value) : entity;
+    }
+
+    const decoded = HTML_ENTITY_MAP[token.toLowerCase()];
+    return decoded ?? entity;
+  });
+}
+
+const HTML_ENTITY_MAP: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: "\"",
+  apos: "'",
+  nbsp: "\u00a0",
+  mdash: "—",
+  ndash: "–",
+  hellip: "…",
+  middot: "·",
+  bull: "•",
+  lsquo: "‘",
+  rsquo: "’",
+  ldquo: "“",
+  rdquo: "”",
+  copy: "©",
+  reg: "®",
+  trade: "™",
+};
 
 function slugifyHeading(text: string) {
   return text

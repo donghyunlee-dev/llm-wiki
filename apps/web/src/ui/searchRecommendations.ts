@@ -1,4 +1,5 @@
 import { getIndexFirstSearchWikiDocumentsIn, getTopSearchWikiDocumentsIn, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
+import { isFullyUnsupportedSearchAnswerState } from "../lib/searchAnswerState";
 
 export type SearchDocumentSummary = {
   id: string;
@@ -16,14 +17,23 @@ type SearchAnswerLike = {
   confluenceData?: Array<{
     pageId: string;
   }>;
+  unsupportedClaims?: string[];
   recommendedDocuments?: SearchDocumentSummary[];
   relatedDocuments?: SearchDocumentSummary[];
 };
+
+export function isFullyUnsupportedSearchAnswer(answer: SearchAnswerLike | null) {
+  return isFullyUnsupportedSearchAnswerState(answer);
+}
 
 export function resolveSearchRecommendedDocuments(
   answer: SearchAnswerLike | null,
   fallbackDocuments: SearchDocumentSummary[],
 ) {
+  if (isFullyUnsupportedSearchAnswer(answer)) {
+    return [];
+  }
+
   const resolvedDocuments: SearchDocumentSummary[] = [];
   const seen = new Set<string>();
 
@@ -53,6 +63,10 @@ export function resolveSearchDocumentSections(
   answer: SearchAnswerLike | null,
   fallbackDocuments: SearchDocumentSummary[],
 ) {
+  if (isFullyUnsupportedSearchAnswer(answer)) {
+    return { faqDocuments: [], recommendedDocuments: [], relatedDocuments: [] };
+  }
+
   // 서버가 relatedDocuments를 명시적으로 보내면 그대로 사용 (추천/관련 분리 경로)
   if (answer?.relatedDocuments !== undefined) {
     const allRecommended = answer.recommendedDocuments?.length

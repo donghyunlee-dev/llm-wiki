@@ -57,4 +57,36 @@ describe("confluenceReadModel", () => {
     });
     expect(normalized.contentHtml).toContain("<h1>");
   });
+
+  it("decodes common HTML entities in headings and summary while unescaping escaped entities in html", () => {
+    const rawPage: RawConfluencePage = {
+      id: "2",
+      title: "엔티티 문서",
+      spaceId: "63111172",
+      status: "current",
+      version: 1,
+      bodyHtml: `<h2>Flow &amp;mdash; Detail</h2><p>Tom &amp;amp; Jerry &amp;mdash; ready&nbsp;now.</p>`,
+      sourceUrl: "https://example.test/wiki/pages/2",
+      metadata: {
+        docType: "guide",
+        audience: "beginner",
+        status: "published",
+        prerequisites: [],
+        next: [],
+        related: [],
+      },
+      updatedAt: "2026-06-08",
+    };
+
+    const normalized = normalizeConfluencePage(rawPage, "entity-doc");
+
+    expect(normalized.contentHtml).toContain("&mdash;");
+    expect(normalized.contentHtml).not.toContain("&amp;mdash;");
+    expect(normalized.headings[0]).toEqual({
+      id: "flow-detail",
+      level: 2,
+      text: "Flow — Detail",
+    });
+    expect(normalized.summary).toContain("Tom & Jerry — ready now.");
+  });
 });

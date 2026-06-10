@@ -1,0 +1,116 @@
+# Browser Sidebar Extension MVP Result
+
+## Delivered Scope
+- Added a separate local-test browser side panel extension package under `apps/edge-sidebar`.
+- Implemented a Manifest V3 extension with toolbar action side panel behavior, React side panel UI, configurable wiki base URL, chat-style multiline question composer, AI search API call, and fallback `/search?q=` link.
+- Updated the side panel UI after local load feedback: favicon-derived icon, wiki-aligned color variables, top-right home icon, full answer area, bottom-fixed composer, and new-tab wiki links.
+- Updated the second-pass sidebar UX: answer flow now shows the submitted question first, clears the composer after submit, removes framed card styling, improves source link contrast, and places the small send button inside the full-width composer.
+- Added a local-only content script that injects a draggable right-edge floating icon into `http://localhost:5173/*` pages and opens the side panel when clicked.
+- Renamed the extension display title to `SFOOD AI Wiki`.
+- Expanded the launcher to browser-wide `"<all_urls>"`, added a hover-expanding pill with wiki home and settings actions, and added a settings popover for base URL, top/bottom docking, and hide/show.
+- Reworked the launcher into a hover-expanding icon stack with only the book icon visible by default and separate top home / bottom settings buttons on hover.
+- Replaced the page-DOM launcher with a Shadow DOM launcher so host page CSS cannot break the launcher buttons, icon sizing, or settings popover.
+- Restored pointer drag on the main book button; dragging vertically stores the new launcher Y position.
+- Changed top/bottom settings to move the launcher immediately and persist the new position without forcing a page reload.
+- Simplified the floating launcher visual treatment:
+  - Removed the white background panel behind the floating icons.
+  - Left only transparent icon buttons so the launcher does not cover page content heavily.
+  - Kept home/settings faintly visible on hover and during expanded/drag states.
+  - Reduced opacity while dragging so the launcher is less intrusive.
+- Corrected the launcher expansion model:
+  - The main launcher icon now stays visible at 100% opacity.
+  - Hover no longer expands a visible container.
+  - Home and settings slide out from behind the main icon upward/downward at about 50% opacity.
+- Adjusted side panel toggle state handling so a failed close request does not mark the panel as closed in storage.
+- Added a recovery button in the side panel header so a hidden launcher can be made visible again without reloading the browser page.
+- Added in-panel guide navigation so selecting a guide result slides the guide into the right pane instead of opening a new tab, with a back action to return to search.
+- Reordered launcher hover actions so home sits above settings during expansion.
+- Fixed launcher CSS regressions from the slide-view pass:
+  - The settings popover now respects `hidden` and no longer appears by default.
+  - Launcher button positioning no longer leaks into popover buttons.
+  - The book icon uses its original visible size instead of inheriting the small action-icon dimensions.
+  - Hidden launcher state now leaves a visible right-edge handle after page refresh.
+- Reworked guide display inside the side panel:
+  - Selected guide links now resolve against `/api/wiki-pages`.
+  - The side panel renders only the guide title, summary, and `contentHtml`.
+  - The full wiki app header/nav is no longer embedded through an iframe.
+  - The guide back action moved to the top-left edge.
+- Added custom thin scrollbar styling for the search answer and guide content scroll areas.
+- Reworked search answers into an in-memory chat flow:
+  - Each submitted question appends a new turn instead of replacing the previous answer.
+  - Closing/reloading the side panel naturally resets the conversation because it is not persisted.
+  - The question bubble, answer text, source links, and composer were tightened for narrow side panel reading.
+  - Duplicate source titles now prefer `/guides/...` hrefs over id-only evidence fallbacks so guide links remain clickable and open the slide view.
+- Fixed the remaining guide-connection gap:
+  - `confluenceData.pageId` is now converted into `/wiki/{pageId}` source links.
+  - `/api/wiki-pages` nested records shaped like `{ slug, page: { id, title, bodyHtml } }` are now accepted by the guide document loader.
+  - Guide links from AI answers and source cards can now resolve against both flat documents and nested Confluence page records.
+- Added stale-extension-context guards to the page launcher:
+  - content-script startup now suppresses uncaught `Extension context invalidated` promise rejections from stale tabs.
+  - launcher actions tear down the stale launcher instead of leaving a broken floating control on the page.
+  - storage reads/writes now fall back safely when the old extension context has already been destroyed.
+- Corrected the hidden-launcher regression:
+  - hidden mode no longer pushes the main launcher icon mostly off-screen.
+  - the main icon now stays visible and clickable even when the hidden flag is stored.
+  - hidden mode only suppresses the secondary home/settings hover actions.
+- Removed the launcher toggle's dependency on persisted `sfoodWikiSidebar.panelOpen` state:
+  - launcher clicks now send a `toggle` action instead of inferring direction from extension storage.
+  - the background service worker now keeps per-target open state in memory for launcher toggles.
+  - the legacy `sfoodWikiSidebar.panelOpen` storage key is cleared and no longer controls whether the launcher opens.
+- Reworked side panel open/close for browser compatibility:
+  - open now re-enables the current tab with `chrome.sidePanel.setOptions({ tabId, path, enabled: true })` before calling `open()`.
+  - close now prefers `chrome.sidePanel.close({ windowId })` for the global side panel case.
+  - when `close()` is unavailable, the launcher falls back to `setOptions({ tabId, enabled: false })` so older browsers can still hide the panel on the current tab.
+- Added focused helper tests and local install/package documentation.
+
+## Changed Files
+- `apps/edge-sidebar/package.json`
+- `apps/edge-sidebar/tsconfig.app.json`
+- `apps/edge-sidebar/vite.config.ts`
+- `apps/edge-sidebar/public/manifest.json`
+- `apps/edge-sidebar/public/icons/icon-16.png`
+- `apps/edge-sidebar/public/icons/icon-32.png`
+- `apps/edge-sidebar/public/icons/icon-48.png`
+- `apps/edge-sidebar/public/icons/icon-128.png`
+- `apps/edge-sidebar/sidepanel.html`
+- `apps/edge-sidebar/src/background.ts`
+- `apps/edge-sidebar/src/chrome.d.ts`
+- `apps/edge-sidebar/src/contentScript.ts`
+- `apps/edge-sidebar/src/sidepanel/main.tsx`
+- `apps/edge-sidebar/src/sidepanel/styles.css`
+- `apps/edge-sidebar/src/sidepanel/wikiClient.ts`
+- `apps/edge-sidebar/src/sidepanel/wikiClient.test.ts`
+- `apps/edge-sidebar/README.md`
+- `package.json`
+- `pnpm-lock.yaml`
+- `docs/tasks/browser-sidebar-extension-mvp/*`
+- `docs/prd/implementation-status.md`
+
+## Key Decisions
+- Keep the extension isolated from `apps/web`; no wiki runtime or UI files were changed for this MVP.
+- Grant host permission only for `http://localhost:5173/*` until the deployed internal wiki origin is known.
+- Use the existing `/api/wiki/ai/search` endpoint for AI answers and `/search?q=` as deterministic fallback.
+- Document unpacked loading as the first validation path instead of store or enterprise deployment.
+- Keep the local base URL hidden in the UI for now and default to `http://localhost:5173`.
+- Open wiki page links in a new tab from the side panel.
+- Limit the floating button to `http://localhost:5173/*` for this local MVP. Expanding to all sites requires broader host permissions and a separate approval decision.
+- Use content script click -> background message -> `chrome.sidePanel.open({ tabId })` for the floating launcher path.
+- Expand the content script to `"<all_urls>"` so the floating launcher is visible on ordinary websites across the browser.
+- Use `chrome.storage.local` for launcher state so the browser-wide launcher keeps its configuration across sites.
+- The launcher now supports hover expansion, a wiki-home shortcut, and a settings popover for docking and visibility.
+- The side panel header now includes a launcher-recovery icon that clears the hidden flag in shared storage.
+- The launcher is now rendered inside Shadow DOM to isolate it from arbitrary website CSS.
+
+## Open Gaps
+- Manual Chrome/Edge load-unpacked verification still needs to be performed on the user's PC.
+- After each rebuild, the loaded unpacked extension must be refreshed from the browser extension page.
+- Internal deployed wiki origin must be added to `host_permissions` before non-local testing.
+- Store or enterprise deployment is not included in this MVP.
+- The floating button appears on ordinary webpages matched by `"<all_urls>"`.
+- Browser-internal pages such as `chrome://` or `edge://` remain excluded by platform policy even with `"<all_urls>"`.
+- MCP Playwright uses its own browser context and did not have the unpacked extension loaded, so it could confirm the local wiki page but not the installed extension UI in the user's browser.
+- Refreshing an unpacked extension does not replace the old content script inside already-open tabs. Those tabs still need a manual page refresh before the new launcher code is active.
+
+## Next Steps
+- Run `pnpm build:extension`.
+- Open `chrome://extensions` or `edge://extensions`, enable Developer mode, load `apps/edge-sidebar/dist`, and test against the local wiki at `http://localhost:5173`.

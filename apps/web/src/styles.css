@@ -273,9 +273,34 @@ a {
     @apply text-[13px] font-semibold text-accent;
   }
 
+  .category-page-header {
+    @apply flex items-start justify-between gap-4;
+  }
+
+  .category-home-link {
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-card-bg text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg hover:text-accent;
+  }
+
   .control-input {
     @apply h-8 min-w-0 rounded-[var(--radius-md)] border border-panel-border bg-panel-bg px-2.5 text-[13px] font-normal leading-none text-page-fg outline-none transition focus:border-accent;
     font-family: var(--font-body);
+  }
+
+  .prompt-composer {
+    @apply grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2;
+  }
+
+  .prompt-composer-textarea {
+    resize: none;
+    field-sizing: content;
+  }
+
+  .prompt-composer-button {
+    @apply inline-flex h-11 w-11 items-center justify-center self-end rounded-[var(--radius-md)] border border-panel-border bg-page-bg text-page-fg transition hover:bg-card-hover-bg hover:border-accent/30;
+  }
+
+  .prompt-composer-button:disabled {
+    @apply cursor-not-allowed opacity-60;
   }
 
   .control-label {
@@ -308,7 +333,7 @@ a {
   }
 
   .document-toolbar {
-    @apply mt-5 grid gap-3 rounded-[var(--radius-lg)] border border-panel-border bg-card-bg p-3 md:grid-cols-[minmax(0,1fr)_150px_150px_140px];
+    @apply mt-5 grid gap-3;
   }
 
   .guide-pagination {
@@ -335,6 +360,24 @@ a {
   .document-field select {
     @apply h-8 min-w-0 rounded-[var(--radius-md)] border border-panel-border bg-panel-bg px-2.5 text-[13px] font-normal leading-none text-page-fg outline-none transition focus:border-accent;
     font-family: var(--font-body);
+  }
+
+  .document-search-composer {
+    @apply w-full rounded-[var(--radius-md)] border border-panel-border bg-panel-bg p-2;
+  }
+
+  .document-search-input {
+    @apply min-h-[40px] w-full border-0 bg-transparent px-2.5 py-1.5 text-[14px] leading-6 text-page-fg outline-none placeholder:text-subtle-fg;
+    font-family: var(--font-body);
+    font-size: 14px !important;
+  }
+
+  .document-search-input::placeholder {
+    font-size: 14px !important;
+  }
+
+  .document-search-button {
+    @apply h-10 w-10;
   }
 
   .link-indicator {
@@ -713,11 +756,12 @@ a {
   }
 
   .home-hero-section {
-    @apply flex min-h-[340px] items-center px-5 py-14 md:min-h-[430px] md:py-20;
+    @apply flex items-center px-5 pb-3 pt-8 md:pb-4 md:pt-10;
+    min-height: clamp(220px, calc(100vh - 420px), 310px);
   }
 
   .home-guides-section {
-    @apply px-5 pb-3 pt-2;
+    @apply px-5 pb-3 pt-0;
   }
 
   .home-guides-card {
@@ -725,11 +769,11 @@ a {
   }
 
   .home-section-compact {
-    @apply px-5 pb-5 pt-3;
+    @apply px-5 pb-5 pt-2;
   }
 
   .home-main-frame {
-    @apply mx-auto w-full max-w-3xl;
+    @apply mx-auto w-full max-w-4xl;
   }
 
   .home-support-frame {
@@ -851,15 +895,37 @@ a {
   }
 
   .article-toc-link {
-    @apply block rounded-[var(--radius-md)] px-2 py-1.5 text-[13px] leading-5 text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
+    @apply relative block rounded-[var(--radius-md)] px-2 py-1.5 text-[13px] leading-5 text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
+  }
+
+  .article-toc-level-2::before,
+  .article-toc-level-3::before,
+  .article-toc-level-4::before {
+    @apply absolute left-2 top-1/2 -translate-y-1/2 text-subtle-fg;
+  }
+
+  .article-toc-level-2 {
+    @apply pl-6;
+  }
+
+  .article-toc-level-2::before {
+    content: "•";
   }
 
   .article-toc-level-3 {
-    @apply pl-4;
+    @apply pl-8;
+  }
+
+  .article-toc-level-3::before {
+    content: "—";
   }
 
   .article-toc-level-4 {
-    @apply pl-6;
+    @apply pl-10;
+  }
+
+  .article-toc-level-4::before {
+    content: "·";
   }
 
   .article-toc-empty {
@@ -1073,8 +1139,8 @@ a {
 
   .article-ask-dock {
     @apply sticky bottom-3 z-10 mt-8 w-full;
-    height: var(--article-ask-height, 64px);
-    max-height: 360px;
+    height: var(--article-ask-height, 92px);
+    max-height: 420px;
   }
 
   .article-ask-turns {
@@ -1094,24 +1160,24 @@ a {
   }
 
   .article-ask-form {
-    @apply mt-auto flex cursor-default gap-2;
+    @apply mt-auto cursor-default rounded-[var(--radius-md)] border border-panel-border bg-page-bg p-2;
   }
 
-  .article-ask-form input {
-    @apply h-10 min-w-0 flex-1 rounded-[var(--radius-md)] border border-panel-border bg-page-bg px-3.5 text-[14px] font-normal text-page-fg outline-none placeholder:text-subtle-fg focus:border-accent;
+  .article-ask-form-textarea {
+    @apply min-h-[56px] w-full border-0 bg-transparent px-2 py-1.5 text-[14px] leading-6 text-page-fg outline-none placeholder:text-subtle-fg;
     font-family: var(--font-body);
     font-size: 14px !important;
   }
 
-  .article-ask-form input::placeholder {
+  .article-ask-form-textarea::placeholder {
     font-size: 14px !important;
   }
 
-  .article-ask-form button {
-    @apply flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] bg-accent text-white transition hover:bg-accent-strong disabled:cursor-not-allowed disabled:opacity-60;
+  .article-ask-form-button {
+    @apply h-10 w-10 bg-accent text-white hover:bg-accent-strong;
   }
 
-  .article-ask-form button svg {
+  .article-ask-form-button svg {
     @apply h-4 w-4;
   }
 
@@ -1326,11 +1392,11 @@ a {
   }
 
   .chat-search-shell {
-    @apply mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-36 pt-5;
+    @apply mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-40 pt-4;
   }
 
   .chat-input-dock {
-    @apply fixed bottom-0 left-0 right-0 z-20 px-4 pb-5 pt-12;
+    @apply fixed bottom-0 left-0 right-0 z-20 px-4 pb-5 pt-10;
     background: linear-gradient(to bottom, transparent 0%, var(--panel-bg) 36%);
   }
 
@@ -1530,24 +1596,24 @@ a {
   }
 
   .chat-input-bar {
-    @apply sticky bottom-4 flex gap-2 rounded-[var(--radius-lg)] border border-panel-border bg-panel-bg p-2 shadow-sm;
+    @apply sticky bottom-4 rounded-[var(--radius-lg)] border border-panel-border bg-panel-bg p-2 shadow-sm;
   }
 
-  .chat-input-bar input {
-    @apply h-11 min-w-0 flex-1 rounded-[var(--radius-md)] border border-panel-border bg-page-bg px-3.5 text-[15px] font-medium text-page-fg outline-none placeholder:text-subtle-fg focus:border-accent;
+  .chat-input-bar-textarea {
+    @apply min-h-[54px] w-full border-0 bg-transparent px-2.5 py-2 text-[15px] leading-6 font-medium text-page-fg outline-none placeholder:text-subtle-fg;
     font-family: var(--font-body);
     font-size: 15px !important;
   }
 
-  .chat-input-bar input::placeholder {
+  .chat-input-bar-textarea::placeholder {
     font-size: 15px !important;
   }
 
-  .chat-input-bar button {
-    @apply flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] bg-accent text-white transition hover:bg-accent-strong;
+  .chat-input-bar-button {
+    @apply text-[18px];
   }
 
-  .chat-input-bar button svg {
+  .chat-input-bar-button svg {
     @apply h-4 w-4;
   }
 
@@ -1556,15 +1622,20 @@ a {
   }
 
   .home-search-box {
-    @apply mx-auto mt-5 w-full max-w-2xl overflow-hidden rounded-[var(--radius-xl)] border border-panel-border bg-card-bg px-4 py-3 text-left transition focus-within:border-accent shadow-[rgba(0,0,0,0.02)_0px_0px_0px_1px,rgba(0,0,0,0.04)_0px_2px_6px,rgba(0,0,0,0.10)_0px_4px_8px];
+    @apply mx-auto mt-4 w-full max-w-4xl overflow-hidden rounded-[var(--radius-lg)] border border-panel-border bg-card-bg px-4 py-3 text-left transition focus-within:border-accent shadow-[rgba(0,0,0,0.02)_0px_0px_0px_1px,rgba(0,0,0,0.04)_0px_2px_6px,rgba(0,0,0,0.10)_0px_4px_8px];
   }
 
   .home-search-input {
-    @apply h-11 min-w-0 flex-1 border-0 bg-transparent text-[14px] font-medium text-page-fg outline-none placeholder:text-subtle-fg;
+    @apply min-h-[76px] w-full border-0 bg-transparent px-1 py-1 text-[14px] leading-6 font-medium text-page-fg outline-none placeholder:text-subtle-fg;
+    font-size: 14px !important;
+  }
+
+  .home-search-input::placeholder {
+    font-size: 14px !important;
   }
 
   .home-search-button {
-    @apply inline-flex h-11 w-11 items-center justify-center rounded-[50%] bg-[#f2f2f2] text-[18px] text-page-fg transition hover:bg-panel-border;
+    @apply text-[18px];
   }
 
   .home-primary-button {

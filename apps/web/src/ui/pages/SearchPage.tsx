@@ -1,12 +1,14 @@
 import { buildSearchFollowUpQuestion } from "@sfood/wiki-core";
-import { startTransition, useEffect, useRef, useState, useCallback, type FormEvent } from "react";
+import { startTransition, useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
 import { getPolicyNoticeMessage, shouldShowPolicyNotice } from "../../lib/policyNotice";
 import { StructuredAnswerView } from "../StructuredAnswerView";
+import { PromptComposer } from "../PromptComposer";
 import {
   buildFallbackRecommendedDocuments,
   buildFaqRecommendations,
+  isFullyUnsupportedSearchAnswer,
   resolveSearchDocumentSections,
   resolveSearchRecommendedDocuments,
   type SearchDocumentSummary,
@@ -165,8 +167,7 @@ export function SearchPage() {
     }, 2500);
   }, []);
 
-  const submit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const submitDraftQuestion = () => {
     const nextQuestion = draftQuestion.trim();
 
     if (!nextQuestion) {
@@ -210,7 +211,9 @@ export function SearchPage() {
 
         {conversation.map((item) => {
           const recommendedDocuments = resolveSearchRecommendedDocuments(item.answer ?? null, item.fallbackDocuments);
-          const directFaqDocuments = buildFaqRecommendations(documents, item.question);
+          const directFaqDocuments = isFullyUnsupportedSearchAnswer(item.answer ?? null)
+            ? []
+            : buildFaqRecommendations(documents, item.question);
           const { faqDocuments: aiFaqDocuments, recommendedDocuments: primaryRecommendations, relatedDocuments } = resolveSearchDocumentSections(
             item.answer ?? null,
             item.fallbackDocuments,
@@ -251,29 +254,30 @@ export function SearchPage() {
       <div className="chat-input-dock">
         <div className="chat-input-dock-inner">
           <div className="chat-input-area">
-            <form className="chat-input-bar" onSubmit={submit}>
-              <input
-                value={draftQuestion}
-                onChange={(event) => {
-                  setDraftQuestion(event.target.value);
-                  if (showEmptyHint) setShowEmptyHint(false);
-                }}
-                placeholder="궁금한 내용을 입력하세요"
-                aria-label="검색 질문"
-                aria-describedby={showEmptyHint ? "chat-empty-input-hint" : undefined}
-              />
-              <button type="submit" aria-label="질문 전송" title="질문 전송">
+            <PromptComposer
+              value={draftQuestion}
+              onValueChange={(value) => {
+                setDraftQuestion(value);
+                if (showEmptyHint) setShowEmptyHint(false);
+              }}
+              onSubmit={submitDraftQuestion}
+              placeholder="궁금한 내용을 입력하세요"
+              ariaLabel="검색 질문"
+              ariaDescribedBy={showEmptyHint ? "chat-empty-input-hint" : undefined}
+              buttonAriaLabel="질문 전송"
+              buttonTitle="질문 전송"
+              className="chat-input-bar"
+              textareaClassName="chat-input-bar-textarea prompt-composer-textarea"
+              buttonClassName="chat-input-bar-button prompt-composer-button"
+              minRows={2}
+              maxRows={8}
+              buttonIcon={(
                 <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
-                  <path
-                    d="M10 15V5M5.5 9.5L10 5l4.5 4.5"
-                    stroke="currentColor"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth="1.8"
-                  />
+                  <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" strokeWidth="1.6" />
+                  <path d="M13 13L16.5 16.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                 </svg>
-              </button>
-            </form>
+              )}
+            />
             {showEmptyHint ? (
               <p id="chat-empty-input-hint" className="chat-input-hint" role="alert">
                 검색어를 입력해 주세요.
