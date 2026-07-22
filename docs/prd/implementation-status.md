@@ -16,6 +16,29 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-22 — 익스텐션 검색/가이드 오동작 수정 (A안: 서버 정리 HTML)
+- 대상: `apps/edge-sidebar` 3대 오동작 — (1) 가이드 본문 이중 노출 + 다크모드 불가시, (2) 추천/참고 페이지 중복, (3) 추천 링크 오동작.
+- 근본 원인: 익스텐션이 웹 정규화 모델을 재사용하지 않고 원본 Confluence `bodyHtml`을 raw로 렌더 + 제목 기준 dedup + `/guides/`만 우선하는 href 선택.
+- 해결(A안, 서버 정리): 매크로 정리를 서버에서 수행하고 익스텐션은 정리된 HTML 렌더만. 익스텐션 0-의존 격리 유지.
+  - `packages/wiki-core/src/lib/confluenceCleanHtml.ts` 신규: DOM-비의존 `renderConfluenceContentToCleanHtml(html, documents)` — code/callout/ac:link 매크로 → 시맨틱 HTML, 잔여 `ac:`/`ri:`·`wiki.metadata` 제거.
+  - `apps/web/vite.config.ts`: `GET /api/wiki/documents` 신규(정리된 contentHtml + related). 기존 `/api/wiki-pages` 불변.
+  - `apps/edge-sidebar/src/sidepanel/wikiClient.ts`: 검색 소스 dedup을 제목 → 페이지 ID로 변경, `isSpecificDocumentHref`를 guides/faq/library로 확장, 가이드 본문을 새 엔드포인트에서 `findCleanDocumentByHref`로 로드, storage-format 죽은 코드 제거.
+  - `apps/edge-sidebar/src/sidepanel/styles.css`: `.wiki-callout`/코드에 테마 변수 스타일(다크모드 가시성).
+  - Codex High(XSS) 반영: `sanitizeConfluenceHtml`이 따옴표 없는 이벤트 핸들러도 제거.
+- 검증: `pnpm test` 279개 통과, `pnpm typecheck` 전체 통과, 익스텐션 build 통과. 서브에이전트 2단계 리뷰 + Codex 비판 리뷰(Critical 0). 라이브 엔드포인트·익스텐션 실사용은 사용자 브라우저 수동 확인 필요(MCP Playwright에 unpacked 익스텐션 미로드).
+- 태스크 문서: `docs/tasks/edge-sidebar-fixes/`, 계획: `docs/superpowers/plans/2026-07-22-edge-sidebar-fixes.md`.
+
+### 2026-06-18 — 위키 MCP 서버 (`apps/mcp-server`) 신규 구현 (격리)
+- 사내 Confluence 위키를 읽기 전용 MCP(Model Context Protocol) 서버로 노출하는 독립 앱 `apps/mcp-server` 추가.
+- **격리 제약(사용자 핵심 요구)**: `apps/edge-sidebar`와 동일 레벨의 별도 앱. `@sfood/wiki-core` 등 워크스페이스 패키지를 import하지 않고 Confluence 클라이언트를 자체 보유. 기존 패키지(web/edge-sidebar/wiki-core/serverless) 소스 무수정. 환경만 공유, 배포 독립. 런타임 의존성 0개(Node 22 글로벌 `fetch`).
+- MCP Tools 5개: `search_wiki`, `get_page`(plain text 8000자 트림), `get_page_by_title`, `get_page_children`, `get_space_list`.
+- MCP Streamable HTTP transport를 JSON-RPC 2.0(protocolVersion `2024-11-05`)로 직접 구현 (외부 SDK 미사용). `initialize`/`ping`/`tools.list`/`tools.call`/`notifications` 지원.
+- `x-api-key` 인증(401), Lambda Function URL 핸들러(`export const handler`), esbuild 단일 ESM 번들(18.5kb).
+- Confluence 실패/404는 서버 크래시 없이 tool `isError`로 반환. CQL `space`는 숫자 Space ID 사용, 선택적 `space_key` 오버라이드.
+- Codex 비판 리뷰 7건 중 6건 반영: id:null 응답, 빈 배치/malformed shape `-32600`, malformed base64 무크래시, 페이지네이션 상한, 동일 origin next 링크만 추적(SSRF 방지). 와일드카드 CORS는 서버사이드 클라이언트 전제로 수용.
+- 문서: `apps/mcp-server/README.md`, `docs/tasks/wiki-mcp-server/aws-deployment-guide.md`.
+- 검증: `pnpm --filter @sfood/mcp-server typecheck/test`(36건)/`build` 통과, 전체 `pnpm typecheck`/`pnpm test` 회귀 없음, 격리 grep 0건. 실제 AWS 배포·Confluence end-to-end는 가이드 기반 수동 단계로 분리.
+
 ### 2026-06-09 — 브라우저 사이드바 확장 MVP 추가
 - 기존 위키 앱과 분리된 `apps/edge-sidebar` 워크스페이스 패키지를 추가.
 - Manifest V3 기반 side panel extension으로 구성:
