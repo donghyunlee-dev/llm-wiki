@@ -6,6 +6,7 @@ export type WikiSearchResult = {
 };
 
 export type WikiSearchSource = {
+  id?: string;
   title: string;
   href: string;
 };
@@ -121,26 +122,26 @@ export function normalizeWikiSearchResponse(data: WikiSearchResponse): WikiSearc
       ? data.answer.trim()
       : "위키 검색 응답을 받았지만 표시할 답변 본문이 없습니다.";
 
-  return {
-    answer,
-    sources: [
-      ...readDocumentSources(data.confluenceData),
-      ...readDocumentSources(data.recommendedDocuments),
-      ...readDocumentSources(data.relatedDocuments)
-    ].reduce<WikiSearchSource[]>((sources, source) => {
-      const existingIndex = sources.findIndex((item) => item.title === source.title);
+  const sources = [
+    ...readDocumentSources(data.confluenceData),
+    ...readDocumentSources(data.recommendedDocuments),
+    ...readDocumentSources(data.relatedDocuments)
+  ].reduce<WikiSearchSource[]>((accumulated, source) => {
+    const sourceKey = source.id ?? source.title;
+    const existingIndex = accumulated.findIndex((item) => (item.id ?? item.title) === sourceKey);
 
-      if (existingIndex < 0) {
-        return [...sources, source];
-      }
+    if (existingIndex < 0) {
+      return [...accumulated, source];
+    }
 
-      if (isSpecificDocumentHref(source.href) && !isSpecificDocumentHref(sources[existingIndex]?.href ?? "")) {
-        return sources.map((item, index) => (index === existingIndex ? source : item));
-      }
+    if (isSpecificDocumentHref(source.href) && !isSpecificDocumentHref(accumulated[existingIndex]?.href ?? "")) {
+      return accumulated.map((item, index) => (index === existingIndex ? source : item));
+    }
 
-      return sources;
-    }, [])
-  };
+    return accumulated;
+  }, []);
+
+  return { answer, sources };
 }
 
 export function findWikiDocumentByHref(value: unknown, baseUrl: string, href: string): WikiSidebarDocument | null {
@@ -187,15 +188,16 @@ function readDocumentSources(value: unknown): WikiSearchSource[] {
   }
 
   return value
-    .map((item) => {
+    .map((item): WikiSearchSource | null => {
       if (!isWikiDocumentLike(item) || typeof item.title !== "string") {
         return null;
       }
 
+      const id = readDocumentId(item);
       const title = item.title.trim();
       const href = readDocumentHref(item);
 
-      return title && href ? { title, href } : null;
+      return title && href ? { id, title, href } : null;
     })
     .filter((item): item is WikiSearchSource => item !== null);
 }
@@ -347,6 +349,18 @@ function parseWikiHref(baseUrl: string, href: string) {
   }
 }
 
+function readDocumentId(document: WikiDocumentLike): string | undefined {
+  if (typeof document.pageId === "string" && document.pageId.trim()) {
+    return document.pageId.trim();
+  }
+
+  if (typeof document.id === "string" && document.id.trim()) {
+    return document.id.trim();
+  }
+
+  return undefined;
+}
+
 function readDocumentHref(document: WikiDocumentLike): string {
   if (typeof document.href === "string" && document.href.trim()) {
     return document.href.trim();
@@ -368,5 +382,5 @@ function readDocumentHref(document: WikiDocumentLike): string {
 }
 
 function isSpecificDocumentHref(href: string) {
-  return href.startsWith("/guides/") || href.includes("/guides/");
+  return /\/(guides|faq|library)\//.test(href);
 }

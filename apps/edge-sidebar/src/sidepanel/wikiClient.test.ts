@@ -33,9 +33,9 @@ describe("wiki sidebar client helpers", () => {
   it("normalizes answer and unique source titles from the wiki response", () => {
     const result = normalizeWikiSearchResponse({
       answer: " Claude Code Worktrees 설명입니다. ",
-      confluenceData: [{ id: "1", title: "[Guide] Claude Code Worktrees" }],
+      confluenceData: [{ pageId: "1", title: "[Guide] Claude Code Worktrees" }],
       recommendedDocuments: [
-        { title: "[Guide] Claude Code Worktrees", href: "/guides/worktrees" },
+        { id: "1", title: "[Guide] Claude Code Worktrees", href: "/guides/worktrees" },
         { title: "Claude Code Index", slug: "claude-code-index" }
       ],
       relatedDocuments: [{ title: "" }, { title: 123 }]
@@ -44,7 +44,7 @@ describe("wiki sidebar client helpers", () => {
     expect(result).toEqual({
       answer: "Claude Code Worktrees 설명입니다.",
       sources: [
-        { title: "[Guide] Claude Code Worktrees", href: "/guides/worktrees" },
+        { id: "1", title: "[Guide] Claude Code Worktrees", href: "/guides/worktrees" },
         { title: "Claude Code Index", href: "/guides/claude-code-index" }
       ]
     });
@@ -54,10 +54,10 @@ describe("wiki sidebar client helpers", () => {
     const result = normalizeWikiSearchResponse({
       answer: "answer",
       confluenceData: [{ id: "1", title: "[Guide] Test" }],
-      recommendedDocuments: [{ title: "[Guide] Test", href: "/guides/test-guide" }]
+      recommendedDocuments: [{ id: "1", title: "[Guide] Test", href: "/guides/test-guide" }]
     });
 
-    expect(result.sources).toEqual([{ title: "[Guide] Test", href: "/guides/test-guide" }]);
+    expect(result.sources).toEqual([{ id: "1", title: "[Guide] Test", href: "/guides/test-guide" }]);
   });
 
   it("finds a wiki document by guide slug href", () => {
@@ -176,7 +176,31 @@ describe("wiki sidebar client helpers", () => {
       confluenceData: [{ pageId: "95780877", title: "Claude Code Worktrees" }]
     });
 
-    expect(result.sources).toEqual([{ title: "Claude Code Worktrees", href: "/wiki/95780877" }]);
+    expect(result.sources).toEqual([{ id: "95780877", title: "Claude Code Worktrees", href: "/wiki/95780877" }]);
+  });
+
+  it("deduplicates the same page by id even when titles differ slightly", () => {
+    const result = normalizeWikiSearchResponse({
+      answer: "설명",
+      confluenceData: [{ pageId: "42", title: "Claude Code Worktrees " }],
+      recommendedDocuments: [{ id: "42", title: "Claude Code Worktrees", href: "/guides/worktrees" }],
+      relatedDocuments: [{ id: "42", title: "Claude Code Worktrees", href: "/guides/worktrees" }],
+    });
+
+    const matches = result.sources.filter((source) => source.title.trim() === "Claude Code Worktrees");
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.href).toBe("/guides/worktrees");
+  });
+
+  it("prefers slug hrefs for faq and library pages over /wiki/{pageId}", () => {
+    const result = normalizeWikiSearchResponse({
+      answer: "설명",
+      confluenceData: [{ pageId: "7", title: "FAQ 항목" }],
+      recommendedDocuments: [{ id: "7", title: "FAQ 항목", href: "/faq/faq-item" }],
+    });
+
+    expect(result.sources).toHaveLength(1);
+    expect(result.sources[0]?.href).toBe("/faq/faq-item");
   });
 });
 
