@@ -27,7 +27,17 @@ type WikiSearchResponse = {
   relatedDocuments?: unknown;
 };
 
-type WikiPagesResponse = {
+type CleanWikiPage = {
+  id?: unknown;
+  slug?: unknown;
+  title?: unknown;
+  summary?: unknown;
+  href?: unknown;
+  contentHtml?: unknown;
+  related?: unknown;
+};
+
+type CleanDocumentsResponse = {
   pages?: unknown;
 };
 
@@ -37,14 +47,7 @@ type WikiDocumentLike = {
   title?: unknown;
   href?: unknown;
   slug?: unknown;
-  summary?: unknown;
-  contentHtml?: unknown;
-  bodyHtml?: unknown;
-  page?: unknown;
-  metadata?: unknown;
 };
-
-type SidebarDocumentRaw = WikiSidebarDocument & { relatedIds: string[] };
 
 export const DEFAULT_WIKI_BASE_URL = "http://localhost:5173";
 
@@ -100,14 +103,14 @@ export async function requestWikiSearch(baseUrl: string, question: string): Prom
 
 export async function requestWikiDocumentByHref(baseUrl: string, href: string): Promise<WikiSidebarDocument> {
   const normalizedBaseUrl = normalizeWikiBaseUrl(baseUrl);
-  const response = await fetch(`${normalizedBaseUrl}/api/wiki-pages`);
+  const response = await fetch(`${normalizedBaseUrl}/api/wiki/documents`);
 
   if (!response.ok) {
-    throw new Error(`Wiki pages failed with ${response.status}`);
+    throw new Error(`Wiki documents failed with ${response.status}`);
   }
 
-  const data = (await response.json()) as WikiPagesResponse;
-  const document = findWikiDocumentByHref(data.pages, normalizedBaseUrl, href);
+  const data = (await response.json()) as CleanDocumentsResponse;
+  const document = findCleanDocumentByHref(data.pages, normalizedBaseUrl, href);
 
   if (!document) {
     throw new Error("가이드 본문을 찾지 못했습니다.");
@@ -144,42 +147,58 @@ export function normalizeWikiSearchResponse(data: WikiSearchResponse): WikiSearc
   return { answer, sources };
 }
 
-export function findWikiDocumentByHref(value: unknown, baseUrl: string, href: string): WikiSidebarDocument | null {
+export function findCleanDocumentByHref(value: unknown, baseUrl: string, href: string): WikiSidebarDocument | null {
   if (!Array.isArray(value)) {
     return null;
   }
 
-  const allDocs = value
-    .map(readSidebarDocument)
-    .filter((doc): doc is SidebarDocumentRaw => doc !== null);
-
   const target = parseWikiHref(baseUrl, href);
 
-  const rawDoc = allDocs.find((doc) => {
-    if (target.id) {
-      return doc.id === target.id;
+  for (const raw of value) {
+    if (typeof raw !== "object" || raw === null) {
+      continue;
     }
-    return doc.slug === target.slug;
-  }) ?? null;
 
-  if (!rawDoc) {
-    return null;
+    const page = raw as CleanWikiPage;
+    const id = typeof page.id === "string" ? page.id : "";
+    const slug = typeof page.slug === "string" ? page.slug : "";
+    const contentHtml = typeof page.contentHtml === "string" ? page.contentHtml : "";
+    const title = typeof page.title === "string" ? page.title : "";
+
+    const matches = target.id ? id === target.id : slug === target.slug;
+    if (!matches || !title) {
+      continue;
+    }
+
+    return {
+      id,
+      slug,
+      title,
+      summary: typeof page.summary === "string" ? page.summary : "",
+      contentHtml,
+      relatedDocuments: readCleanRelated(page.related),
+    };
   }
 
-  const docsById = new Map(allDocs.map((doc) => [doc.id, doc]));
-  const relatedDocuments = rawDoc.relatedIds
-    .map((id) => docsById.get(id))
-    .filter((doc): doc is SidebarDocumentRaw => doc !== undefined)
-    .map((doc): WikiSearchSource => ({ title: doc.title, href: `/guides/${doc.slug}` }));
+  return null;
+}
 
-  return {
-    id: rawDoc.id,
-    slug: rawDoc.slug,
-    title: rawDoc.title,
-    summary: rawDoc.summary,
-    contentHtml: rawDoc.contentHtml,
-    relatedDocuments,
-  };
+function readCleanRelated(value: unknown): WikiSearchSource[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => {
+      if (typeof item !== "object" || item === null) {
+        return null;
+      }
+      const related = item as { title?: unknown; href?: unknown };
+      const title = typeof related.title === "string" ? related.title.trim() : "";
+      const href = typeof related.href === "string" ? related.href.trim() : "";
+      return title && href ? { title, href } : null;
+    })
+    .filter((item): item is WikiSearchSource => item !== null);
 }
 
 function readDocumentSources(value: unknown): WikiSearchSource[] {
@@ -204,114 +223,6 @@ function readDocumentSources(value: unknown): WikiSearchSource[] {
 
 function isWikiDocumentLike(value: unknown): value is WikiDocumentLike {
   return typeof value === "object" && value !== null;
-}
-
-function readSidebarDocument(value: unknown): SidebarDocumentRaw | null {
-  if (!isWikiDocumentLike(value)) {
-    return null;
-  }
-
-  const nestedPage = isWikiDocumentLike(value.page) ? value.page : null;
-  const rawId = typeof value.id === "string" ? value.id : typeof nestedPage?.id === "string" ? nestedPage.id : "";
-  const rawSlug = typeof value.slug === "string" ? value.slug : "";
-  const rawTitle = typeof value.title === "string" ? value.title : typeof nestedPage?.title === "string" ? nestedPage.title : "";
-  const rawContentHtml =
-    typeof value.contentHtml === "string"
-      ? value.contentHtml
-      : typeof value.bodyHtml === "string"
-        ? value.bodyHtml
-        : typeof nestedPage?.bodyHtml === "string"
-          ? nestedPage.bodyHtml
-          : typeof nestedPage?.contentHtml === "string"
-            ? nestedPage.contentHtml
-            : "";
-
-  const rawMetadata = nestedPage?.metadata;
-  const relatedIds: string[] =
-    typeof rawMetadata === "object" && rawMetadata !== null && Array.isArray((rawMetadata as Record<string, unknown>)["related"])
-      ? ((rawMetadata as Record<string, unknown[]>)["related"]).filter((id): id is string => typeof id === "string")
-      : [];
-
-  if (
-    !rawId ||
-    !rawSlug ||
-    !rawTitle ||
-    !rawContentHtml
-  ) {
-    return null;
-  }
-
-  return {
-    id: rawId,
-    slug: rawSlug,
-    title: rawTitle,
-    summary:
-      typeof value.summary === "string"
-        ? value.summary
-        : typeof nestedPage?.summary === "string"
-          ? nestedPage.summary
-          : "",
-    contentHtml: rewriteConfluenceStorageLinks(rawContentHtml),
-    relatedDocuments: [],
-    relatedIds,
-  };
-}
-
-export function rewriteConfluenceStorageLinks(html: string): string {
-  return html.replace(/<ac:link([^>]*)>([\s\S]*?)<\/ac:link>/gi, (_match, attrs, inner) => {
-    const anchorMatch = attrs.match(/ac:anchor="([^"]+)"/i);
-    if (anchorMatch) {
-      const anchorId = anchorMatch[1] as string;
-      const linkText = extractConfluenceLinkText(inner as string) || anchorId;
-      return `<a href="#${anchorId}">${escapeHtml(linkText)}</a>`;
-    }
-
-    const pageIdMatch =
-      (inner as string).match(/ri:content-id="([^"]+)"/i) ||
-      (inner as string).match(/ri:page-id="([^"]+)"/i);
-    const pageId = pageIdMatch?.[1]?.trim() ?? "";
-
-    const linkText =
-      extractConfluenceLinkText(inner as string) ||
-      ((inner as string).match(/ri:content-title="([^"]+)"/i)?.[1]?.trim() ?? "");
-
-    if (!linkText) {
-      return "";
-    }
-
-    if (pageId) {
-      return `<a href="/wiki/${pageId}">${escapeHtml(linkText)}</a>`;
-    }
-
-    return escapeHtml(linkText);
-  });
-}
-
-function extractConfluenceLinkText(inner: string): string {
-  const cdataMatch = inner.match(
-    /<ac:plain-text-link-body[^>]*><!\[CDATA\[([\s\S]*?)\]\]><\/ac:plain-text-link-body>/i,
-  );
-  if (cdataMatch?.[1]?.trim()) {
-    return cdataMatch[1].trim();
-  }
-
-  const plainMatch = inner.match(
-    /<ac:plain-text-link-body[^>]*>([\s\S]*?)<\/ac:plain-text-link-body>/i,
-  );
-  if (plainMatch?.[1]?.trim()) {
-    return plainMatch[1].trim();
-  }
-
-  const linkBodyMatch = inner.match(/<ac:link-body[^>]*>([\s\S]*?)<\/ac:link-body>/i);
-  if (linkBodyMatch?.[1]?.trim()) {
-    return linkBodyMatch[1].trim();
-  }
-
-  return "";
-}
-
-function escapeHtml(text: string): string {
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 function parseWikiHref(baseUrl: string, href: string) {
