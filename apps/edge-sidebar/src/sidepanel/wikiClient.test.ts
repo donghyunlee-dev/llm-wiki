@@ -182,25 +182,34 @@ describe("wiki sidebar client helpers", () => {
   it("deduplicates the same page by id even when titles differ slightly", () => {
     const result = normalizeWikiSearchResponse({
       answer: "설명",
-      confluenceData: [{ pageId: "42", title: "Claude Code Worktrees " }],
+      confluenceData: [{ pageId: "42", title: "[Guide] Claude Code Worktrees" }],
       recommendedDocuments: [{ id: "42", title: "Claude Code Worktrees", href: "/guides/worktrees" }],
       relatedDocuments: [{ id: "42", title: "Claude Code Worktrees", href: "/guides/worktrees" }],
     });
 
-    const matches = result.sources.filter((source) => source.title.trim() === "Claude Code Worktrees");
-    expect(matches).toHaveLength(1);
-    expect(matches[0]?.href).toBe("/guides/worktrees");
+    // Same page id "42" across all three arrays → exactly one merged source.
+    const worktreeSources = result.sources.filter((source) => source.id === "42");
+    expect(worktreeSources).toHaveLength(1);
+    // Slug-based href must win over the /wiki/{pageId} evidence href.
+    expect(worktreeSources[0]?.href).toBe("/guides/worktrees");
   });
 
   it("prefers slug hrefs for faq and library pages over /wiki/{pageId}", () => {
     const result = normalizeWikiSearchResponse({
       answer: "설명",
-      confluenceData: [{ pageId: "7", title: "FAQ 항목" }],
-      recommendedDocuments: [{ id: "7", title: "FAQ 항목", href: "/faq/faq-item" }],
+      confluenceData: [
+        { pageId: "7", title: "FAQ 항목" },
+        { pageId: "8", title: "라이브러리 항목" },
+      ],
+      recommendedDocuments: [
+        { id: "7", title: "FAQ 항목", href: "/faq/faq-item" },
+        { id: "8", title: "라이브러리 항목", href: "/library/lib-item" },
+      ],
     });
 
-    expect(result.sources).toHaveLength(1);
-    expect(result.sources[0]?.href).toBe("/faq/faq-item");
+    expect(result.sources).toHaveLength(2);
+    expect(result.sources.find((source) => source.id === "7")?.href).toBe("/faq/faq-item");
+    expect(result.sources.find((source) => source.id === "8")?.href).toBe("/library/lib-item");
   });
 });
 
