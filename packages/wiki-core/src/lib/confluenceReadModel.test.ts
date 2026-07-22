@@ -15,6 +15,14 @@ describe("confluenceReadModel", () => {
     expect(sanitized).not.toContain("onclick=");
   });
 
+  it("strips unquoted inline event handlers", () => {
+    const html = `<img src=x onerror=alert(1)><div onclick=steal()>x</div>`;
+    const sanitized = sanitizeConfluenceHtml(html);
+
+    expect(sanitized).not.toMatch(/onerror/i);
+    expect(sanitized).not.toMatch(/onclick/i);
+  });
+
   it("extracts headings from html", () => {
     const headings = extractHeadingsFromHtml(
       `<h1>Main</h1><h2 id="details">Details</h2>`,
