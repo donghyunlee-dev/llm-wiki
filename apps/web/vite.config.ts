@@ -17,6 +17,7 @@ import {
 } from "../../packages/wiki-core/src/lib/aiAsk.ts";
 import { classifyQuestionIntent } from "../../packages/wiki-core/src/lib/intentClassifier.ts";
 import { fetchConfluencePageRecords } from "../../packages/wiki-core/src/lib/confluenceClient.ts";
+import { renderConfluenceContentToCleanHtml } from "../../packages/wiki-core/src/lib/confluenceCleanHtml.ts";
 import {
   buildWikiDocumentsFromRecords,
   buildPolicyDocumentsFromRecords,
@@ -169,6 +170,45 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
           response.end(JSON.stringify({ pages: cache.records }));
         } catch (error) {
           const message = error instanceof Error ? error.message : "Failed to load wiki pages.";
+
+          response.statusCode = 502;
+          response.end(JSON.stringify({ message }));
+        }
+      });
+
+      server.middlewares.use("/api/wiki/documents", async (_request, response) => {
+        response.setHeader("Content-Type", "application/json; charset=utf-8");
+
+        if (!hasConfluenceConfig(env)) {
+          response.statusCode = 503;
+          response.end(JSON.stringify({ message: "Confluence environment is not configured." }));
+          return;
+        }
+
+        try {
+          const cache = await loadVisibleDevWikiCache(env);
+          const byId = new Map(cache.documents.map((document) => [document.id, document]));
+
+          const pages = cache.documents.map((document) => ({
+            id: document.id,
+            slug: document.slug,
+            title: document.title,
+            summary: document.summary,
+            href: getWikiDocumentHref(document) ?? `/wiki/${document.id}`,
+            docType: document.metadata.docType,
+            contentHtml: renderConfluenceContentToCleanHtml(document.contentHtml, cache.documents),
+            related: document.metadata.related
+              .map((relatedId) => byId.get(relatedId))
+              .filter((related): related is NonNullable<typeof related> => Boolean(related))
+              .map((related) => ({
+                title: related.title,
+                href: getWikiDocumentHref(related) ?? `/wiki/${related.id}`,
+              })),
+          }));
+
+          response.end(JSON.stringify({ pages }));
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "Failed to load wiki documents.";
 
           response.statusCode = 502;
           response.end(JSON.stringify({ message }));

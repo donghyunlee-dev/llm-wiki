@@ -26,6 +26,7 @@ export function sanitizeConfluenceHtml(inputHtml: string) {
     .replace(/<style[\s\S]*?>[\s\S]*?<\/style>/gi, "")
     .replace(/\son\w+="[^"]*"/gi, "")
     .replace(/\son\w+='[^']*'/gi, "")
+    .replace(/\son\w+=\s*[^\s>]+/gi, "")
     .replace(/javascript:/gi, "");
 }
 

@@ -276,6 +276,30 @@ h3 {
   border-radius: var(--radius-md);
 }
 
+.guide-body .wiki-callout {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, var(--panel-border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel-bg));
+  color: var(--page-fg);
+}
+
+.guide-body .wiki-callout--warning {
+  border-left-color: #d9534f;
+  background: color-mix(in srgb, #d9534f 10%, var(--panel-bg));
+}
+
+.guide-body .wiki-callout__title {
+  margin: 0 0 4px;
+  font-weight: 700;
+  color: var(--page-fg);
+}
+
+.guide-body .wiki-callout > :last-child {
+  margin-bottom: 0;
+}
+
 .guide-state {
   display: grid;
   gap: 10px;
