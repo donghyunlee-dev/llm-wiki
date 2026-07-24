@@ -25,12 +25,14 @@
 - [x] Task 7 — 태스크 워크스페이스 문서(`spec.md`/`plan.md`/`tasks.md`/`test-result.md` 스켈레톤/`result.md` 초안) 작성 및 `docs/prd/implementation-status.md` 갱신 (이 커밋)
 
 ## Test Tasks
-- [ ] Task 8 — 전체 검증(별도 세션에서 수행 예정): `pnpm test`/`pnpm typecheck`/`pnpm --filter @sfood/web build`, Playwright MCP 라이트+다크 4개 화면, Codex 비판 리뷰. 결과는 `test-result.md`/`result.md`에 기록.
+- [x] Task 8 — 전체 검증: `pnpm test`/`pnpm typecheck`/`pnpm --filter @sfood/web build` 전부 PASS, Playwright MCP로 라이트+다크 4개 화면(홈/검색/`/guides`/문서 상세) + 모바일 뷰포트 확인. Codex 비판 리뷰는 사용량 한도로 불가 — `test-result.md`에 사유 및 대체 검증 기록.
+  - 커밋: `378a73f` — fix: extend TOC active-heading indicator to the starting-guide page (Task 8 Playwright 검증 중 발견한 실제 버그 수정)
 
 ## Progress Notes
 - `git log --oneline d830979..HEAD`(2026-07-24 세션 시작 시점 `main` 기준)로 Task 1-6이 이미 이 브랜치(`feature/sfood-design-system-tone`)에 커밋되어 있음을 확인함.
 - Task 5는 계획상 3개 커밋(`ArticlePage.tsx` scroll-spy, 신규 테스트, jsdom 환경 설정)으로 예상됐으나 실제로는 `4881ce3`(디자인 시스템 토큰 재적용)이 같은 구간에 끼어 있어 4개 커밋으로 기록됨 — 내용상 Task 5 범위(TOC 활성 표시 관련 스타일/테스트 인프라)에 해당해 함께 묶음.
-- Task 8(최종 검증)은 아직 실행되지 않았다 — `test-result.md`/`result.md`는 스켈레톤/초안 상태로 남겨두고, 다음 세션에서 실제 검증 결과로 채운다.
+- Task 8에서 Playwright로 `/guides/agent-start`의 TOC를 클릭했을 때 활성 클래스가 전혀 나타나지 않는 문제를 발견 → 라우터(`router.tsx`) 확인 결과 해당 경로가 `ArticlePage`가 아닌 별도 컴포넌트 `StartingGuidePage`로 렌더링됨을 확인, 동일 scroll-spy 로직을 이식하여 수정.
 
 ## Review Notes
-- (Task 8에서 Codex 비판 리뷰 진행 후 기록 예정)
+- Task 1-6 각각 spec-compliance + code-quality 2단계 서브에이전트 리뷰 수행. 발견/수정 이슈: Task 2(배경 대비 회귀), Task 4(전역 클래스 스코프 회귀), Task 5(커밋 스코프 혼입, IntersectionObserver 테스트 커버리지 부재).
+- Codex 비판 리뷰: 사용량 한도로 이번 세션에서 미수행(`test-result.md` 참고). 2026-07-29 이후 재시도 권장.

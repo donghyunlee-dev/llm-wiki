@@ -16,17 +16,17 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
-### 2026-07-24 — Notion/Linear 스타일 UI 개편 (구현 완료, 최종 검증 진행 중)
+### 2026-07-24 — Notion/Linear 스타일 UI 개편 (구현 + 검증 완료, Codex 리뷰만 보류)
 - 브랜치: `feature/sfood-design-system-tone`(직전 세션과 동일 브랜치에서 이어서 작업).
 - 배경: 직전 세션에서 `@sfood/ui` 브랜드 컬러 스케일을 `#d65050`(코랄 레드)로 갱신 반영한 위에서, 사용자가 지적한 잔여 문제(가이드 문서 구식 스타일, TOC 폰트/간격/줄바꿈 불편, 배경-패널 구분 방식이 구식, 낯선 톤)를 브레인스토밍(3안 중 Notion/Linear 미니멀 A안 선택)으로 해결.
-- 구현(Task 1-6, 모두 커밋 완료):
+- 구현(Task 1-6, subagent-driven-development로 각 태스크마다 spec-compliance + code-quality 2단계 리뷰 수행, 발견된 3건 회귀 즉시 수정):
   - `.page-panel`/`.home-card`/`.home-guide-card`/`.article-aside`(TOC)/`.chat-guide-spotlight`/`.empty-card` 등 패널·카드에서 `border`/`box-shadow` 제거, 배경 톤 차이만으로 구분(버튼/입력 등 기능 컨트롤은 테두리 유지).
-  - 홈 "시작 가이드" 카드의 좌측 액센트/브랜드 틴트를 중립 톤(`bg-card-hover-bg`)으로 교체 — 좌측 액센트 바 패턴 전면 제거.
-  - 본문/TOC 타이포그래피·여백 확대(`article-content`/`article-paragraph` 13px→14px, `leading-6`→`leading-7`, TOC 간격 확대로 긴 제목 2줄 줄바꿈 여유 확보).
-  - `/guides` 목록을 카드형에서 신규 `.document-list`(divider) 클래스 기반 리스트로 전환, `guide` docType only 필터(Frozen Behavior)는 불변.
-  - `ArticlePage.tsx`에 `IntersectionObserver` 기반 TOC scroll-spy 추가, 활성 항목은 `.article-toc-link-active`(텍스트 색상+semibold만, 막대 없음)로 표시.
+  - 홈 "시작 가이드" 카드의 좌측 액센트/브랜드 틴트를 중립 1px 테두리(`border-panel-border`+`bg-card-bg`)로 교체 — 좌측 액센트 바 패턴 전면 제거(최초 배경-톤-only 시도는 라이트모드 시인성 저하로 리뷰에서 반려, 재수정).
+  - 본문/TOC/리스트/테이블 타이포그래피·여백 확대(13px→14px, `leading-6`→`leading-7`, TOC 간격 확대로 긴 제목 2줄 줄바꿈 여유 확보).
+  - `/guides` 목록을 카드형에서 신규 `.document-list`(divider) 클래스 기반 리스트로 전환. `.document-list-item`은 `.document-list` 내부에서만 divider 스타일이 적용되도록 스코프(최초 전역 변경은 `/projects` 등 다른 화면의 시각적 구분을 없애는 회귀로 리뷰에서 발견, 재수정). `guide` docType only 필터(Frozen Behavior)는 불변.
+  - `ArticlePage.tsx`와 `/guides/agent-start`를 담당하는 별도 컴포넌트 `StartingGuidePage` 양쪽에 `IntersectionObserver` 기반 TOC scroll-spy 추가, 활성 항목은 `.article-toc-link-active`(텍스트 색상+semibold만, 막대 없음)로 표시. `StartingGuidePage` 쪽은 계획에 없었으나 Task 8 Playwright 검증 중 "TOC 클릭해도 활성 표시 안 됨" 버그로 발견 — 라우터 확인 결과 별도 컴포넌트임을 파악해 동일 로직 이식.
   - 검색 페이지 사용자 질문 말풍선(`.chat-message-user`)을 솔리드 브랜드 블록에서 연한 pill(`rounded-full bg-accent-soft`)로 교체.
-- 상태: **구현 완료, 최종 검증(Task 8 — `pnpm test`/`typecheck`/`build`, Playwright MCP 라이트+다크 4개 화면, Codex 비판 리뷰)은 아직 진행 전.** 별도 세션에서 Task 8을 완료한 뒤 이 항목과 `docs/tasks/notion-style-ui-refresh/{test-result,result}.md`를 실제 검증 결과로 후속 갱신할 예정.
+- 검증(Task 8): `pnpm test`(wiki-core 168/web 55/edge-sidebar 21/mcp-server 36/serverless 5) 통과, `pnpm typecheck` 전체 통과, `pnpm --filter @sfood/web build` 통과. Playwright MCP로 홈/검색/`/guides`/문서 상세 4개 화면 × 라이트·다크 + 모바일(390x844) 확인. **Codex 비판 리뷰는 사용량 한도(2026-07-29 재시도 가능)로 이번 세션에서 수행 불가** — `docs/tasks/notion-style-ui-refresh/test-result.md`에 사유와 대체 검증(subagent 2단계 리뷰) 기록, 스킵이 아니라 명시적으로 남김.
 - 태스크 문서: `docs/tasks/notion-style-ui-refresh/`, 계획: `docs/superpowers/plans/2026-07-24-notion-style-ui-refresh.md`, 설계: `docs/superpowers/specs/2026-07-24-notion-style-ui-refresh-design.md`.
 
 ### 2026-07-24 — SFOOD 디자인 시스템(@sfood/ui) 톤앤매너 적용 + 검색 스크롤/TOC 겹침 수정
