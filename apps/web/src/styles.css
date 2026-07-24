@@ -948,7 +948,7 @@ a {
   }
 
   .article-list {
-    @apply mt-3 list-disc space-y-1 pl-5 text-[13px] leading-6 text-page-fg/90;
+    @apply mt-3 list-disc space-y-1 pl-5 text-[14px] leading-7 text-page-fg/90;
   }
 
   .article-list-ordered {
@@ -1006,7 +1006,7 @@ a {
   }
 
   .article-table-wrap table {
-    @apply w-full border-collapse text-[13px];
+    @apply w-full border-collapse text-[14px];
   }
 
   .article-table-wrap th,
