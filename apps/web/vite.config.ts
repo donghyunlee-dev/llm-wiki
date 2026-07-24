@@ -907,5 +907,8 @@ export default defineConfig(({ command, mode }) => {
       "import.meta.env.VITE_WIKI_REMOTE_ENDPOINT": JSON.stringify(wikiRemoteEndpoint),
     },
     plugins: [confluenceDevApiPlugin(env), githubDevApiPlugin(env), react(), tailwindcss()],
+    test: {
+      environment: "jsdom",
+    },
   };
 });
