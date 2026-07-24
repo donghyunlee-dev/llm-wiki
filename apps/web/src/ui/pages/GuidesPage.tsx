@@ -1,4 +1,5 @@
 import type { WikiDocument } from "@sfood/wiki-core";
+import { useEffect, useState, type MouseEvent } from "react";
 import { useWikiData } from "../../data/WikiDataProvider";
 import { ArticleContentRenderer } from "./ArticleContentRenderer";
 import { CategoryPage } from "./CategoryPage";
@@ -19,6 +20,54 @@ export function GuidesPage() {
 
 export function StartingGuidePage() {
   const { documents, isLoading, errorMessage } = useWikiData();
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+  const gettingStarted = findStartingGuideDocument(documents);
+
+  // Hooks must run unconditionally before the early returns below (see 2026-05-06 fix in
+  // implementation-status.md for why a conditional hook previously broke ArticlePage the same way).
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined" || !gettingStarted?.headings.length) {
+      return;
+    }
+
+    const headingElements = gettingStarted.headings
+      .map((heading) => window.document.getElementById(heading.id))
+      .filter((element): element is HTMLElement => Boolean(element));
+
+    if (!headingElements.length) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const nextActive = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+
+        if (nextActive) {
+          setActiveHeadingId(nextActive.target.id);
+        }
+      },
+      { rootMargin: "-96px 0px -70% 0px", threshold: 0 },
+    );
+
+    headingElements.forEach((element) => observer.observe(element));
+
+    return () => observer.disconnect();
+  }, [gettingStarted?.id]);
+
+  const handleTocClick = (event: MouseEvent<HTMLAnchorElement>, headingId: string) => {
+    event.preventDefault();
+    setActiveHeadingId(headingId);
+
+    const element = window.document.getElementById(headingId);
+
+    if (element && typeof element.scrollIntoView === "function") {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    window.history.replaceState(null, "", `#${headingId}`);
+  };
 
   if (isLoading) {
     return (
@@ -38,8 +87,6 @@ export function StartingGuidePage() {
       />
     );
   }
-
-  const gettingStarted = findStartingGuideDocument(documents);
 
   return (
     <div className="page-shell">
@@ -75,7 +122,10 @@ export function StartingGuidePage() {
                 <a
                   key={heading.id}
                   href={`#${heading.id}`}
-                  className={`article-toc-link article-toc-level-${Math.min(heading.level, 4)}`}
+                  onClick={(event) => handleTocClick(event, heading.id)}
+                  className={`article-toc-link article-toc-level-${Math.min(heading.level, 4)}${
+                    activeHeadingId === heading.id ? " article-toc-link-active" : ""
+                  }`}
                 >
                   {heading.text}
                 </a>
