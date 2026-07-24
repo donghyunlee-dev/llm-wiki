@@ -1430,7 +1430,7 @@ a {
   }
 
   .chat-message-user {
-    @apply ml-auto max-w-2xl rounded-[999px] bg-accent-soft text-page-fg;
+    @apply ml-auto max-w-2xl rounded-full bg-accent-soft text-page-fg;
   }
 
   .chat-message-user p {
