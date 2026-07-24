@@ -42,6 +42,34 @@ describe("renderConfluenceContentToCleanHtml", () => {
     expect(out.match(/본문/g)?.length).toBe(1);
   });
 
+  it("converts an ADF panel extension to a single callout without duplicating the fallback", () => {
+    const html = `<ac:adf-extension><ac:adf-node type="panel"><ac:adf-attribute key="panel-type">note</ac:adf-attribute><ac:adf-content><p>편집 제한 주의</p></ac:adf-content></ac:adf-node><ac:adf-fallback><div class="panel conf-macro output-block"><div class="panelContent"><p>편집 제한 주의</p></div></div></ac:adf-fallback></ac:adf-extension>`;
+    const out = renderConfluenceContentToCleanHtml(html, []);
+
+    expect(out).toContain(`<div class="wiki-callout wiki-callout--note">`);
+    expect(out).toContain(`<p>편집 제한 주의</p>`);
+    expect(out.match(/편집 제한 주의/g)?.length).toBe(1);
+    expect(out).not.toContain("panelContent");
+    expect(out).not.toContain("adf-");
+  });
+
+  it("keeps ADF panel body intact when the content contains nested adf nodes", () => {
+    const html = `<ac:adf-extension><ac:adf-node type="panel"><ac:adf-attribute key="panel-type">note</ac:adf-attribute><ac:adf-content><ac:adf-node type="paragraph"><p>중첩 본문</p></ac:adf-node></ac:adf-content></ac:adf-node><ac:adf-fallback><div class="panel"><p>중첩 본문</p></div></ac:adf-fallback></ac:adf-extension>`;
+    const out = renderConfluenceContentToCleanHtml(html, []);
+
+    expect(out).toContain(`<div class="wiki-callout wiki-callout--note">`);
+    expect(out).toContain(`<p>중첩 본문</p>`);
+    expect(out.match(/중첩 본문/g)?.length).toBe(1);
+  });
+
+  it("falls back to a safe panel type and does not leak untrusted attribute markup", () => {
+    const html = `<ac:adf-extension><ac:adf-node type="panel"><ac:adf-attribute key="panel-type">note" onclick="alert(1)</ac:adf-attribute><ac:adf-content><p>본문</p></ac:adf-content></ac:adf-node></ac:adf-extension>`;
+    const out = renderConfluenceContentToCleanHtml(html, []);
+
+    expect(out).toContain(`<div class="wiki-callout wiki-callout--info">`);
+    expect(out).not.toContain("onclick");
+  });
+
   it("resolves an ac:link to an internal wiki href by page id", () => {
     const documents = [doc({ id: "99", slug: "worktrees", title: "[Guide] Worktrees" })];
     const html = `<ac:link><ri:page ri:content-id="99" ri:content-title="[Guide] Worktrees" /><ac:link-body>워크트리</ac:link-body></ac:link>`;

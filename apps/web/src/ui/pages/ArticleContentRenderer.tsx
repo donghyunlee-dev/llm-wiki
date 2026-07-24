@@ -306,6 +306,15 @@ function rewriteConfluenceRichNodes(document: Document, documents: WikiDocument[
     linkNode.replaceWith(replacement);
   }
 
+  for (const extensionNode of Array.from(document.querySelectorAll("ac\\:adf-extension"))) {
+    const panelNode = extensionNode.querySelector("ac\\:adf-node[type='panel']");
+    if (!panelNode) {
+      continue;
+    }
+    const replacement = resolveConfluenceAdfPanelElement(document, panelNode as Element);
+    extensionNode.replaceWith(replacement);
+  }
+
   for (const macroNode of Array.from(document.querySelectorAll("ac\\:structured-macro"))) {
     const element = macroNode as Element;
     const name = element.getAttribute("ac:name") ?? "";
@@ -409,6 +418,29 @@ function resolveConfluenceCalloutElement(document: Document, macroNode: Element)
 
   if (richBody) {
     blockquote.innerHTML = richBody.innerHTML;
+  }
+
+  return blockquote;
+}
+
+const ADF_PANEL_TYPES = new Set(["info", "tip", "note", "warning", "success", "error"]);
+
+function resolveConfluenceAdfPanelElement(document: Document, panelNode: Element) {
+  const rawType =
+    panelNode.querySelector("ac\\:adf-attribute[key='panel-type']")?.textContent?.trim().toLowerCase() ?? "";
+  const panelType = ADF_PANEL_TYPES.has(rawType) ? rawType : "info";
+  const content = panelNode.querySelector("ac\\:adf-content");
+
+  const blockquote = document.createElement("blockquote");
+  blockquote.className = panelType;
+
+  const title = CONFLUENCE_CALLOUT_LABELS[panelType];
+  if (title) {
+    blockquote.setAttribute("data-callout-title", title);
+  }
+
+  if (content) {
+    blockquote.innerHTML = content.innerHTML;
   }
 
   return blockquote;

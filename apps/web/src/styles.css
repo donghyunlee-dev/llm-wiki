@@ -891,41 +891,23 @@ a {
   }
 
   .article-toc {
-    @apply mt-3 space-y-1;
+    @apply mt-3 space-y-0.5;
   }
 
   .article-toc-link {
-    @apply relative block rounded-[var(--radius-md)] px-2 py-1.5 text-[13px] leading-5 text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
-  }
-
-  .article-toc-level-2::before,
-  .article-toc-level-3::before,
-  .article-toc-level-4::before {
-    @apply absolute left-2 top-1/2 -translate-y-1/2 text-subtle-fg;
+    @apply block rounded-[var(--radius-md)] px-2 py-1 text-[13px] leading-5 text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
   }
 
   .article-toc-level-2 {
-    @apply pl-6;
-  }
-
-  .article-toc-level-2::before {
-    content: "•";
+    @apply pl-2;
   }
 
   .article-toc-level-3 {
-    @apply pl-8;
-  }
-
-  .article-toc-level-3::before {
-    content: "—";
+    @apply pl-5;
   }
 
   .article-toc-level-4 {
-    @apply pl-10;
-  }
-
-  .article-toc-level-4::before {
-    content: "·";
+    @apply pl-8;
   }
 
   .article-toc-empty {

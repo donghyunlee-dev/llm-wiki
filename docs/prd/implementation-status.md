@@ -16,6 +16,15 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-23 — 웹 검색/문서 note 이중 표시 및 목차 정리
+- 대상: (1) Confluence ADF 확장(`<ac:adf-extension>`) 패널이 웹 아티클/검색에서 이중 렌더 + `panel-type` "note" 텍스트 누출, (2) 목차 마커(`•`/`—`) 세로중앙 배치로 정렬 어긋남 + 항목 간격 과다.
+- 근본 원인: 두 렌더러(`confluenceCleanHtml.ts`, `ArticleContentRenderer.tsx`) 모두 `ac:adf-extension` 미처리 → `ac:adf-content`와 `ac:adf-fallback`(`.panel`)이 동시 출력.
+- 해결:
+  - `packages/wiki-core/src/lib/confluenceCleanHtml.ts`: `ac:adf-extension` 패널 → 단일 `wiki-callout` div 변환. `panel-type`은 화이트리스트(`resolveAdfPanelType`)로 정규화(속성 인젝션 차단), 본문은 `inner`에서 직접 추출(중첩 `adf-node` 절단 방지).
+  - `apps/web/src/ui/pages/ArticleContentRenderer.tsx`: `rewriteConfluenceRichNodes`에 `ac:adf-extension` 패널 → blockquote 콜아웃(`resolveConfluenceAdfPanelElement`) 추가, 동일 화이트리스트 적용.
+  - `apps/web/src/styles.css`: 목차 `::before` 마커 전부 제거, 레벨 들여쓰기(pl-2/5/8)로 구분, `py-1.5→py-1`·`space-y-1→space-y-0.5`로 간격 축소.
+- 검증: `pnpm test`/`pnpm typecheck` 통과, ADF 단위테스트 3건 추가(변환·중첩·인젝션), Playwright로 note 단일 렌더+목차 확인, Codex 크리티컬 리뷰 2건 반영. 태스크: `docs/tasks/websearch-note-toc-fix/`.
+
 ### 2026-07-22 — 익스텐션 검색/가이드 오동작 수정 (A안: 서버 정리 HTML)
 - 대상: `apps/edge-sidebar` 3대 오동작 — (1) 가이드 본문 이중 노출 + 다크모드 불가시, (2) 추천/참고 페이지 중복, (3) 추천 링크 오동작.
 - 근본 원인: 익스텐션이 웹 정규화 모델을 재사용하지 않고 원본 Confluence `bodyHtml`을 raw로 렌더 + 제목 기준 dedup + `/guides/`만 우선하는 href 선택.

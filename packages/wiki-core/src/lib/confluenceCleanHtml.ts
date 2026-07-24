@@ -8,6 +8,17 @@ const CALLOUT_LABELS: Record<string, string> = {
   panel: "",
 };
 
+const ADF_PANEL_TYPES = new Set(["info", "tip", "note", "warning", "success", "error"]);
+
+/**
+ * ADF 패널의 panel-type는 문서 콘텐츠에서 오는 신뢰할 수 없는 값이므로,
+ * 알려진 유형만 통과시키고 나머지는 안전한 기본값(info)으로 정규화한다.
+ */
+function resolveAdfPanelType(rawType: string): string {
+  const normalized = rawType.toLowerCase();
+  return ADF_PANEL_TYPES.has(normalized) ? normalized : "info";
+}
+
 /**
  * Confluence storage-format HTML을 DOM 없이 시맨틱 HTML 문자열로 변환한다.
  * 익스텐션/서버 전용 정리기이며, 웹앱 본체는 별도의 React 렌더러를 유지한다.
@@ -41,6 +52,25 @@ export function renderConfluenceContentToCleanHtml(html: string, documents: Wiki
       const body = readRichTextBody(inner);
       const titleHtml = title ? `<p class="wiki-callout__title">${escapeHtml(title)}</p>` : "";
       return `<div class="wiki-callout wiki-callout--${name}">${titleHtml}${body}</div>`;
+    },
+  );
+
+  out = out.replace(
+    /<ac:adf-extension>([\s\S]*?)<\/ac:adf-extension>/gi,
+    (match, inner: string) => {
+      if (!/<ac:adf-node[^>]*type="panel"/i.test(inner)) {
+        return match;
+      }
+      const rawType =
+        inner
+          .match(/<ac:adf-attribute[^>]*key="panel-type"[^>]*>([\s\S]*?)<\/ac:adf-attribute>/i)?.[1]
+          ?.trim() ?? "";
+      const panelType = resolveAdfPanelType(rawType);
+      const body =
+        inner.match(/<ac:adf-content[^>]*>([\s\S]*?)<\/ac:adf-content>/i)?.[1]?.trim() ?? "";
+      const title = CALLOUT_LABELS[panelType] ?? "";
+      const titleHtml = title ? `<p class="wiki-callout__title">${escapeHtml(title)}</p>` : "";
+      return `<div class="wiki-callout wiki-callout--${panelType}">${titleHtml}${body}</div>`;
     },
   );
 
