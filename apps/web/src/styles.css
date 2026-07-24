@@ -1653,7 +1653,7 @@ a {
   }
 
   .home-guide-card-featured {
-    @apply min-h-[92px] border-accent/20 bg-accent-soft px-4 py-4;
+    @apply min-h-[92px] bg-card-hover-bg px-4 py-4;
   }
 
   .home-guide-card-icon {
@@ -1661,7 +1661,7 @@ a {
   }
 
   .home-guide-card-icon-featured {
-    @apply h-9 w-9 border-accent/30 bg-card-bg;
+    @apply h-9 w-9 bg-panel-bg;
   }
 
   .home-guide-card-copy {
