@@ -169,7 +169,7 @@ export function CategoryPage({ section }: { section: WikiSection }) {
           전체 {sectionDocuments.length}개 중 {visibleDocuments.length}개 표시
         </p>
 
-        <div className="section-stack">
+        <div className="document-list">
           {pagedDocuments.length ? (
             pagedDocuments.map((document) => (
               <WikiDocumentListItem

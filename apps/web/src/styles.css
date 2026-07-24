@@ -253,6 +253,10 @@ a {
     @apply mt-4 space-y-3;
   }
 
+  .document-list {
+    @apply mt-4 divide-y divide-panel-border-soft;
+  }
+
   .title-hero {
     @apply font-display text-[18px] font-semibold leading-snug text-page-fg sm:text-[20px];
   }
@@ -325,7 +329,7 @@ a {
   }
 
   .document-list-item {
-    @apply block rounded-[var(--radius-md)] bg-card-bg px-3.5 py-3 transition hover:bg-card-hover-bg;
+    @apply block px-1 py-4 transition hover:bg-card-hover-bg;
   }
 
   .document-chip {
