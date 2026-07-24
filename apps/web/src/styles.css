@@ -1,32 +1,34 @@
 @import "tailwindcss";
+@import "@sfood/ui/tokens/base.css";
+@import "@sfood/ui/tokens/semantic.css";
 
 :root {
-  --page-bg: #f4f4f4;
-  --page-fg: #54585A;
-  --panel-bg: #ffffff;
-  --panel-border: #e8e8e8;
-  --panel-border-soft: #f0f0f0;
-  --panel-shadow: rgba(0,0,0,0.02) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 6px, rgba(0,0,0,0.10) 0px 4px 8px;
-  --muted-fg: #6a6a6a;
-  --subtle-fg: #929292;
-  --accent: #e4002b;
-  --accent-strong: #c80025;
-  --accent-soft: #fdf2f4;
-  --card-bg: #ffffff;
-  --card-hover-bg: #fdf8f8;
-  --cta-bg: #222222;
-  --cta-fg: #ffffff;
+  --page-bg: var(--color-background);
+  --page-fg: var(--color-foreground);
+  --panel-bg: var(--color-surface);
+  --panel-border: var(--color-border);
+  --panel-border-soft: var(--color-border-subtle);
+  --panel-shadow: var(--shadow-card);
+  --muted-fg: var(--color-secondary);
+  --subtle-fg: var(--color-muted);
+  --accent: var(--color-brand);
+  --accent-strong: var(--color-brand-hover);
+  --accent-soft: var(--color-brand-subtle);
+  --card-bg: var(--color-surface);
+  --card-hover-bg: var(--color-surface-subtle);
+  --cta-bg: var(--gray-900);
+  --cta-fg: var(--color-on-brand);
   --cta-muted-fg: rgba(255,255,255,0.65);
-  --blueprint-button-bg: #ffffff;
-  --blueprint-button-fg: #54585A;
-  --code-frame-bg: #f8f8f8;
-  --code-frame-border: #e0e0e0;
-  --code-header-bg: #f2f2f2;
-  --code-body-bg: #f8f8f8;
-  --code-gutter-bg: #f2f2f2;
-  --code-gutter-border: #e4e4e4;
-  --code-fg: #3f3f3f;
-  --code-muted: #6a6a6a;
+  --blueprint-button-bg: var(--color-surface);
+  --blueprint-button-fg: var(--color-foreground);
+  --code-frame-bg: var(--color-surface-subtle);
+  --code-frame-border: var(--color-border);
+  --code-header-bg: var(--color-border-subtle);
+  --code-body-bg: var(--color-surface-subtle);
+  --code-gutter-bg: var(--color-surface-subtle);
+  --code-gutter-border: var(--color-border);
+  --code-fg: var(--color-foreground);
+  --code-muted: var(--color-secondary);
   --code-font-family: var(--font-mono);
   --code-body-font-size: 12px;
   --code-meta-font-size: 10px;
@@ -45,9 +47,12 @@
   --guide-graph-edge-related: rgba(167, 139, 250, 0.55);
   --guide-graph-edge-orphan: rgba(245, 158, 11, 0.55);
   --guide-graph-edge-missing: rgba(251, 113, 133, 0.55);
-  --radius-xl: 20px;
-  --radius-lg: 8px;
-  --radius-md: 6px;
+  /* aligned with @sfood/ui tokens/base.css radius scale (xl/lg/md share the same
+     custom property names as our own tokens, so they are set as literals here
+     instead of var() references to avoid a self-referencing cascade). */
+  --radius-xl: 16px;
+  --radius-lg: 12px;
+  --radius-md: 8px;
   --space-page: 16px;
   --space-section: 18px;
   --space-block: 12px;
@@ -55,38 +60,37 @@
   --font-size-body: 13px;
   --font-size-title: 18px;
   --font-size-section: 15px;
-  --font-display: "맑은 고딕", "Malgun Gothic", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-body: "맑은 고딕", "Malgun Gothic", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "IBM Plex Mono", "JetBrains Mono", monospace;
+  --font-display: var(--font-sans);
+  --font-body: var(--font-sans);
 }
 
 :root[data-theme="dark"] {
-  --page-bg: #020617;
-  --page-fg: #f8fafc;
-  --panel-bg: #0f172a;
-  --panel-border: #1e293b;
-  --panel-border-soft: #1e293b;
+  --page-bg: var(--gray-900);
+  --page-fg: var(--gray-50);
+  --panel-bg: color-mix(in srgb, var(--gray-900) 88%, white 12%);
+  --panel-border: var(--gray-700);
+  --panel-border-soft: color-mix(in srgb, var(--gray-700) 60%, var(--gray-900) 40%);
   --panel-shadow: rgba(0,0,0,0.04) 0px 0px 0px 1px, rgba(0,0,0,0.10) 0px 2px 6px, rgba(0,0,0,0.22) 0px 4px 8px;
-  --muted-fg: #94a3b8;
-  --subtle-fg: #64748b;
-  --accent: #ff3358;
-  --accent-strong: #e4002b;
-  --accent-soft: #3d0a12;
-  --card-bg: #0f172a;
-  --card-hover-bg: #1f1215;
-  --cta-bg: #f1f5f9;
-  --cta-fg: #020617;
+  --muted-fg: var(--gray-400);
+  --subtle-fg: var(--gray-500);
+  --accent: var(--brand-400);
+  --accent-strong: var(--brand-300);
+  --accent-soft: color-mix(in srgb, var(--brand-900) 55%, var(--gray-900) 45%);
+  --card-bg: color-mix(in srgb, var(--gray-900) 88%, white 12%);
+  --card-hover-bg: color-mix(in srgb, var(--gray-900) 80%, white 20%);
+  --cta-bg: var(--white);
+  --cta-fg: var(--gray-900);
   --cta-muted-fg: #475569;
-  --blueprint-button-bg: #020617;
-  --blueprint-button-fg: #ffffff;
-  --code-frame-bg: #0b1220;
-  --code-frame-border: #1f2a3d;
-  --code-header-bg: #111a2d;
-  --code-body-bg: #020817;
-  --code-gutter-bg: #0f172a;
-  --code-gutter-border: #243147;
-  --code-fg: #e5eef9;
-  --code-muted: #94a3b8;
+  --blueprint-button-bg: var(--gray-900);
+  --blueprint-button-fg: var(--white);
+  --code-frame-bg: var(--gray-900);
+  --code-frame-border: var(--gray-700);
+  --code-header-bg: color-mix(in srgb, var(--gray-900) 80%, white 20%);
+  --code-body-bg: var(--gray-900);
+  --code-gutter-bg: color-mix(in srgb, var(--gray-900) 88%, white 12%);
+  --code-gutter-border: var(--gray-700);
+  --code-fg: var(--gray-50);
+  --code-muted: var(--gray-400);
   --code-font-family: var(--font-mono);
   --code-body-font-size: 12px;
   --code-meta-font-size: 10px;
@@ -895,7 +899,10 @@ a {
   }
 
   .article-aside {
-    @apply rounded-[var(--radius-lg)] bg-panel-bg p-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto;
+    /* xl:top/max-h account for the sticky .site-header's rendered height (~72px) plus a 16px gap
+       so the TOC no longer scrolls under the header. No border/bg — the TOC blends into the page
+       background instead of reading as a separate card. */
+    @apply rounded-[var(--radius-lg)] p-4 xl:sticky xl:top-[88px] xl:max-h-[calc(100vh-104px)] xl:self-start xl:overflow-y-auto;
   }
 
   .article-toc {
@@ -1378,7 +1385,7 @@ a {
   }
 
   .chat-structured-answer a {
-    @apply shadow-[inset_0_0_0_1px_rgba(228,0,43,0.04)];
+    @apply shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_4%,transparent)];
   }
 
   .chat-search-shell {
