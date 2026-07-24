@@ -1,10 +1,43 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { WikiDocument } from "@sfood/wiki-core";
 import { ArticlePage } from "./ArticlePage";
 
 const useWikiDataMock = vi.fn();
+let observerInstances: MockIntersectionObserver[] = [];
+
+class MockIntersectionObserver {
+  callback: IntersectionObserverCallback;
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.callback = callback;
+    observerInstances.push(this);
+  }
+
+  observe = vi.fn();
+  disconnect = vi.fn();
+  unobserve = vi.fn();
+}
+
+function buildEntry(id: string, top: number, isIntersecting: boolean) {
+  return {
+    isIntersecting,
+    boundingClientRect: { top } as DOMRectReadOnly,
+    target: { id } as Element,
+  } as unknown as IntersectionObserverEntry;
+}
+
+beforeEach(() => {
+  useWikiDataMock.mockReset();
+  observerInstances = [];
+  vi.stubGlobal("IntersectionObserver", MockIntersectionObserver);
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 vi.mock("../../data/WikiDataProvider", () => ({
   useWikiData: () => useWikiDataMock(),
@@ -63,6 +96,38 @@ describe("ArticlePage TOC active state", () => {
     expect(secondLink.className).not.toContain("article-toc-link-active");
 
     fireEvent.click(secondLink);
+
+    expect(secondLink.className).toContain("article-toc-link-active");
+    expect(firstLink.className).not.toContain("article-toc-link-active");
+  });
+
+  it("marks the topmost of multiple intersecting headings active via the scroll-spy observer", () => {
+    useWikiDataMock.mockReturnValue({
+      documents: [buildDocument()],
+      errorMessage: null,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <ArticlePage section="guides" />
+      </MemoryRouter>,
+    );
+
+    const firstLink = screen.getByRole("link", { name: "첫 번째 섹션" });
+    const secondLink = screen.getByRole("link", { name: "두 번째 섹션" });
+
+    expect(observerInstances).toHaveLength(1);
+    const [observer] = observerInstances;
+
+    // Both headings are intersecting; h-2 is physically higher on screen (smaller
+    // boundingClientRect.top) so it should win over h-1 despite arriving second.
+    act(() => {
+      observer.callback(
+        [buildEntry("h-1", 200, true), buildEntry("h-2", 40, true)],
+        observer as unknown as IntersectionObserver,
+      );
+    });
 
     expect(secondLink.className).toContain("article-toc-link-active");
     expect(firstLink.className).not.toContain("article-toc-link-active");
