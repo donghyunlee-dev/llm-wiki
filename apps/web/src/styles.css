@@ -226,7 +226,7 @@ a {
   }
 
   .page-shell {
-    @apply px-4 py-5 sm:px-5;
+    @apply px-4 py-7 sm:px-6;
   }
 
   .page-width {
@@ -879,7 +879,7 @@ a {
   }
 
   .article-content {
-    @apply mt-6 text-[13px] leading-6 text-page-fg;
+    @apply mt-6 text-[14px] leading-7 text-page-fg;
   }
 
   .article-layout {
@@ -891,11 +891,11 @@ a {
   }
 
   .article-toc {
-    @apply mt-3 space-y-0.5;
+    @apply mt-3 space-y-1.5;
   }
 
   .article-toc-link {
-    @apply block rounded-[var(--radius-md)] px-2 py-1 text-[13px] leading-5 text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
+    @apply block rounded-[var(--radius-md)] px-2 py-1.5 text-[13px] leading-6 text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
   }
 
   .article-toc-level-2 {
@@ -934,7 +934,7 @@ a {
   }
 
   .article-paragraph {
-    @apply mt-3 text-[13px] leading-6 text-page-fg/90;
+    @apply mt-4 text-[14px] leading-7 text-page-fg/90;
   }
 
   .article-content a,
