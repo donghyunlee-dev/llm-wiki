@@ -16,6 +16,28 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-24 — Notion/Linear 스타일 UI 개편 (구현 완료, 최종 검증 진행 중)
+- 브랜치: `feature/sfood-design-system-tone`(직전 세션과 동일 브랜치에서 이어서 작업).
+- 배경: 직전 세션에서 `@sfood/ui` 브랜드 컬러 스케일을 `#d65050`(코랄 레드)로 갱신 반영한 위에서, 사용자가 지적한 잔여 문제(가이드 문서 구식 스타일, TOC 폰트/간격/줄바꿈 불편, 배경-패널 구분 방식이 구식, 낯선 톤)를 브레인스토밍(3안 중 Notion/Linear 미니멀 A안 선택)으로 해결.
+- 구현(Task 1-6, 모두 커밋 완료):
+  - `.page-panel`/`.home-card`/`.home-guide-card`/`.article-aside`(TOC)/`.chat-guide-spotlight`/`.empty-card` 등 패널·카드에서 `border`/`box-shadow` 제거, 배경 톤 차이만으로 구분(버튼/입력 등 기능 컨트롤은 테두리 유지).
+  - 홈 "시작 가이드" 카드의 좌측 액센트/브랜드 틴트를 중립 톤(`bg-card-hover-bg`)으로 교체 — 좌측 액센트 바 패턴 전면 제거.
+  - 본문/TOC 타이포그래피·여백 확대(`article-content`/`article-paragraph` 13px→14px, `leading-6`→`leading-7`, TOC 간격 확대로 긴 제목 2줄 줄바꿈 여유 확보).
+  - `/guides` 목록을 카드형에서 신규 `.document-list`(divider) 클래스 기반 리스트로 전환, `guide` docType only 필터(Frozen Behavior)는 불변.
+  - `ArticlePage.tsx`에 `IntersectionObserver` 기반 TOC scroll-spy 추가, 활성 항목은 `.article-toc-link-active`(텍스트 색상+semibold만, 막대 없음)로 표시.
+  - 검색 페이지 사용자 질문 말풍선(`.chat-message-user`)을 솔리드 브랜드 블록에서 연한 pill(`rounded-full bg-accent-soft`)로 교체.
+- 상태: **구현 완료, 최종 검증(Task 8 — `pnpm test`/`typecheck`/`build`, Playwright MCP 라이트+다크 4개 화면, Codex 비판 리뷰)은 아직 진행 전.** 별도 세션에서 Task 8을 완료한 뒤 이 항목과 `docs/tasks/notion-style-ui-refresh/{test-result,result}.md`를 실제 검증 결과로 후속 갱신할 예정.
+- 태스크 문서: `docs/tasks/notion-style-ui-refresh/`, 계획: `docs/superpowers/plans/2026-07-24-notion-style-ui-refresh.md`, 설계: `docs/superpowers/specs/2026-07-24-notion-style-ui-refresh-design.md`.
+
+### 2026-07-24 — SFOOD 디자인 시스템(@sfood/ui) 톤앤매너 적용 + 검색 스크롤/TOC 겹침 수정
+- 브랜치: `develop` 신규 생성, `feature/sfood-design-system-tone`(base: develop)에서 작업. 커밋은 아직 하지 않음.
+- 대상: 사용자 확인(service 축)에 따라 `apps/web`의 컬러/폰트/배경/radius를 사내 디자인 시스템(`@sfood/ui`, private repo) semantic 토큰 기준으로 전면 교체. 페이지 내부 구성은 불변.
+- 구현: `apps/web/src/styles.css`에서 `@sfood/ui/tokens/base.css`+`tokens/semantic.css`를 import하고, `--accent`/`--page-bg`/`--panel-bg`/`--font-body` 등 기존 로컬 변수를 `--color-brand`/`--color-background`/`--color-surface`/`--font-sans` 등으로 재매핑. 다크모드는 동일 원시 스케일(`--gray-*`, `--brand-*`) + `color-mix()`로 자체 구성(디자인 시스템이 다크 기본값 미제공). `--radius-xl/lg/md`는 `@sfood/ui/base.css`의 동일 이름 프리미티브와의 자기참조 충돌을 피하기 위해 리터럴 픽셀(16/12/8)로 적용.
+- 버그 수정: (1) `SearchPage.tsx` — 새 답변 turn 추가/loading→complete 전환 시 `scrollIntoView`로 자동 스크롤. (2) `.article-aside`(TOC) sticky top을 `.site-header` 실측 높이에 맞춰 `top-4`→`top-[88px]`로 수정, 겹침 제거.
+- 환경 제약: 이 세션의 pnpm은 `@sfood/ui`의 git 의존성 `prepare`(vite build) 스크립트를 임시 디렉터리에서 성공적으로 빌드하지만(로그로 확인) 산출물(`dist/index.js`)을 최종 패키지 경로에 반영하는 단계가 반복적으로 누락되어, React 컴포넌트(Button/Card 등) import는 이번 세션에서 사용하지 못함. CSS 토큰(`tokens/*.css`)은 빌드 불필요라 정상 적용됨. 후속 세션에서 정상 환경 재설치 후 컴포넌트 교체 필요.
+- 검증: `pnpm test`(wiki-core 168/web 52/edge-sidebar 21/mcp-server 36/serverless 5) 통과, `pnpm typecheck` 전체 통과, `pnpm --filter @sfood/web build` 통과. Playwright MCP로 홈(라이트/다크)/검색 스크롤/`/guides`/가이드 상세 TOC/모바일(390x844) 확인. Codex 비판 리뷰 완료(Critical 0, non-critical 1건 — 무관한 `pnpm-lock.yaml` 변경 혼입 → unstage로 반영).
+- 태스크 문서: `docs/tasks/sfood-design-system-tone/`.
+
 ### 2026-07-23 — 웹 검색/문서 note 이중 표시 및 목차 정리
 - 대상: (1) Confluence ADF 확장(`<ac:adf-extension>`) 패널이 웹 아티클/검색에서 이중 렌더 + `panel-type` "note" 텍스트 누출, (2) 목차 마커(`•`/`—`) 세로중앙 배치로 정렬 어긋남 + 항목 간격 과다.
 - 근본 원인: 두 렌더러(`confluenceCleanHtml.ts`, `ArticleContentRenderer.tsx`) 모두 `ac:adf-extension` 미처리 → `ac:adf-content`와 `ac:adf-fallback`(`.panel`)이 동시 출력.
