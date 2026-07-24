@@ -238,11 +238,11 @@ a {
   }
 
   .page-panel {
-    @apply rounded-[var(--radius-xl)] border border-panel-border bg-panel-bg p-5 shadow-[var(--panel-shadow)] md:p-6;
+    @apply rounded-[var(--radius-xl)] bg-panel-bg p-6 md:p-8;
   }
 
   .page-panel-soft {
-    @apply rounded-[var(--radius-lg)] border border-panel-border bg-card-bg p-4;
+    @apply rounded-[var(--radius-lg)] bg-card-bg p-4;
   }
 
   .page-stack {
@@ -317,15 +317,15 @@ a {
   }
 
   .empty-card {
-    @apply rounded-[var(--radius-md)] border border-panel-border bg-card-bg px-3.5 py-3 text-[13px] leading-5 text-muted-fg;
+    @apply rounded-[var(--radius-md)] bg-card-bg px-3.5 py-3 text-[13px] leading-5 text-muted-fg;
   }
 
   .list-row-link {
-    @apply flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-panel-border bg-card-bg px-3.5 py-3 text-[13px] text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg;
+    @apply flex items-center justify-between gap-3 rounded-[var(--radius-md)] bg-card-bg px-3.5 py-3 text-[13px] text-page-fg transition hover:bg-card-hover-bg;
   }
 
   .document-list-item {
-    @apply block rounded-[var(--radius-md)] border border-panel-border bg-card-bg px-3.5 py-3 transition hover:border-accent/30 hover:bg-card-hover-bg;
+    @apply block rounded-[var(--radius-md)] bg-card-bg px-3.5 py-3 transition hover:bg-card-hover-bg;
   }
 
   .document-chip {
@@ -789,7 +789,7 @@ a {
   }
 
   .home-card {
-    @apply rounded-[var(--radius-lg)] border border-panel-border bg-card-bg;
+    @apply rounded-[var(--radius-lg)] bg-card-bg;
   }
 
   .home-card-padding {
@@ -887,7 +887,7 @@ a {
   }
 
   .article-aside {
-    @apply rounded-[var(--radius-lg)] border border-panel-border bg-panel-bg p-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto;
+    @apply rounded-[var(--radius-lg)] bg-panel-bg p-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto;
   }
 
   .article-toc {
@@ -1431,7 +1431,7 @@ a {
   }
 
   .chat-guide-spotlight {
-    @apply rounded-[var(--radius-lg)] border border-panel-border bg-card-bg px-4 py-4;
+    @apply rounded-[var(--radius-lg)] bg-card-bg px-4 py-4;
   }
 
   .chat-guide-spotlight h2 {
@@ -1649,7 +1649,7 @@ a {
   }
 
   .home-guide-card {
-    @apply relative flex min-h-[104px] items-start gap-3 rounded-[var(--radius-lg)] border border-panel-border bg-card-bg px-3 py-3 text-left transition hover:border-accent/30 hover:bg-card-hover-bg;
+    @apply relative flex min-h-[104px] items-start gap-3 rounded-[var(--radius-lg)] bg-card-bg px-3 py-3 text-left transition hover:bg-card-hover-bg;
   }
 
   .home-guide-card-featured {
