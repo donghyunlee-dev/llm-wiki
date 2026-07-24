@@ -1,6 +1,6 @@
 import type { WikiSection } from "@sfood/wiki-core";
 import { getWikiDocumentFrom } from "@sfood/wiki-core";
-import type { MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
 import { ArticleAskPanel } from "./ArticleAskPanel";
@@ -13,13 +13,48 @@ export function ArticlePage({ section }: { section: WikiSection }) {
   const { documents, errorMessage, isLoading } = useWikiData();
 
   const document = getWikiDocumentFrom(documents, section, slug);
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+
+  // Hooks must run unconditionally before the early returns below (see 2026-05-06 fix in
+  // implementation-status.md for why a conditional hook previously broke this page).
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined" || !document?.headings.length) {
+      return;
+    }
+
+    const headingElements = document.headings
+      .map((heading) => window.document.getElementById(heading.id))
+      .filter((element): element is HTMLElement => Boolean(element));
+
+    if (!headingElements.length) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const nextActive = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+
+        if (nextActive) {
+          setActiveHeadingId(nextActive.target.id);
+        }
+      },
+      { rootMargin: "-96px 0px -70% 0px", threshold: 0 },
+    );
+
+    headingElements.forEach((element) => observer.observe(element));
+
+    return () => observer.disconnect();
+  }, [document?.id]);
 
   const handleTocClick = (event: MouseEvent<HTMLAnchorElement>, headingId: string) => {
     event.preventDefault();
+    setActiveHeadingId(headingId);
 
     const element = window.document.getElementById(headingId);
 
-    if (element) {
+    if (element && typeof element.scrollIntoView === "function") {
       element.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
@@ -98,7 +133,9 @@ export function ArticlePage({ section }: { section: WikiSection }) {
                 key={heading.id}
                 href={`#${heading.id}`}
                 onClick={(event) => handleTocClick(event, heading.id)}
-                className={`article-toc-link article-toc-level-${Math.min(heading.level, 4)}`}
+                className={`article-toc-link article-toc-level-${Math.min(heading.level, 4)}${
+                  activeHeadingId === heading.id ? " article-toc-link-active" : ""
+                }`}
               >
                 {heading.text}
               </a>

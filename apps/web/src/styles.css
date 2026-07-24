@@ -913,6 +913,10 @@ a {
     @apply block rounded-[var(--radius-md)] px-2 py-1.5 text-[13px] leading-6 text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
   }
 
+  .article-toc-link-active {
+    @apply font-semibold text-page-fg;
+  }
+
   .article-toc-level-2 {
     @apply pl-2;
   }
