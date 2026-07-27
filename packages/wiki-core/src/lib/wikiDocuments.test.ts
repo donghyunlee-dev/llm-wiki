@@ -6,6 +6,7 @@ import {
   getTopSearchWikiDocumentsIn,
   getParentWikiDocumentFrom,
   searchWikiDocumentsIn,
+  stripTitleTypePrefix,
   validateWikiGraphReferencesFrom,
   type WikiDocument,
 } from "./wikiDocuments";
@@ -30,6 +31,23 @@ function document(overrides: Partial<WikiDocument> = {}): WikiDocument {
     ...overrides,
   };
 }
+
+describe("stripTitleTypePrefix", () => {
+  it("removes a leading bracket type prefix", () => {
+    expect(stripTitleTypePrefix("[Guide] Claude 모델 선택 가이드")).toBe("Claude 모델 선택 가이드");
+    expect(stripTitleTypePrefix("[FAQ] 비개발자도 Codex를 배워서 쓸 수 있나요?")).toBe(
+      "비개발자도 Codex를 배워서 쓸 수 있나요?",
+    );
+  });
+
+  it("leaves titles without a bracket prefix unchanged", () => {
+    expect(stripTitleTypePrefix("Claude Code Skills")).toBe("Claude Code Skills");
+  });
+
+  it("only strips a leading prefix, not brackets elsewhere in the title", () => {
+    expect(stripTitleTypePrefix("Claude Code [Beta] 기능 안내")).toBe("Claude Code [Beta] 기능 안내");
+  });
+});
 
 describe("wiki document graph helpers", () => {
   it("resolves a visible parent document", () => {
