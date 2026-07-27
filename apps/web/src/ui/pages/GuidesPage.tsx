@@ -91,7 +91,7 @@ export function StartingGuidePage() {
   return (
     <div className="page-shell">
       <div className="page-width article-layout">
-        <article className="page-panel">
+        <article className="article-body">
           {gettingStarted ? (
             <>
               <h1 className="title-hero">

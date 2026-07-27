@@ -156,6 +156,40 @@ body {
   min-height: 100vh;
 }
 
+/* Thin scrollbars that become slightly more visible on hover/focus (Chromium + Firefox). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover,
+*:focus-within {
+  scrollbar-color: var(--panel-border-soft) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+}
+
+*:hover::-webkit-scrollbar-thumb,
+*:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--panel-border-soft);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--panel-border);
+}
+
 button,
 input,
 select,
@@ -895,7 +929,16 @@ a {
   }
 
   .article-layout {
-    @apply grid gap-4 xl:grid-cols-[minmax(0,1fr)_240px];
+    /* grid-cols-1 below xl gives the single column an explicit minmax(0,1fr) track — without it,
+       an implicit grid track sizes to content (max-content) and wide children (e.g. tables) can
+       overflow the page horizontally. */
+    @apply grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_240px];
+  }
+
+  .article-body {
+    /* No card background/border — the guide content blends directly into the page background.
+       max-width keeps the reading line length comfortable without boxing the content in. */
+    @apply mx-auto w-full max-w-[760px];
   }
 
   .article-aside {
@@ -1139,7 +1182,9 @@ a {
   }
 
   .article-ask-dock {
-    @apply sticky bottom-3 z-10 mt-8 w-full;
+    /* Fixed to the viewport and centered independently of the article/TOC grid, so it never
+       competes with or scrolls alongside the guide content underneath it. */
+    @apply fixed inset-x-0 bottom-5 z-20 mx-auto w-[calc(100%-2rem)] max-w-[760px];
     height: var(--article-ask-height, 92px);
     max-height: 420px;
   }

@@ -95,8 +95,8 @@ export function ArticlePage({ section }: { section: WikiSection }) {
 
   return (
     <div className="page-shell">
-      <div className="page-width article-layout">
-        <article className="page-panel">
+      <div className="page-width article-layout pb-32">
+        <article className="article-body">
           <Link className="text-link" to={`/${section}`}>
             목록으로 돌아가기
           </Link>
@@ -122,7 +122,6 @@ export function ArticlePage({ section }: { section: WikiSection }) {
             title={document.title}
             documents={documents}
           />
-          <ArticleAskPanel documents={documents} pageId={document.id} />
         </article>
 
         <aside className="article-aside">
@@ -145,6 +144,8 @@ export function ArticlePage({ section }: { section: WikiSection }) {
           </nav>
         </aside>
       </div>
+
+      <ArticleAskPanel documents={documents} pageId={document.id} />
     </div>
   );
 }
