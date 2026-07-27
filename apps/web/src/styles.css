@@ -1190,6 +1190,12 @@ a {
     @apply text-[14px] font-semibold leading-5 text-page-fg;
   }
 
+  .article-selection-ask-button {
+    /* position:fixed so its top/left (set inline from the selection Range's
+       getBoundingClientRect()) are viewport-relative, independent of scroll. */
+    @apply fixed z-30 inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-accent px-3 py-1.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-accent-strong;
+  }
+
   .article-ask {
     @apply flex cursor-ns-resize flex-col rounded-[var(--radius-xl)] border border-panel-border bg-panel-bg p-2 shadow-sm;
   }
