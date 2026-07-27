@@ -1,0 +1,99 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  deploy-web:
+    name: Deploy static site (S3 + CloudFront)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build apps/web (remote AI/wiki data source)
+        working-directory: apps/web
+        run: pnpm build
+        env:
+          VITE_WIKI_DATA_SOURCE: remote
+          VITE_WIKI_REMOTE_ENDPOINT: ${{ vars.VITE_WIKI_REMOTE_ENDPOINT }}
+          VITE_AI_ASK_ENDPOINT: ${{ vars.VITE_AI_ASK_ENDPOINT }}
+          VITE_AI_SEARCH_ENDPOINT: ${{ vars.VITE_AI_SEARCH_ENDPOINT }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Sync build output to S3
+        run: aws s3 sync apps/web/dist "s3://${{ secrets.WEB_S3_BUCKET }}" --delete
+
+      - name: Invalidate CloudFront cache
+        run: aws cloudfront create-invalidation --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" --paths "/*"
+
+  deploy-serverless:
+    name: Deploy Lambda handlers (wiki-pages / ai-ask / ai-search)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.0.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build Lambda bundles
+        run: pnpm --filter @sfood/serverless build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update wiki-pages Lambda code
+        run: |
+          cd packages/serverless/dist
+          zip wiki-pages.zip wiki-pages.mjs
+          aws lambda update-function-code \
+            --function-name "${{ secrets.WIKI_PAGES_LAMBDA_NAME }}" \
+            --zip-file fileb://wiki-pages.zip
+
+      - name: Update ai-ask Lambda code
+        run: |
+          cd packages/serverless/dist
+          zip ai-ask.zip ai-ask.mjs
+          aws lambda update-function-code \
+            --function-name "${{ secrets.AI_ASK_LAMBDA_NAME }}" \
+            --zip-file fileb://ai-ask.zip
+
+      - name: Update ai-search Lambda code
+        run: |
+          cd packages/serverless/dist
+          zip ai-search.zip ai-search.mjs
+          aws lambda update-function-code \
+            --function-name "${{ secrets.AI_SEARCH_LAMBDA_NAME }}" \
+            --zip-file fileb://ai-search.zip

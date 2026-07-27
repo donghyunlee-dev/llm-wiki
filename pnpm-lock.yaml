@@ -55,7 +55,7 @@ importers:
     dependencies:
       '@sfood/ui':
         specifier: github:sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM#main
-        version: git+https://github.com/sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM.git#2121e4c8220b4c2322fb1349f033ef56beef8e07(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+        version: git+https://github.com/sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM.git#d76f6925fede24e5cd6d9528e91657864f63acd8(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@sfood/wiki-core':
         specifier: workspace:*
         version: link:../../packages/wiki-core
@@ -112,6 +112,9 @@ importers:
         specifier: workspace:*
         version: link:../wiki-core
     devDependencies:
+      esbuild:
+        specifier: ^0.27.0
+        version: 0.27.7
       typescript:
         specifier: ^5.9.0
         version: 5.9.3
@@ -618,8 +621,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@sfood/ui@git+https://github.com/sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM.git#2121e4c8220b4c2322fb1349f033ef56beef8e07':
-    resolution: {commit: 2121e4c8220b4c2322fb1349f033ef56beef8e07, repo: https://github.com/sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM.git, type: git}
+  '@sfood/ui@git+https://github.com/sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM.git#d76f6925fede24e5cd6d9528e91657864f63acd8':
+    resolution: {commit: d76f6925fede24e5cd6d9528e91657864f63acd8, repo: https://github.com/sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM.git, type: git}
     version: 0.1.0
     peerDependencies:
       react: ^18.0.0
@@ -1921,7 +1924,7 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.60.2':
     optional: true
 
-  '@sfood/ui@git+https://github.com/sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM.git#2121e4c8220b4c2322fb1349f033ef56beef8e07(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
+  '@sfood/ui@git+https://github.com/sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM.git#d76f6925fede24e5cd6d9528e91657864f63acd8(react-dom@19.2.5(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@dnd-kit/core': 6.3.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@dnd-kit/sortable': 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)

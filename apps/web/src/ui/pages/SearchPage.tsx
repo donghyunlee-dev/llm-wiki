@@ -116,7 +116,7 @@ export function SearchPage() {
       },
     ]);
 
-    void fetch("/api/wiki/ai/search", {
+    void fetch(import.meta.env.VITE_AI_SEARCH_ENDPOINT?.trim() || "/api/wiki/ai/search", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

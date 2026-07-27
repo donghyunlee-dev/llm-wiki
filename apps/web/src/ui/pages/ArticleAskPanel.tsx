@@ -120,7 +120,7 @@ export const ArticleAskPanel = forwardRef<
     ]);
 
     try {
-      const response = await fetch("/api/wiki/ai/ask", {
+      const response = await fetch(import.meta.env.VITE_AI_ASK_ENDPOINT?.trim() || "/api/wiki/ai/ask", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

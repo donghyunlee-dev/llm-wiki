@@ -16,6 +16,14 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-27 — AWS 배포(S3+CloudFront+Lambda) 워크플로우, AI 질문/검색 로직 wiki-core 추출
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 사용자가 S3/CloudFront 배포 + GitHub Actions 자동배포를 요청. 3차례 명확화 문답을 거쳐 최종 스코프 확정 — AI 질문/검색은 메인 기능이라 반드시 실사용 가능해야 함(Lambda로 신규 배포), Projects/GitHub 연동은 배제 및 숨김, Lambda는 1회성 신규 생성, OpenAI 키는 기존 값 재사용.
+- 구현: `apps/web/vite.config.ts`의 `/api/wiki/ai/ask`·`/api/wiki/ai/search` dev 미들웨어 로직(~530줄)을 `packages/wiki-core/src/lib/aiOrchestration.ts`의 트랜스포트-비의존 함수(`handleAiAskRequest`/`handleAiSearchRequest`)로 추출 — `architecture.md`의 "Frontend-First Runtime Policy"를 그대로 따름. `vite.config.ts`는 이 함수를 호출하는 얇은 어댑터로 축소(로컬 dev 동작 불변, 실제 Confluence/OpenAI 자격증명으로 라이브 스모크 테스트 확인). `packages/serverless`에 `aiAskHandler`/`aiSearchHandler` Lambda 핸들러 2개 신규 추가(기존 `wikiPagesHandler` 유지) + esbuild 빌드 스크립트/3개 엔트리포인트. `.github/workflows/deploy.yml` 신규 — S3 동기화+CloudFront invalidation, 3개 Lambda 코드 업데이트, 액세스 키 시크릿 인증. 배포된 정적 사이트가 실제 Lambda Function URL을 호출하도록 `VITE_AI_ASK_ENDPOINT`/`VITE_AI_SEARCH_ENDPOINT` 빌드타임 env var 추가(구현 중 발견한 갭 — 상대 경로는 dev 전용이라 정적 배포본에서는 동작하지 않았을 것). Projects/GitHub 기능은 grep으로 이미 모든 내비게이션 표면에서 링크가 없음을 확인 — 코드 변경 불필요.
+- Codex 크리티컬 리뷰(6c)에서 5건 발견 및 수정: (High) `pnpm-lock.yaml` 미스테이징으로 `--frozen-lockfile` 설치 실패 위험 → 스테이징. (Medium) `vite.config.ts` 어댑터가 원래의 try/catch 에러 응답을 누락 → 복원. (Medium) Lambda 핸들러가 `JSON.parse("null")`을 통과시켜 런타임 에러 위험 → non-null-object 가드 추가 + 회귀 테스트. (Medium) CORS만으로는 비-브라우저 클라이언트 직접 호출을 막지 못함 → 기존 `wikiPagesHandler` 선례와 동일한 것으로 확인, spec.md에 알려진 리스크로 명시. (Low) 빈 문자열 env var일 때 폴백 미적용 → `?.trim() || fallback`으로 수정.
+- 검증: `pnpm -r typecheck`/`test`(316개) 통과, `packages/serverless build` 3개 번들 생성 확인, 실제 자격증명으로 `/api/wiki/ai/ask`·`/api/wiki/ai/search` 라이브 스모크 테스트(정상 케이스+에러 케이스 모두)로 추출 무결성 확인. AWS 실제 리소스 생성/첫 배포는 사용자의 AWS 계정이 필요해 이번 세션 범위 밖 — `aws-setup-guide.md`에 1회성 수동 절차로 문서화.
+- 태스크 문서: `docs/tasks/aws-static-site-and-ai-api-deployment/`(spec/plan/tasks/test-result/result/aws-setup-guide).
+
 ### 2026-07-27 — 가이드 상세 페이지 레이아웃 재구조화 (3차, flex 기반 — TOC/site-shell 완전 분리, 목차 라벨 버그, blueprint 숨김, 접두어 필터 보완)
 - 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
 - 배경: 직전 두 차례(`docs/tasks/guide-page-toc-sidebar-refresh/`) 모두 `position:fixed`+뷰포트 계산식을 사용해 스크롤바 폭 오차를 반복 유발. 사용자가 "벌써 3번째 반복"이라며 5개 항목(TOC 우측 사이드 패널 재구성, 목차 라벨 스크롤 버그, Ask 버튼 위치, 홈 blueprint 숨김, `[Type]` 접두어 공통 필터)을 정밀하게 재요청, Playwright+Codex 이중 검증을 명시적으로 요구.

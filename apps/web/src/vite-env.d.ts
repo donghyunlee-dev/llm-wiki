@@ -4,6 +4,8 @@ interface ImportMetaEnv {
   readonly VITE_WIKI_DATA_SOURCE?: "snapshot" | "remote";
   readonly VITE_WIKI_REMOTE_ENDPOINT?: string;
   readonly VITE_CONFLUENCE_PUBLIC_ENDPOINT?: string;
+  readonly VITE_AI_ASK_ENDPOINT?: string;
+  readonly VITE_AI_SEARCH_ENDPOINT?: string;
 }
 
 interface ImportMeta {

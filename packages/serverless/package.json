@@ -7,6 +7,7 @@
     "./wiki-pages": "./src/wikiPagesHandler.ts"
   },
   "scripts": {
+    "build": "esbuild src/entrypoints/wikiPagesEntry.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/wiki-pages.mjs && esbuild src/entrypoints/aiAskEntry.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/ai-ask.mjs && esbuild src/entrypoints/aiSearchEntry.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/ai-search.mjs",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
   },
@@ -14,6 +15,7 @@
     "@sfood/wiki-core": "workspace:*"
   },
   "devDependencies": {
+    "esbuild": "^0.27.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0"
   }

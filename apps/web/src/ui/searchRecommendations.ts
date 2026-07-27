@@ -1,5 +1,4 @@
-import { getIndexFirstSearchWikiDocumentsIn, getTopSearchWikiDocumentsIn, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
-import { isFullyUnsupportedSearchAnswerState } from "../lib/searchAnswerState";
+import { getIndexFirstSearchWikiDocumentsIn, getTopSearchWikiDocumentsIn, getWikiDocumentHref, isFullyUnsupportedSearchAnswerState, type WikiDocument } from "@sfood/wiki-core";
 
 export type SearchDocumentSummary = {
   id: string;
