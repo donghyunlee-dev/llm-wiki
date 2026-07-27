@@ -28,6 +28,15 @@
 - TOC 활성 표시를 텍스트 굵기(semibold)만으로 제한한 것은, 사용자가 명시적으로 거부한 "좌측 액센트 바" 패턴(`feedback_no_ai_cliche_accent_bar` 메모리)을 다시 도입하지 않기 위한 설계 원칙 준수다.
 - jsdom을 신규 devDependency로 추가한 것은, 이 저장소가 지금까지 `renderToStaticMarkup`만으로 테스트해 왔고 클릭 인터랙션을 검증하는 테스트가 없었기 때문 — Task 5의 "클릭 시 활성 표시" 요구사항을 실제로 테스트하려면 DOM 이벤트가 필요해 최소 범위로 추가했다(다른 워크스페이스 패키지에는 영향 없음, `apps/edge-sidebar`의 기존 `test: {environment: "node"}` 패턴과 같은 위치에 추가).
 
+## Follow-up (2026-07-27) — 가이드 문서 페이지 후속 수정
+사용자가 개편된 가이드 문서(article) 페이지가 여전히 이전 디자인과 "거의 비슷"하다고 지적 — `.page-panel`이 border/shadow는 제거됐지만 여전히 별도 배경색+둥근 모서리로 카드처럼 보였음. 후속 확인(2문항) 후 다음을 적용:
+- `.article-body`(신규) — `.page-panel`을 대체, 배경/모서리 없이 페이지와 완전히 동화. 읽기 최대폭(760px)은 유지(사용자 확인: 폭 제한 없는 옵션 대신 이 옵션 선택). `ArticlePage.tsx`와 `GuidesPage.tsx`의 `StartingGuidePage` 양쪽에 적용.
+- `ArticleAskPanel`을 `.article-layout` 그리드 밖으로 이동, `.article-ask-dock`을 `sticky`(아티클 컬럼 내부 종속)에서 `fixed inset-x-0 bottom-5`(뷰포트 기준 하단 중앙 고정)로 변경 — 검색 페이지의 `.chat-input-dock`과 동일한 패턴(사용자 확인: 고정 도크 선택). 그리드 컨테이너에 `pb-32` 추가로 콘텐츠 끝부분이 도크에 가리지 않도록 처리.
+- 전역 얇은 스크롤바 스타일 추가(Chromium `::-webkit-scrollbar` + Firefox `scrollbar-width: thin`), 평상시 투명, hover/focus 시에만 옅게 보이도록.
+- **부수 발견 및 수정(회귀 아님, 사전 존재 버그)**: `.article-layout`이 `xl` 미만 브레이크포인트에서 명시적 grid-template-columns이 없어(암묵적 grid 트랙이 `auto` 사이징) 폭이 넓은 표가 포함된 문서에서 모바일 뷰포트 가로 스크롤이 발생함을 Playwright 모바일 검증 중 발견 — `grid-cols-1`(=`minmax(0,1fr)`) 추가로 수정.
+- 커밋: `c2ba613`.
+- 검증: `pnpm test`/`typecheck`/`build` 전체 통과, Playwright로 라이트/다크 + 모바일(390px, 넓은 표 포함 문서) 확인.
+
 ## Open Gaps
 - **Codex 비판 리뷰 미수행**: `mcp__codex__codex` 호출이 사용량 한도(2026-07-29 이후 재시도 가능)로 실패했다. 대신 `subagent-driven-development` 워크플로우의 2단계(spec-compliance + code-quality) 서브에이전트 리뷰를 Task 1-6 각각에 대해 수행했고, 실제로 3건의 회귀(Task 2 배경 대비, Task 4 전역 클래스 스코프, Task 5 커밋 스코프/테스트 커버리지)를 발견·수정했다. 재시도 가능 시점 이후 전체 diff에 대한 독립 Codex 리뷰를 한 번 더 받는 것을 권장한다.
 - `@sfood/ui` React 컴포넌트(Button/Card 등)는 여전히 이 실행 환경의 dist 빌드 미반영 제약으로 사용하지 못했다 — 정상 환경 재검증 후 컴포넌트 단위 교체를 후속 과제로 남긴다.

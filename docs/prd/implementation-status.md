@@ -16,6 +16,14 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-27 — 가이드 문서 페이지 후속 수정 (full-bleed 본문, 하단 고정 Ask 도크, 얇은 스크롤바)
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 사용자가 개편된 가이드 문서 페이지가 여전히 이전 디자인과 "거의 비슷"하다고 지적 — 본문(`.page-panel`)이 border/shadow는 제거됐지만 여전히 별도 배경색+둥근 모서리로 카드처럼 보였음.
+- 구현: `.article-body`(신규, `.page-panel` 대체) — 배경/모서리 없이 페이지와 동화, 읽기 최대폭(760px) 유지. `ArticlePage.tsx`/`GuidesPage.tsx`의 `StartingGuidePage` 양쪽 적용. `ArticleAskPanel`을 그리드 밖으로 옮기고 `.article-ask-dock`을 `sticky`→`fixed inset-x-0 bottom-5`(하단 중앙 고정, 검색 페이지 `.chat-input-dock`과 동일 패턴)로 변경. 전역 얇은 스크롤바(hover/focus 시에만 보임) 추가.
+- 부수 발견/수정: `.article-layout`이 `xl` 미만에서 명시적 grid-template-columns이 없어 넓은 표가 있는 문서에서 모바일 가로 스크롤 발생 — `grid-cols-1` 추가로 수정(사전 존재 버그, 이번 회귀 아님).
+- 검증: `pnpm test`/`typecheck`/`build` 통과, Playwright 라이트/다크 + 모바일(390px) 확인.
+- 커밋: `c2ba613`. 태스크 문서: `docs/tasks/notion-style-ui-refresh/result.md`(Follow-up 섹션).
+
 ### 2026-07-24 — Notion/Linear 스타일 UI 개편 (구현 + 검증 완료, Codex 리뷰만 보류)
 - 브랜치: `feature/sfood-design-system-tone`(직전 세션과 동일 브랜치에서 이어서 작업).
 - 배경: 직전 세션에서 `@sfood/ui` 브랜드 컬러 스케일을 `#d65050`(코랄 레드)로 갱신 반영한 위에서, 사용자가 지적한 잔여 문제(가이드 문서 구식 스타일, TOC 폰트/간격/줄바꿈 불편, 배경-패널 구분 방식이 구식, 낯선 톤)를 브레인스토밍(3안 중 Notion/Linear 미니멀 A안 선택)으로 해결.
