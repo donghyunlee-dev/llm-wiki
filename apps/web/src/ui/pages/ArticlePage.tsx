@@ -3,8 +3,9 @@ import { getWikiDocumentFrom, stripTitleTypePrefix } from "@sfood/wiki-core";
 import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
-import { ArticleAskPanel } from "./ArticleAskPanel";
+import { ArticleAskPanel, type ArticleAskPanelHandle } from "./ArticleAskPanel";
 import { ArticleContentRenderer } from "./ArticleContentRenderer";
+import { ArticleSelectionAskButton } from "./ArticleSelectionAskButton";
 import { WikiStatePanel } from "./WikiStatePanel";
 
 export function ArticlePage({ section }: { section: WikiSection }) {
@@ -72,6 +73,8 @@ export function ArticlePage({ section }: { section: WikiSection }) {
   }, [document?.id]);
 
   const tocNavRef = useRef<HTMLElement | null>(null);
+  const articleRef = useRef<HTMLElement | null>(null);
+  const askPanelRef = useRef<ArticleAskPanelHandle | null>(null);
 
   // Keep the TOC's own scroll position in sync with the active heading — without this, the
   // TOC can end up scrolled to a stale position (e.g. still showing a mid-document entry after
@@ -148,7 +151,7 @@ export function ArticlePage({ section }: { section: WikiSection }) {
           <BackArrowIcon />
         </Link>
 
-        <article className="article-body">
+        <article className="article-body" ref={articleRef}>
           <p className="eyebrow">
             {document.metadata.docType}
           </p>
@@ -194,7 +197,12 @@ export function ArticlePage({ section }: { section: WikiSection }) {
         </aside>
       </div>
 
-      <ArticleAskPanel documents={documents} pageId={document.id} />
+      <ArticleSelectionAskButton
+        containerRef={articleRef}
+        onAsk={(text) => askPanelRef.current?.fillAndFocus(text)}
+      />
+
+      <ArticleAskPanel ref={askPanelRef} documents={documents} pageId={document.id} />
     </div>
   );
 }
