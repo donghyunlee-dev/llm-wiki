@@ -16,6 +16,14 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-27 — 가이드 문서 텍스트 선택 → 질문하기 기능 추가
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 직전 태스크(`docs/tasks/guide-page-toc-sidebar-refresh/`)에서 사용자가 함께 요청했으나 새 인터랙션 기능이라 별도 스코프로 분리하기로 합의 — brainstorming → writing-plans → subagent-driven-development 전체 프로세스로 진행(설계 `docs/superpowers/specs/2026-07-27-guide-text-selection-ask-design.md`, 계획 `docs/superpowers/plans/2026-07-27-guide-text-selection-ask.md`).
+- 구현(Task 1-4, 각 태스크마다 spec-compliance + code-quality 2단계 subagent 리뷰 수행): `PromptComposer.tsx`/`ArticleAskPanel.tsx`를 `forwardRef`로 전환해 각각 `focus()`/`fillAndFocus(text)` imperative handle 노출. 신규 `ArticleSelectionAskButton.tsx` — 본문(`.article-body`) 내 텍스트 선택 시 플로팅 "질문하기" 버튼을 위/아래 자동 배치로 표시, 500자 초과 선택은 트렁케이트, 스크롤/바깥클릭/Escape/선택해제 시 dismiss. `ArticlePage.tsx`가 `articleRef`/`askPanelRef`로 둘을 연결 — `ArticleContentRenderer`는 이 기능을 전혀 모름.
+- Codex 크리티컬 리뷰(6c)에서 실제 버그 2건 발견 및 수정: (1) 버튼 클릭 시 mousedown이 브라우저의 텍스트 선택 collapse를 유발해 클릭이 유실될 수 있는 문제 → `onMouseDown`에 `preventDefault()` 추가로 해결. (2) `window` 스크롤만 감지해 코드블록/표 등 내부 스크롤 컨테이너 스크롤 시 버튼이 stale 좌표에 남는 문제 → `document` 캡처 단계 `scroll` 리스너로 교체.
+- 검증: `pnpm test`(17 files/68 tests)/`typecheck`/`build` 통과. Playwright로 실제 브라우저 마우스 클릭(합성 이벤트 아님)으로 선택→버튼→클릭→Ask 인풋 채움/포커스 확인, 라이트/다크, 데스크톱(1280px)/모바일(390px), 컨테이너 바깥 선택 시 버튼 미노출, 코드블록 내부 스크롤 dismiss까지 재확인.
+- 태스크 문서: `docs/tasks/guide-page-text-selection-ask/`(spec/plan/tasks/test-result/result).
+
 ### 2026-07-27 — 가이드 페이지 TOC 우측 분리, 컨텐츠 정렬, Ask 패널 폭 정렬/이중 보더 제거
 - 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
 - 배경: 사용자가 "TOC를 우측 사이드 패널로 명확히 분리하고, 컨텐츠는 그 왼쪽 영역 안에서 중앙 정렬, 하단 플로팅 검색창은 컨텐츠 폭에 맞추고 이중 보더/큰 높이/각진 라운드를 개선"해 달라고 요청 — spec-driven-workflow에 따라 `docs/tasks/guide-page-toc-sidebar-refresh/`에 spec.md/plan.md 작성 후 승인받고 구현.
