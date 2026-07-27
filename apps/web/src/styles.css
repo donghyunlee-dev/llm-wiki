@@ -1008,11 +1008,15 @@ a {
   }
 
   .article-toc {
-    @apply mt-3 space-y-1.5;
+    /* Tightened from space-y-1.5 — a long TOC otherwise needs its own scroll (.guide-detail-toc-
+       scroll) far sooner than it should just from inter-item spacing, not actual content length. */
+    @apply mt-3 space-y-0.5;
   }
 
   .article-toc-link {
-    @apply block rounded-[var(--radius-md)] px-2 py-1.5 text-[13px] leading-6 text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
+    /* py-1/leading-5 tightened from py-1.5/leading-6 for the same reason — still comfortably
+       clickable, just without the extra vertical air between entries. */
+    @apply block rounded-[var(--radius-md)] px-2 py-1 text-[13px] leading-5 text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
   }
 
   .article-toc-link-active {
@@ -1308,7 +1312,10 @@ a {
   }
 
   .article-ask-form-button {
-    @apply h-10 w-10 bg-accent text-white hover:bg-accent-strong;
+    /* No color override — inherits .prompt-composer-button's neutral bg-page-bg/border look, same
+       as .home-search-button/.chat-input-bar-button/.document-search-button. One site should not
+       have multiple visually distinct "search button" styles. */
+    @apply h-10 w-10;
   }
 
   .article-ask-form-button svg {

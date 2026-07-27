@@ -37,5 +37,11 @@
 
 사용자가 검색창 스크린샷을 다시 제시하며 지적 — 실측 결과 전송 버튼이 `.article-ask` 바깥 둥근 컨테이너 아래로 5px 튀어나와 있었음(`getBoundingClientRect()`로 확인). 원인: `.article-ask-form-textarea`의 `min-h-[56px]`가 이전 `minRows=2`/도크 92px 시절 값 그대로 남아 있었음 — `min-height`는 JS가 계산한 인라인 `height`보다 항상 우선 적용되는 하한선이라, `minRows`를 1로, 도크 높이를 68px로 줄인 이후에도 텍스트영역이 56px로 강제되어 폼 전체가 도크보다 커져 버튼이 밀려 나옴.
 
+## 추가 수정 (2026-07-27) — 목차 간격 축소, 검색 버튼 스타일 사이트 전체 통일
+
+- **목차 간격**: `.article-toc`의 `space-y-1.5`→`space-y-0.5`, `.article-toc-link`의 `py-1.5/leading-6`→`py-1/leading-5`로 축소 — 항목당 세로 폭이 약 42px→30px로 줄어 같은 뷰포트 높이에서 더 많은 목차 항목이 스크롤 없이 보임(실측: 900px 높이에서 기존에 넘치던 목차가 더 이상 내부 스크롤 불필요, `scrollHeight === clientHeight`로 확인).
+- **검색 버튼 통일**: `ArticleAskPanel`(문서 상세 페이지 하단 Ask 패널)의 전송 버튼만 유일하게 실심 accent 배경(`bg-accent text-white`)과 종이비행기 아이콘을 쓰고 있어, 홈/`/guides` 목록/검색 페이지가 공유하는 중립 스타일(`prompt-composer-button`의 `bg-page-bg`/`border-panel-border`, 돋보기 아이콘)과 달랐음. `.article-ask-form-button`에서 색상 override를 제거하고 아이콘을 동일한 돋보기 SVG로 교체 — 이제 사이트 내 모든 "검색/전송" 버튼이 동일한 스타일. `SearchHero`/`CategoryPage`/`SearchPage`는 이미 이 중립 스타일을 쓰고 있어 변경 불필요했음(감사 완료). `ArticleSelectionAskButton`(텍스트 선택 시 뜨는 "질문하기" 필 버튼)은 입력창에 붙은 아이콘 버튼이 아니라 별도의 텍스트+아이콘 컨텍스트 액션이라 이번 통일 대상에서 제외.
+- 검증: `pnpm typecheck`/`test`(68)/`build` 통과. Playwright로 목차 밀도, 버튼 스타일(라이트·다크), `/guides` 목록 페이지와의 시각적 일치 확인.
+
 - 수정: `min-h-[56px]` → `min-h-[36px]`(minRows=1 기준: leading-6 24px + py-1.5 12px)로 정정.
 - 검증: `pnpm typecheck`/`test`(68)/`build` 통과. Playwright로 버튼-컨테이너 겹침 재측정(`overflow: -11`, 더 이상 넘치지 않음) + 데스크톱/모바일/다크 모드 스크린샷 확인.
