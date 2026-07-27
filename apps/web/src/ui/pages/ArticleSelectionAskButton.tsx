@@ -95,13 +95,13 @@ export function ArticleSelectionAskButton({
     };
 
     document.addEventListener("selectionchange", handleSelectionChange);
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    document.addEventListener("scroll", handleScroll, { capture: true, passive: true });
     document.addEventListener("mousedown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
 
     return () => {
       document.removeEventListener("selectionchange", handleSelectionChange);
-      window.removeEventListener("scroll", handleScroll);
+      document.removeEventListener("scroll", handleScroll, { capture: true });
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
@@ -120,6 +120,9 @@ export function ArticleSelectionAskButton({
         top: position.top,
         left: position.left,
         transform: position.placement === "above" ? "translate(-50%, -100%)" : "translate(-50%, 0)",
+      }}
+      onMouseDown={(event) => {
+        event.preventDefault();
       }}
       onClick={() => {
         onAsk(truncateSelection(selectedText));

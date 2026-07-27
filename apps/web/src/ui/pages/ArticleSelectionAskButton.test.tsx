@@ -144,7 +144,7 @@ describe("ArticleSelectionAskButton", () => {
     selectTextInside(containerRef.current!.querySelector("p")!);
     expect(screen.getByRole("button", { name: /질문하기/ })).toBeInTheDocument();
 
-    fireEvent.scroll(window);
+    fireEvent.scroll(document);
 
     expect(screen.queryByRole("button", { name: /질문하기/ })).not.toBeInTheDocument();
   });
