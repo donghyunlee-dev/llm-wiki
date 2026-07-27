@@ -37,6 +37,13 @@
 - 커밋: `c2ba613`.
 - 검증: `pnpm test`/`typecheck`/`build` 전체 통과, Playwright로 라이트/다크 + 모바일(390px, 넓은 표 포함 문서) 확인.
 
+### 추가 수정 — 사용자가 "여전히 둥근 모서리/보더가 보인다"고 재지적
+`.article-body` 변경만으로는 카드 느낌이 사라지지 않음을 재확인 — 원인은 `router.tsx`에서 `/guides`, `/library`, `/faq`, `/projects`와 그 하위 상세 라우트 전체를 감싸는 `CardLayout.tsx`가 `.site-surface`(rounded + border + shadow) 래퍼를 별도로 씌우고 있었기 때문. `ArticlePage`/`StartingGuidePage` 자체는 올바르게 수정됐지만, 그 바깥을 감싸는 이 레이어를 놓쳤음.
+- `CardLayout.tsx`에서 `.site-surface` 래퍼 div 제거, 미사용된 `.site-surface` CSS 규칙도 함께 제거(`.site-surface`는 이 파일에서만 쓰이고 있었음을 확인 후 제거).
+- 결과: `/guides` 목록 등 `CategoryPage` 기반 페이지는 자체 `.page-panel`(단일 플랫 카드)만 남아 이중 카드 중첩이 해소됨. 가이드 문서 상세 페이지는 바깥/안쪽 어디에도 카드 박스가 남지 않음.
+- 커밋: `d60c60c`.
+- 검증: `pnpm test`/`typecheck`/`build` 통과, Playwright로 가이드 상세("Claude 모델 선택 가이드")와 `/guides` 목록 재확인 — 카드 박스 완전히 사라짐, `/guides` 목록은 여전히 정상적인 단일 카드+구분선 리스트로 렌더링됨.
+
 ## Open Gaps
 - **Codex 비판 리뷰 미수행**: `mcp__codex__codex` 호출이 사용량 한도(2026-07-29 이후 재시도 가능)로 실패했다. 대신 `subagent-driven-development` 워크플로우의 2단계(spec-compliance + code-quality) 서브에이전트 리뷰를 Task 1-6 각각에 대해 수행했고, 실제로 3건의 회귀(Task 2 배경 대비, Task 4 전역 클래스 스코프, Task 5 커밋 스코프/테스트 커버리지)를 발견·수정했다. 재시도 가능 시점 이후 전체 diff에 대한 독립 Codex 리뷰를 한 번 더 받는 것을 권장한다.
 - `@sfood/ui` React 컴포넌트(Button/Card 등)는 여전히 이 실행 환경의 dist 빌드 미반영 제약으로 사용하지 못했다 — 정상 환경 재검증 후 컴포넌트 단위 교체를 후속 과제로 남긴다.
