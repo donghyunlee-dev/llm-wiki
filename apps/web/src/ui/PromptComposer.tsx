@@ -78,7 +78,7 @@ export const PromptComposer = forwardRef<PromptComposerHandle, PromptComposerPro
       focus: () => {
         textareaRef.current?.focus();
       },
-    }));
+    }), []);
 
     useEffect(() => {
       const textarea = textareaRef.current;

@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { createElement, createRef } from "react";
-import { render } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import {
   PromptComposer,
   shouldSubmitComposerOnEnter,
@@ -49,6 +49,10 @@ describe("shouldSubmitComposerOnEnter", () => {
 });
 
 describe("PromptComposer imperative handle", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("focuses the textarea when ref.current.focus() is called", () => {
     const ref = createRef<PromptComposerHandle>();
 
