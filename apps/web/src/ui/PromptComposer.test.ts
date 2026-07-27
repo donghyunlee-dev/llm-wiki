@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { shouldSubmitComposerOnEnter } from "./PromptComposer";
+import { createElement, createRef } from "react";
+import { render } from "@testing-library/react";
+import {
+  PromptComposer,
+  shouldSubmitComposerOnEnter,
+  type PromptComposerHandle,
+} from "./PromptComposer";
 
 describe("shouldSubmitComposerOnEnter", () => {
   it("submits only on plain Enter", () => {
@@ -39,5 +45,29 @@ describe("shouldSubmitComposerOnEnter", () => {
         keyCode: 229,
       }),
     ).toBe(false);
+  });
+});
+
+describe("PromptComposer imperative handle", () => {
+  it("focuses the textarea when ref.current.focus() is called", () => {
+    const ref = createRef<PromptComposerHandle>();
+
+    render(
+      createElement(PromptComposer, {
+        ref,
+        value: "",
+        onValueChange: () => {},
+        onSubmit: () => {},
+        placeholder: "질문을 입력하세요",
+        ariaLabel: "문서 질문",
+        buttonIcon: createElement("span", null, "전송"),
+      }),
+    );
+
+    expect(document.activeElement?.tagName).not.toBe("TEXTAREA");
+
+    ref.current?.focus();
+
+    expect(document.activeElement?.tagName).toBe("TEXTAREA");
   });
 });
