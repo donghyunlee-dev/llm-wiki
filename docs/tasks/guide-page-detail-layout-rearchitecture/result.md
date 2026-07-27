@@ -45,3 +45,11 @@
 
 - 수정: `min-h-[56px]` → `min-h-[36px]`(minRows=1 기준: leading-6 24px + py-1.5 12px)로 정정.
 - 검증: `pnpm typecheck`/`test`(68)/`build` 통과. Playwright로 버튼-컨테이너 겹침 재측정(`overflow: -11`, 더 이상 넘치지 않음) + 데스크톱/모바일/다크 모드 스크린샷 확인.
+
+## 추가 수정 (2026-07-27) — 검색/전송 버튼 통일 방향 정정 (돋보기 아이콘 제거, SFOOD 고유 아이콘 + 브랜드 레드로)
+
+바로 위 "검색 버튼 통일" 항목에서 반대로 적용했음을 사용자가 지적 — 사용자는 원래 돋보기 아이콘 자체가 마음에 안 들어 바꾸고 싶었던 것인데, 통일하면서 모든 버튼을 돋보기 아이콘으로 맞춰버림. 올바른 방향: 돋보기 아이콘을 없애고, "전송/질문/보내기"를 의미하는 SFOOD 고유의 단일 아이콘(회사 로고가 아닌, 의미 전달용 아이콘)으로 4곳 모두 통일 + 배경은 이미 쓰고 있는 브랜드 레드(`--accent`) 계열로 통일.
+
+- 아이콘: `ArticleAskPanel`이 원래 갖고 있던 종이비행기(전송) 아이콘 path를 그대로 재사용 — 이미 "전송" 의미가 명확하고 검증된 디자인이라 새로 그리지 않음. `HomePage`(`.home-search-button`), `CategoryPage`(`.document-search-button`), `SearchPage`(`.chat-input-bar-button`), `ArticleAskPanel`(`.article-ask-form-button`) 4곳 모두 동일한 종이비행기 SVG로 교체(돋보기 아이콘 완전 제거).
+- 배경: 4개 클래스 모두에 `bg-accent text-white hover:bg-accent-strong` 추가 — 기존에 `ArticleAskPanel`만 갖고 있던 브랜드 레드 배경을 나머지 3곳에도 동일하게 적용.
+- 검증: `pnpm typecheck`/`test`(68)/`build` 통과. Playwright로 홈/`/guides` 목록/문서 상세/검색 페이지 4곳 모두 동일한 빨간 배경+종이비행기 아이콘으로 렌더링됨을 라이트·다크 모드에서 확인.

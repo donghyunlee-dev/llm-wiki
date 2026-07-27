@@ -432,7 +432,9 @@ a {
   }
 
   .document-search-button {
-    @apply h-10 w-10;
+    /* Shared "send" style for every search/ask button on the site — see .article-ask-form-button
+       for the full rationale. */
+    @apply h-10 w-10 bg-accent text-white hover:bg-accent-strong;
   }
 
   .link-indicator {
@@ -1312,10 +1314,10 @@ a {
   }
 
   .article-ask-form-button {
-    /* No color override — inherits .prompt-composer-button's neutral bg-page-bg/border look, same
-       as .home-search-button/.chat-input-bar-button/.document-search-button. One site should not
-       have multiple visually distinct "search button" styles. */
-    @apply h-10 w-10;
+    /* Shared "send" style for every search/ask button on the site (same bg-accent + icon as
+       .home-search-button/.chat-input-bar-button/.document-search-button) — one distinct SFOOD
+       icon and one brand-red background everywhere, instead of each button picking its own. */
+    @apply h-10 w-10 bg-accent text-white hover:bg-accent-strong;
   }
 
   .article-ask-form-button svg {
@@ -1751,7 +1753,9 @@ a {
   }
 
   .chat-input-bar-button {
-    @apply text-[18px];
+    /* Shared "send" style for every search/ask button on the site — see .article-ask-form-button
+       for the full rationale. */
+    @apply text-[18px] bg-accent text-white hover:bg-accent-strong;
   }
 
   .chat-input-bar-button svg {
@@ -1776,7 +1780,9 @@ a {
   }
 
   .home-search-button {
-    @apply text-[18px];
+    /* Shared "send" style for every search/ask button on the site — see .article-ask-form-button
+       for the full rationale. */
+    @apply text-[18px] bg-accent text-white hover:bg-accent-strong;
   }
 
   .home-primary-button {

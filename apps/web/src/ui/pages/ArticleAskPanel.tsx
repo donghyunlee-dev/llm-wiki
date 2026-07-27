@@ -222,8 +222,13 @@ export const ArticleAskPanel = forwardRef<
         placeholder="이 문서에서 궁금한 내용을 입력하세요"
         buttonIcon={(
           <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-4 w-4">
-            <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" strokeWidth="1.6" />
-            <path d="M13 13L16.5 16.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            <path
+              d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         )}
       />
