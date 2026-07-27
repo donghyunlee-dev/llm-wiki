@@ -44,6 +44,15 @@
 - 커밋: `d60c60c`.
 - 검증: `pnpm test`/`typecheck`/`build` 통과, Playwright로 가이드 상세("Claude 모델 선택 가이드")와 `/guides` 목록 재확인 — 카드 박스 완전히 사라짐, `/guides` 목록은 여전히 정상적인 단일 카드+구분선 리스트로 렌더링됨.
 
+### 추가 수정 (2026-07-27) — TOC 스크롤 동기화, 목록으로 돌아가기 위치, GUIDE 라벨, 제목 중복 제거
+사용자 지적 4건:
+1. **TOC가 스크롤 최상단에서도 최상단으로 안 움직임**: 두 가지 원인 확인. (a) TOC 자체의 내부 스크롤(`overflow-y-auto`)이 활성 항목을 따라가지 않음 → `activeHeadingId` 변경 시 해당 TOC 링크로 `scrollIntoView({block:"nearest"})` 추가. (b) 더 근본적 원인: `IntersectionObserver`의 `rootMargin`(상단 96px·하단 70% 제외)이 만드는 관찰 밴드가 첫 번째 헤딩(제목/칩 아래 위치)보다 아래에 있어서, 페이지 진짜 최상단에서도 첫 헤딩이 "교차"로 잡히지 않아 이전 활성 상태가 그대로 남아있었음 → `IntersectionObserver` 지원 여부와 무관하게 독립적으로 동작하는 `scroll` 리스너를 추가해 `window.scrollY < 80`이면 첫 헤딩을 강제로 활성화. `ArticlePage.tsx`/`GuidesPage.tsx` 양쪽에 동일 적용.
+2. **"목록으로 돌아가기"가 본문 공간을 차지**: `<article>` 내부에서 빼내어 `.article-back-link`(절대 위치, 좌측 상단, 아이콘 전용)로 변경. 그리드에 `pt-10` 추가로 겹침 방지.
+3. **GUIDE 라벨이 작고 목차와 위치가 안 맞음**: `.eyebrow`를 `text-xs font-semibold` → `text-sm font-bold tracking-wide`로 강조. `.article-body`에 `pt-4` 추가해 `.article-aside`의 `p-4`와 상단 정렬 일치.
+4. **제목에 "[Guide]" 중복 노출**: `@sfood/wiki-core`에 공통 `stripTitleTypePrefix(title)` 유틸(임의의 선행 `[...]` 대괄호 제거, 특정 타입 하드코딩 없음) 신규 추가, `ArticlePage`/`WikiDocumentListItem`/`SearchPage`/`ArticleAskPanel`/`HomePage`/`StartingGuidePage`의 기존 개별 정규식(`stripGuidePrefix` 등)을 모두 이 공통 함수로 교체.
+- 커밋: `5d49c11`(유틸), `928b774`(적용 + TOC/back-link/eyebrow 수정).
+- 검증: `pnpm test`(wiki-core 171/web 56) 통과 — jsdom에 `scrollIntoView` 미구현이라 기존 가드 패턴 재사용, `IntersectionObserver` 미지원 환경에서도 top-of-page 로직이 독립 동작하도록 재구성하며 테스트로 실제 회귀(첫 실행에서 발견)를 잡음. `pnpm typecheck`/`build` 통과. Playwright로 실제 스크롤(맨 아래→맨 위) 후 TOC 활성 항목이 첫 헤딩으로 정확히 복귀하는지, 라이트/다크/모바일(390px) 모두 확인.
+
 ## Open Gaps
 - **Codex 비판 리뷰 미수행**: `mcp__codex__codex` 호출이 사용량 한도(2026-07-29 이후 재시도 가능)로 실패했다. 대신 `subagent-driven-development` 워크플로우의 2단계(spec-compliance + code-quality) 서브에이전트 리뷰를 Task 1-6 각각에 대해 수행했고, 실제로 3건의 회귀(Task 2 배경 대비, Task 4 전역 클래스 스코프, Task 5 커밋 스코프/테스트 커버리지)를 발견·수정했다. 재시도 가능 시점 이후 전체 diff에 대한 독립 Codex 리뷰를 한 번 더 받는 것을 권장한다.
 - `@sfood/ui` React 컴포넌트(Button/Card 등)는 여전히 이 실행 환경의 dist 빌드 미반영 제약으로 사용하지 못했다 — 정상 환경 재검증 후 컴포넌트 단위 교체를 후속 과제로 남긴다.
