@@ -1,6 +1,8 @@
 import {
+  forwardRef,
   startTransition,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
   type CSSProperties,
@@ -10,7 +12,7 @@ import { Link } from "react-router-dom";
 import { getWikiDocumentByIdFrom, getWikiDocumentHref, stripTitleTypePrefix, type WikiDocument } from "@sfood/wiki-core";
 import { getPolicyNoticeMessage, shouldShowPolicyNotice } from "../../lib/policyNotice";
 import { StructuredAnswerView } from "../StructuredAnswerView";
-import { PromptComposer } from "../PromptComposer";
+import { PromptComposer, type PromptComposerHandle } from "../PromptComposer";
 
 type AskResult = {
   answer: string;
@@ -48,19 +50,31 @@ type AskTurn = {
 const COLLAPSED_HEIGHT = 68;
 const EXPANDED_HEIGHT = 320;
 
-export function ArticleAskPanel({
-  documents,
-  initialQuestion = "",
-  pageId,
-}: {
-  documents: WikiDocument[];
-  initialQuestion?: string;
-  pageId: string;
-}) {
+export type ArticleAskPanelHandle = {
+  fillAndFocus: (text: string) => void;
+};
+
+export const ArticleAskPanel = forwardRef<
+  ArticleAskPanelHandle,
+  {
+    documents: WikiDocument[];
+    initialQuestion?: string;
+    pageId: string;
+  }
+>(function ArticleAskPanel({ documents, initialQuestion = "", pageId }, ref) {
   const [question, setQuestion] = useState(initialQuestion);
   const [turns, setTurns] = useState<AskTurn[]>([]);
   const [panelHeight, setPanelHeight] = useState(COLLAPSED_HEIGHT);
   const turnsRef = useRef<HTMLDivElement | null>(null);
+  const promptComposerRef = useRef<PromptComposerHandle | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    fillAndFocus: (text: string) => {
+      setQuestion(text);
+      setPanelHeight((height) => Math.max(height, EXPANDED_HEIGHT));
+      promptComposerRef.current?.focus();
+    },
+  }), []);
 
   useEffect(() => {
     if (turnsRef.current) {
@@ -193,6 +207,7 @@ export function ArticleAskPanel({
       ) : null}
 
       <PromptComposer
+        ref={promptComposerRef}
         value={question}
         onValueChange={setQuestion}
         onSubmit={submitQuestion}
@@ -209,7 +224,7 @@ export function ArticleAskPanel({
       />
     </section>
   );
-}
+});
 
 function ArticleAskLoading() {
   return (
