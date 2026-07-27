@@ -223,7 +223,12 @@ a {
   }
 
   .site-shell {
-    @apply mx-auto max-w-6xl px-3 py-3 sm:px-5 sm:py-5;
+    /* relative so page-level absolute-positioned overlays (e.g. .article-back-link) can anchor to
+       this shared frame's own edge instead of a page-specific inner wrapper (like .page-shell,
+       which adds its own extra padding on top of this) — keeps such overlays visually consistent
+       with every other route's content edge. Harmless for other absolutely-positioned elements
+       elsewhere in the app: they all already have a nearer positioned ancestor of their own. */
+    @apply relative mx-auto max-w-6xl px-3 py-3 sm:px-5 sm:py-5;
   }
 
   .site-header {
@@ -327,9 +332,15 @@ a {
   }
 
   .article-back-link {
-    /* Absolutely positioned so the back link no longer reserves a line inside the reading
-       column — it floats at the top-left of the article/TOC grid instead. */
-    @apply absolute left-0 top-0 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-card-bg text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg hover:text-accent;
+    /* Absolutely positioned against .site-shell (the frame every route shares), not .page-shell
+       (which adds its own extra padding on top of .site-shell's) — so it sits at the same left/top
+       edge other pages' content starts from, instead of being indented further in by page-shell's
+       padding on article/guide pages specifically. Rendered as a sibling of .page-shell in the
+       JSX, directly inside .site-shell. left/top mirror .site-shell's own px-3/py-3 (sm:px-5/
+       sm:py-5) padding exactly — .site-shell's own getBoundingClientRect() is its outer border-box
+       (before that padding), so left-0/top-0 alone would sit flush with the viewport edge, ignoring
+       the padding every other page's content respects. */
+    @apply absolute left-3 top-3 sm:left-5 sm:top-5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-card-bg text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg hover:text-accent;
   }
 
   .control-input {
@@ -946,8 +957,13 @@ a {
     /* Same base as .article-layout, but for pages that render a TOC (.article-aside): only one
        column at every breakpoint, since .article-aside takes itself out of this grid via
        xl:fixed below rather than sharing a grid track with it — the content column is genuinely
-       standalone inside .page-shell, not sharing a container with the TOC. */
-    @apply grid grid-cols-1 gap-4;
+       standalone inside .page-shell, not sharing a container with the TOC.
+       xl:pr reserves the TOC's own footprint (width + gap) on the right at the container level,
+       so .article-body's mx-auto centers within "container minus TOC space" — i.e. within the
+       area to the LEFT of the TOC, not the full container — even though the TOC itself is no
+       longer a grid participant. Half of this padding is exactly how far left of the plain
+       container/viewport center the content ends up (see .article-ask-dock's matching offset). */
+    @apply grid grid-cols-1 gap-4 xl:pr-[calc(var(--article-toc-width)+var(--article-toc-gap))];
   }
 
   .article-body {
@@ -971,17 +987,19 @@ a {
 
   @media (min-width: 1280px) {
     .article-aside {
-      /* Anchors the TOC just right of the content column's right edge, wherever that edge
-         actually sits — content is always centered on the viewport (page-shell/page-width use
-         only symmetric padding/mx-auto, no asymmetric offsets), so its right edge is always
-         50% + half of --article-content-width from the viewport's left edge. The min() clamp
-         guards a narrow but real case: a fixed element's "50%"/"100%" resolve against the
-         viewport width including the scrollbar gutter, while normal-flow content (.article-body)
-         is centered excluding it — at viewport widths just above the xl breakpoint (~1280-1300px)
-         the unclamped calc can push the TOC a few px past the visible content area. The second
-         min() branch keeps it flush against the right edge instead whenever that would happen. */
+      /* Anchors the TOC just right of the content column's right edge. .guide-article-layout's
+         xl:pr reserves the TOC's footprint, which shifts .article-body's own center left of the
+         plain viewport/container center by half of (toc width + gap) — so the content's right
+         edge sits at 50% + half of --article-content-width MINUS that same half-offset, and the
+         TOC starts --article-toc-gap past that (full derivation: centering "content + gap + TOC"
+         as one combined block on the viewport, which is what a shared grid track would have done,
+         without actually sharing one). The min() clamp guards a narrow but real case: a fixed
+         element's "50%"/"100%" resolve against the viewport width including the scrollbar gutter,
+         while normal-flow content is centered excluding it — at viewport widths just above the xl
+         breakpoint (~1280-1300px) the unclamped calc can push the TOC a few px past the visible
+         content area. The second min() branch keeps it flush against the right edge instead. */
       left: min(
-        calc(50% + (var(--article-content-width) / 2) + var(--article-toc-gap)),
+        calc(50% + (var(--article-content-width) / 2) - (var(--article-toc-width) / 2) + (var(--article-toc-gap) / 2)),
         calc(100% - var(--article-toc-width) - 1rem)
       );
     }
@@ -1227,19 +1245,29 @@ a {
   }
 
   .article-ask-dock {
-    /* Fixed to the viewport, centered independently of .guide-article-layout so it never competes with
-       or scrolls alongside the guide content underneath it. .article-aside (the TOC) is pinned via
-       xl:fixed rather than sharing a grid track with the content, so the content column — and this
-       dock — stay centered on the plain viewport center at every breakpoint; no TOC-width offset
-       needed here. The reading column's available width is narrowed by two nested paddings:
-       .site-shell (px-3/sm:px-5, wraps every route) and .page-shell (px-4/sm:px-6, this page only).
-       A position:fixed element's own "100%" is the same viewport width both of those paddings are
-       subtracted from, so the w-[...] steps below mirror the COMBINED inset at each breakpoint
-       (base: 12+16=28px/side → 3.5rem; sm: 20+24=44px/side → 5.5rem) to keep the dock's width
-       tracking .article-body's actual available width, not just .page-shell's own padding. */
+    /* Fixed to the viewport, centered independently of .guide-article-layout so it never competes
+       with or scrolls alongside the guide content underneath it. Below xl the TOC track doesn't
+       exist, so viewport-centering (inset-x-0 + mx-auto) already lines up with the reading column
+       — the sm:w-[...] step mirrors the COMBINED inset of the two nested paddings that narrow the
+       reading column's available width at every breakpoint: .site-shell (px-3/sm:px-5, wraps every
+       route) and .page-shell (px-4/sm:px-6, this page only). A position:fixed element's own "100%"
+       is the same viewport width both of those paddings are subtracted from, so the w-[...] steps
+       mirror that COMBINED inset (base: 12+16=28px/side → 3.5rem; sm: 20+24=44px/side → 5.5rem) to
+       keep the dock's width tracking .article-body's actual available width. At xl, .guide-article-
+       layout's xl:pr shifts the content column's center left of the plain viewport center by half of
+       (TOC width + gap) — the media query below re-centers the dock on that same shifted point. */
     @apply fixed inset-x-0 bottom-5 z-20 mx-auto w-[calc(100%-3.5rem)] sm:w-[calc(100%-5.5rem)] max-w-[var(--article-content-width)];
     height: var(--article-ask-height, 68px);
     max-height: 420px;
+  }
+
+  @media (min-width: 1280px) {
+    .article-ask-dock {
+      left: calc(50% - (var(--article-toc-width) + var(--article-toc-gap)) / 2);
+      right: auto;
+      margin: 0;
+      transform: translateX(-50%);
+    }
   }
 
   .article-ask-turns {

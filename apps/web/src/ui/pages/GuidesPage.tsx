@@ -128,9 +128,11 @@ export function StartingGuidePage() {
     );
   }
 
+  const hasToc = Boolean(gettingStarted && gettingStarted.headings.length > 0);
+
   return (
     <div className="page-shell">
-      <div className="page-width guide-article-layout">
+      <div className={`page-width ${hasToc ? "guide-article-layout" : "article-layout"}`}>
         <article className="article-body">
           {gettingStarted ? (
             <>

@@ -140,70 +140,72 @@ export function ArticlePage({ section }: { section: WikiSection }) {
   }
 
   return (
-    <div className="page-shell">
-      <div className="page-width guide-article-layout pb-32 pt-10 relative">
-        <Link
-          className="article-back-link"
-          to={`/${section}`}
-          aria-label="목록으로 돌아가기"
-          title="목록으로 돌아가기"
-        >
-          <BackArrowIcon />
-        </Link>
+    <>
+      <Link
+        className="article-back-link"
+        to={`/${section}`}
+        aria-label="목록으로 돌아가기"
+        title="목록으로 돌아가기"
+      >
+        <BackArrowIcon />
+      </Link>
 
-        <article className="article-body" ref={articleRef}>
-          <p className="eyebrow">
-            {document.metadata.docType}
-          </p>
-          <h1 className="title-hero mt-3">{stripTitleTypePrefix(document.title)}</h1>
-
-          <div className="section-stack mt-6 flex flex-wrap gap-2 space-y-0 text-xs text-muted-fg">
-            <span className="document-chip">
+      <div className="page-shell">
+        <div className="page-width guide-article-layout pb-32 pt-10">
+          <article className="article-body" ref={articleRef}>
+            <p className="eyebrow">
               {document.metadata.docType}
-            </span>
-            <span className="document-chip">
-              {document.metadata.audience}
-            </span>
-            <span className="document-chip">
-              {document.updatedAt}
-            </span>
-          </div>
-          <ArticleContentRenderer
-            headings={document.headings}
-            html={document.contentHtml}
-            title={document.title}
-            documents={documents}
-          />
-        </article>
+            </p>
+            <h1 className="title-hero mt-3">{stripTitleTypePrefix(document.title)}</h1>
 
-        <aside className="article-aside">
-          <p className="eyebrow">목차</p>
-          <nav className="article-toc" aria-label="문서 목차" ref={tocNavRef}>
-            {document.headings.length ? document.headings.map((heading) => (
-              <a
-                key={heading.id}
-                href={`#${heading.id}`}
-                onClick={(event) => handleTocClick(event, heading.id)}
-                className={`article-toc-link article-toc-level-${Math.min(heading.level, 4)}${
-                  activeHeadingId === heading.id ? " article-toc-link-active" : ""
-                }`}
-              >
-                {heading.text}
-              </a>
-            )) : (
-              <span className="article-toc-empty">목차가 없습니다.</span>
-            )}
-          </nav>
-        </aside>
+            <div className="section-stack mt-6 flex flex-wrap gap-2 space-y-0 text-xs text-muted-fg">
+              <span className="document-chip">
+                {document.metadata.docType}
+              </span>
+              <span className="document-chip">
+                {document.metadata.audience}
+              </span>
+              <span className="document-chip">
+                {document.updatedAt}
+              </span>
+            </div>
+            <ArticleContentRenderer
+              headings={document.headings}
+              html={document.contentHtml}
+              title={document.title}
+              documents={documents}
+            />
+          </article>
+
+          <aside className="article-aside">
+            <p className="eyebrow">목차</p>
+            <nav className="article-toc" aria-label="문서 목차" ref={tocNavRef}>
+              {document.headings.length ? document.headings.map((heading) => (
+                <a
+                  key={heading.id}
+                  href={`#${heading.id}`}
+                  onClick={(event) => handleTocClick(event, heading.id)}
+                  className={`article-toc-link article-toc-level-${Math.min(heading.level, 4)}${
+                    activeHeadingId === heading.id ? " article-toc-link-active" : ""
+                  }`}
+                >
+                  {heading.text}
+                </a>
+              )) : (
+                <span className="article-toc-empty">목차가 없습니다.</span>
+              )}
+            </nav>
+          </aside>
+        </div>
+
+        <ArticleSelectionAskButton
+          containerRef={articleRef}
+          onAsk={(text) => askPanelRef.current?.fillAndFocus(text)}
+        />
+
+        <ArticleAskPanel ref={askPanelRef} documents={documents} pageId={document.id} />
       </div>
-
-      <ArticleSelectionAskButton
-        containerRef={articleRef}
-        onAsk={(text) => askPanelRef.current?.fillAndFocus(text)}
-      />
-
-      <ArticleAskPanel ref={askPanelRef} documents={documents} pageId={document.id} />
-    </div>
+    </>
   );
 }
 

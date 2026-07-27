@@ -36,3 +36,13 @@
 - **Ask 패널 검색창 단일 레이어화**: `.article-ask-form`의 `bg-page-bg` 배경을 제거(투명) — 이제 `.article-ask` 하나의 배경/보더만 보이는 완전한 단일 표면.
 - **Ask 도크 xl 오프셋 제거**: TOC가 더 이상 그리드 트랙을 공유하지 않으므로, 컨텐츠는 모든 브레이크포인트에서 뷰포트 정중앙에 위치 — 기존 `.article-ask-dock`의 xl 전용 `left`/`transform` 보정 규칙이 불필요해져 제거(단순화).
 - 검증: `pnpm typecheck`/`test`(17 files/68 tests)/`build` 통과. Playwright로 1280px(경계값, 클램프 확인)/1920px(클램프 미개입 확인)/800px(태블릿, 정상 스택)/390px(모바일) + 라이트·다크 + 스크롤 중 TOC 고정 유지 + `StartingGuidePage` 재확인. `ProjectDetailPage`는 실제 데이터 로드가 이 환경에서 되지 않아 합성 DOM 요소로 `.article-layout`의 그리드 계산이 원래 값(`1fr 240px`)으로 복원됐음을 직접 확인.
+
+## 추가 수정 (2026-07-27, 2차) — 컨텐츠 중앙 정렬 오정정, 목록으로 돌아가기 위치 보정
+
+바로 위 "추가 수정" 항목이 실제로는 과교정이었음을 사용자가 재차 지적함: TOC를 `xl:fixed`로 분리하면서 컨텐츠를 "TOC 유무와 무관하게 뷰포트 정중앙"에 두도록 만들었는데, 이는 최초 요청("목차 왼쪽 영역을 컨텐츠 영역으로 하고 그 영역 안에서 중앙 정렬")과 다르게 컨텐츠가 site-shell 전체 폭 기준으로 중앙 정렬되어 버리는 회귀였음. 또한 "목록으로 돌아가기" 버튼이 `page-shell`(이 페이지 전용 추가 패딩) 안에 있어 다른 페이지의 컨텐츠 시작 위치와 어긋나 어색하게 떠 보인다는 지적도 반영.
+
+- **컨텐츠 재중앙정렬**: `.guide-article-layout`에 `xl:pr-[calc(var(--article-toc-width)+var(--article-toc-gap))]`를 추가해 TOC의 폭+간격만큼을 컨텐츠 컨테이너 우측에 예약— `.article-body`의 `mx-auto`가 "TOC를 제외한 영역"에서 자연스럽게 중앙 정렬되도록 복원(TOC와 그리드 트랙을 공유하지 않으면서도 시각적으로는 "컨텐츠+간격+TOC"를 하나의 블록으로 뷰포트에 중앙 정렬한 것과 동일한 결과). `.article-aside`/`.article-ask-dock`의 `left` 계산식도 이 오프셋에 맞춰 재도출(Codex가 수식 유도 검증, 세 규칙이 상호 일치함을 확인).
+- **목록으로 돌아가기 위치 보정**: `.site-shell`에 `position: relative` 추가(다른 절대/고정 위치 요소는 모두 자신만의 더 가까운 positioned 조상을 이미 갖고 있어 영향 없음을 Codex가 확인). 뒤로가기 링크를 `.page-shell`/`.page-width` 안에서 꺼내 `.site-shell`의 직계 자식(Fragment)으로 이동하고, `absolute left-3 top-3 sm:left-5 sm:top-5`로 `.site-shell` 자신의 패딩과 동일한 값을 부여해 다른 페이지의 컨텐츠 시작 위치와 정확히 일치하도록 함(Playwright로 1280px에서 79px, 390px에서 12px로 `.site-shell`의 패딩 적용 후 콘텐츠 엣지와 픽셀 단위 일치 확인).
+- **Codex 리뷰 발견 및 반영**: `GuidesPage.tsx`(`StartingGuidePage`)가 TOC 헤딩이 없는 경우(`gettingStarted` 없음 또는 헤딩 0개)에도 `.guide-article-layout`을 그대로 사용해, 존재하지 않는 TOC를 위한 공간이 예약되는 문제를 지적 — `hasToc` 조건에 따라 `.guide-article-layout`/`.article-layout`을 조건부로 적용하도록 수정(`ArticlePage`는 TOC가 항상 렌더링되므로 — 헤딩 0개여도 "목차가 없습니다" 자리표시자를 보여줌 — 해당 없음).
+- TOC 스크롤 관련 버그("스크롤이 내려갔다가 다시 올라왔을 때 목차 텍스트가 안 보임")는 프로그램적 스크롤(`scrollTo`/`scrollBy` 다단계 시뮬레이션), TOC 항목 클릭 후 스크롤, 라이트/다크 모드 조합으로 반복 재현을 시도했으나 재현하지 못함 — 재현 조건(정확한 스크롤 방식, 브라우저, 재현 빈도)을 사용자에게 추가로 확인 필요.
+- 검증: `pnpm typecheck`/`test`(17 files/68 tests)/`build` 통과. Playwright로 1280/800/390px + 라이트·다크에서 `.article-body`/`.article-ask-dock`/`.article-aside`/`.article-back-link`의 실측 좌표가 새 수식과 정확히 일치함을 확인. `StartingGuidePage`(TOC 있는 경우)도 동일한 오프셋 중앙 정렬 확인.

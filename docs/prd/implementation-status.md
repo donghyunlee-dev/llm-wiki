@@ -16,6 +16,15 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-27 — 가이드 페이지 컨텐츠 재중앙정렬(TOC 제외 영역 기준), 뒤로가기 버튼 site-shell 정렬 (2차 재검토 수정)
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 바로 이전 항목("TOC 구조적 분리")의 구현을 사용자가 재검토한 결과, TOC를 `xl:fixed`로 분리하면서 컨텐츠가 "TOC 제외 영역"이 아니라 "뷰포트 전체" 기준으로 중앙 정렬되어 버리는 회귀를 지적 — 최초 요청("목차 왼쪽 영역에서 중앙 정렬")과 어긋남. "목록으로 돌아가기" 버튼도 `page-shell`의 추가 패딩 때문에 다른 페이지 컨텐츠 시작 위치와 어긋나 어색하게 떠 보인다는 지적도 함께 받음.
+- 구현: `.guide-article-layout`에 `xl:pr-[calc(toc폭+gap)]`을 추가해 컨텐츠 컨테이너 우측에 TOC 자리를 예약, `.article-body`의 `mx-auto`가 TOC 제외 영역에서 자연 중앙 정렬되도록 복원. `.article-aside`/`.article-ask-dock`의 `left` 계산식을 이 오프셋에 맞춰 재도출(세 규칙 상호 일치, Codex가 수식 검증). "목록으로 돌아가기" 버튼을 `page-shell` 밖으로 꺼내 `.site-shell`(모든 라우트가 공유하는 프레임, 신규 `position: relative`)의 직계 자식으로 이동, `.site-shell` 자신의 패딩과 동일한 값(`left-3 top-3 sm:left-5 sm:top-5`)으로 재배치해 다른 페이지 컨텐츠 시작 위치와 픽셀 단위로 일치시킴.
+- Codex 크리티컬 리뷰에서 발견: `GuidesPage.tsx`가 TOC 헤딩이 없는 경우에도 `.guide-article-layout`(TOC 공간 예약)을 그대로 써서 존재하지 않는 TOC를 위한 공간이 남는 문제 → `hasToc` 조건부 클래스 적용으로 수정.
+- 사용자가 보고한 "TOC 스크롤 다운 후 업 시 텍스트 안 보임" 버그는 프로그램적/시뮬레이션 스크롤, 클릭+스크롤, 라이트/다크 조합으로 재현을 시도했으나 재현하지 못함 — 추가 재현 조건 확인 필요(미해결로 남김, 은폐하지 않고 명시).
+- 검증: `pnpm typecheck`/`test`(17 files/68 tests)/`build` 통과. Playwright로 1280/800/390px + 라이트·다크에서 컨텐츠/Ask도크/TOC/뒤로가기 버튼의 실측 좌표가 새 수식과 정확히 일치함을 확인.
+- 태스크 문서: `docs/tasks/guide-page-toc-sidebar-refresh/result.md`("추가 수정 (2026-07-27, 2차)" 섹션).
+
 ### 2026-07-27 — 가이드 페이지 TOC 구조적 분리(page-shell 밖으로), 검색창 단일 레이어화 (재검토 수정)
 - 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
 - 배경: 사용자가 같은 날 앞서 완료한 `docs/tasks/guide-page-toc-sidebar-refresh/` 구현을 실제 화면에서 재검토한 뒤, 지시("page-shell에서 목차를 빼라", "검색을 하나의 div로 심플하게")가 문자 그대로 반영되지 않았다고 지적 — 이전 구현은 TOC를 같은 그리드 안에 두고 보더/간격만 추가했고, Ask 패널은 보더만 없앴지 배경색 차이로 인한 "박스 안의 박스"가 남아 있었음. Playwright로 직접 재확인해 두 문제 모두 실제로 남아있음을 검증한 뒤 수정.
