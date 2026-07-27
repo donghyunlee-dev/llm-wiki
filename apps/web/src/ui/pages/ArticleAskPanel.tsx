@@ -7,7 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Link } from "react-router-dom";
-import { getWikiDocumentByIdFrom, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
+import { getWikiDocumentByIdFrom, getWikiDocumentHref, stripTitleTypePrefix, type WikiDocument } from "@sfood/wiki-core";
 import { getPolicyNoticeMessage, shouldShowPolicyNotice } from "../../lib/policyNotice";
 import { StructuredAnswerView } from "../StructuredAnswerView";
 import { PromptComposer } from "../PromptComposer";
@@ -275,11 +275,11 @@ function ArticleAskResult({
                 <li key={`${item.pageId}-${item.reason}`}>
                   {document ? (
                     <Link className="article-link-card" to={getWikiDocumentHref(document) ?? "#"} target="_blank" rel="noreferrer">
-                      <strong>{item.title}</strong>
+                      <strong>{stripTitleTypePrefix(item.title)}</strong>
                     </Link>
                   ) : (
                     <div className="article-link-card">
-                      <strong>{item.title}</strong>
+                      <strong>{stripTitleTypePrefix(item.title)}</strong>
                     </div>
                   )}
                 </li>

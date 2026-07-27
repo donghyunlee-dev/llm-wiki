@@ -1,4 +1,4 @@
-import { buildSearchFollowUpQuestion } from "@sfood/wiki-core";
+import { buildSearchFollowUpQuestion, stripTitleTypePrefix } from "@sfood/wiki-core";
 import { startTransition, useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
@@ -75,6 +75,8 @@ export function SearchPage() {
   const [showEmptyHint, setShowEmptyHint] = useState(false);
   const emptyHintTimerRef = useRef<number | null>(null);
   const requestedQuestionsRef = useRef(new Set<string>());
+  const turnRefs = useRef(new Map<string, HTMLDivElement>());
+  const lastScrolledTurnRef = useRef<{ id: string; status: SearchConversationItem["status"] } | null>(null);
 
   useEffect(() => {
     setDraftQuestion("");
@@ -157,6 +159,24 @@ export function SearchPage() {
       });
   }, [documents, errorMessage, isLoading, query]);
 
+  useEffect(() => {
+    const lastItem = conversation[conversation.length - 1];
+    if (!lastItem) {
+      return;
+    }
+
+    const alreadyScrolled =
+      lastScrolledTurnRef.current?.id === lastItem.id &&
+      lastScrolledTurnRef.current?.status === lastItem.status;
+    if (alreadyScrolled) {
+      return;
+    }
+
+    lastScrolledTurnRef.current = { id: lastItem.id, status: lastItem.status };
+    const turnElement = turnRefs.current.get(lastItem.id);
+    turnElement?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [conversation]);
+
   const triggerEmptyHint = useCallback(() => {
     setShowEmptyHint(true);
     if (emptyHintTimerRef.current !== null) {
@@ -222,7 +242,17 @@ export function SearchPage() {
           const faqDocuments = [...aiFaqDocuments, ...directFaqDocuments.filter((d) => !faqSeenIds.has(d.id))];
 
           return (
-            <div className="chat-turn" key={item.id}>
+            <div
+              className="chat-turn"
+              key={item.id}
+              ref={(element) => {
+                if (element) {
+                  turnRefs.current.set(item.id, element);
+                } else {
+                  turnRefs.current.delete(item.id);
+                }
+              }}
+            >
               <div className="chat-message chat-message-user">
                 <p>{item.question}</p>
               </div>
@@ -477,7 +507,7 @@ function SearchResultSummary({
       {documents.map((document) => (
         <li key={document.id}>
           <Link className="chat-guide-card" to={document.href} target="_blank" rel="noreferrer">
-            <strong>{document.title}</strong>
+            <strong>{stripTitleTypePrefix(document.title)}</strong>
           </Link>
         </li>
       ))}

@@ -92,13 +92,44 @@ describe("ArticlePage TOC active state", () => {
     const firstLink = screen.getByRole("link", { name: "첫 번째 섹션" });
     const secondLink = screen.getByRole("link", { name: "두 번째 섹션" });
 
-    expect(firstLink.className).not.toContain("article-toc-link-active");
+    // At the top of the page (jsdom defaults to scrollY: 0), the first heading is active —
+    // this is the fix for the reported bug where scrolling back to the top left a stale
+    // heading highlighted in the TOC.
+    expect(firstLink.className).toContain("article-toc-link-active");
     expect(secondLink.className).not.toContain("article-toc-link-active");
 
     fireEvent.click(secondLink);
 
     expect(secondLink.className).toContain("article-toc-link-active");
     expect(firstLink.className).not.toContain("article-toc-link-active");
+  });
+
+  it("re-activates the first heading when scrolled back to the top of the page", () => {
+    useWikiDataMock.mockReturnValue({
+      documents: [buildDocument()],
+      errorMessage: null,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <ArticlePage section="guides" />
+      </MemoryRouter>,
+    );
+
+    const firstLink = screen.getByRole("link", { name: "첫 번째 섹션" });
+    const secondLink = screen.getByRole("link", { name: "두 번째 섹션" });
+
+    fireEvent.click(secondLink);
+    expect(secondLink.className).toContain("article-toc-link-active");
+
+    Object.defineProperty(window, "scrollY", { value: 0, configurable: true });
+    act(() => {
+      window.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(firstLink.className).toContain("article-toc-link-active");
+    expect(secondLink.className).not.toContain("article-toc-link-active");
   });
 
   it("marks the topmost of multiple intersecting headings active via the scroll-spy observer", () => {

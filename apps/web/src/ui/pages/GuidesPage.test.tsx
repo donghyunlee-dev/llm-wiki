@@ -68,7 +68,8 @@ describe("StartingGuidePage", () => {
     const overviewLink = screen.getByRole("link", { name: "개요" });
     const detailsLink = screen.getByRole("link", { name: "세부 단계" });
 
-    expect(overviewLink.className).not.toContain("article-toc-link-active");
+    // At the top of the page (jsdom defaults to scrollY: 0), the first heading is active.
+    expect(overviewLink.className).toContain("article-toc-link-active");
     expect(detailsLink.className).not.toContain("article-toc-link-active");
 
     fireEvent.click(detailsLink);

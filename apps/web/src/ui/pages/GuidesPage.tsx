@@ -1,5 +1,5 @@
-import type { WikiDocument } from "@sfood/wiki-core";
-import { useEffect, useState, type MouseEvent } from "react";
+import { stripTitleTypePrefix, type WikiDocument } from "@sfood/wiki-core";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { useWikiData } from "../../data/WikiDataProvider";
 import { ArticleContentRenderer } from "./ArticleContentRenderer";
 import { CategoryPage } from "./CategoryPage";
@@ -26,8 +26,26 @@ export function StartingGuidePage() {
   // Hooks must run unconditionally before the early returns below (see 2026-05-06 fix in
   // implementation-status.md for why a conditional hook previously broke ArticlePage the same way).
   useEffect(() => {
-    if (typeof IntersectionObserver === "undefined" || !gettingStarted?.headings.length) {
+    const firstHeadingId = gettingStarted?.headings[0]?.id;
+
+    if (!firstHeadingId) {
       return;
+    }
+
+    // See the identical fix in ArticlePage.tsx: force the first heading active near the top of
+    // the page, independent of IntersectionObserver support, since it may sit below the
+    // scroll-spy observer's rootMargin-excluded band.
+    const handleScroll = () => {
+      if (window.scrollY < 80) {
+        setActiveHeadingId(firstHeadingId);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+
+    if (typeof IntersectionObserver === "undefined") {
+      return () => window.removeEventListener("scroll", handleScroll);
     }
 
     const headingElements = gettingStarted.headings
@@ -35,7 +53,7 @@ export function StartingGuidePage() {
       .filter((element): element is HTMLElement => Boolean(element));
 
     if (!headingElements.length) {
-      return;
+      return () => window.removeEventListener("scroll", handleScroll);
     }
 
     const observer = new IntersectionObserver(
@@ -53,8 +71,30 @@ export function StartingGuidePage() {
 
     headingElements.forEach((element) => observer.observe(element));
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, [gettingStarted?.id]);
+
+  const tocNavRef = useRef<HTMLElement | null>(null);
+
+  // Keep the TOC's own scroll position in sync with the active heading (see the identical
+  // fix in ArticlePage.tsx for why this is needed).
+  useEffect(() => {
+    if (!activeHeadingId || !tocNavRef.current) {
+      return;
+    }
+
+    const links = tocNavRef.current.querySelectorAll("a");
+    const activeLink = Array.from(links).find(
+      (link) => link.getAttribute("href") === `#${activeHeadingId}`,
+    );
+
+    if (activeLink && typeof activeLink.scrollIntoView === "function") {
+      activeLink.scrollIntoView({ block: "nearest" });
+    }
+  }, [activeHeadingId]);
 
   const handleTocClick = (event: MouseEvent<HTMLAnchorElement>, headingId: string) => {
     event.preventDefault();
@@ -95,7 +135,7 @@ export function StartingGuidePage() {
           {gettingStarted ? (
             <>
               <h1 className="title-hero">
-                {gettingStarted.title.replace(/^\[Guide\]\s*/i, "")}
+                {stripTitleTypePrefix(gettingStarted.title)}
               </h1>
               <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-fg">
                 <span className="document-chip">{gettingStarted.metadata.audience}</span>
@@ -117,7 +157,7 @@ export function StartingGuidePage() {
         {gettingStarted && gettingStarted.headings.length > 0 && (
           <aside className="article-aside">
             <p className="eyebrow">목차</p>
-            <nav className="article-toc" aria-label="문서 목차">
+            <nav className="article-toc" aria-label="문서 목차" ref={tocNavRef}>
               {gettingStarted.headings.map((heading) => (
                 <a
                   key={heading.id}

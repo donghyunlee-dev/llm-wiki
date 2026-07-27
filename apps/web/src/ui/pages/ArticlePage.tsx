@@ -1,6 +1,6 @@
 import type { WikiSection } from "@sfood/wiki-core";
-import { getWikiDocumentFrom } from "@sfood/wiki-core";
-import { useEffect, useState, type MouseEvent } from "react";
+import { getWikiDocumentFrom, stripTitleTypePrefix } from "@sfood/wiki-core";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
 import { ArticleAskPanel } from "./ArticleAskPanel";
@@ -18,8 +18,28 @@ export function ArticlePage({ section }: { section: WikiSection }) {
   // Hooks must run unconditionally before the early returns below (see 2026-05-06 fix in
   // implementation-status.md for why a conditional hook previously broke this page).
   useEffect(() => {
-    if (typeof IntersectionObserver === "undefined" || !document?.headings.length) {
+    const firstHeadingId = document?.headings[0]?.id;
+
+    if (!firstHeadingId) {
       return;
+    }
+
+    // The scroll-spy observer below excludes the top ~96px and bottom ~70% of the viewport, so
+    // the first heading (sitting below the title/chips block) may never intersect that band
+    // while the reader is scrolled all the way to the top of the article — leaving a stale
+    // heading highlighted. Explicitly force the first heading active whenever we're near the
+    // top, independent of IntersectionObserver support.
+    const handleScroll = () => {
+      if (window.scrollY < 80) {
+        setActiveHeadingId(firstHeadingId);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+
+    if (typeof IntersectionObserver === "undefined") {
+      return () => window.removeEventListener("scroll", handleScroll);
     }
 
     const headingElements = document.headings
@@ -27,7 +47,7 @@ export function ArticlePage({ section }: { section: WikiSection }) {
       .filter((element): element is HTMLElement => Boolean(element));
 
     if (!headingElements.length) {
-      return;
+      return () => window.removeEventListener("scroll", handleScroll);
     }
 
     const observer = new IntersectionObserver(
@@ -45,8 +65,31 @@ export function ArticlePage({ section }: { section: WikiSection }) {
 
     headingElements.forEach((element) => observer.observe(element));
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("scroll", handleScroll);
+    };
   }, [document?.id]);
+
+  const tocNavRef = useRef<HTMLElement | null>(null);
+
+  // Keep the TOC's own scroll position in sync with the active heading — without this, the
+  // TOC can end up scrolled to a stale position (e.g. still showing a mid-document entry after
+  // the reader scrolls all the way back to the top of the article).
+  useEffect(() => {
+    if (!activeHeadingId || !tocNavRef.current) {
+      return;
+    }
+
+    const links = tocNavRef.current.querySelectorAll("a");
+    const activeLink = Array.from(links).find(
+      (link) => link.getAttribute("href") === `#${activeHeadingId}`,
+    );
+
+    if (activeLink && typeof activeLink.scrollIntoView === "function") {
+      activeLink.scrollIntoView({ block: "nearest" });
+    }
+  }, [activeHeadingId]);
 
   const handleTocClick = (event: MouseEvent<HTMLAnchorElement>, headingId: string) => {
     event.preventDefault();
@@ -95,15 +138,21 @@ export function ArticlePage({ section }: { section: WikiSection }) {
 
   return (
     <div className="page-shell">
-      <div className="page-width article-layout pb-32">
+      <div className="page-width article-layout pb-32 pt-10 relative">
+        <Link
+          className="article-back-link"
+          to={`/${section}`}
+          aria-label="목록으로 돌아가기"
+          title="목록으로 돌아가기"
+        >
+          <BackArrowIcon />
+        </Link>
+
         <article className="article-body">
-          <Link className="text-link" to={`/${section}`}>
-            목록으로 돌아가기
-          </Link>
-          <p className="eyebrow mt-6 text-xs">
+          <p className="eyebrow">
             {document.metadata.docType}
           </p>
-          <h1 className="title-hero mt-3">{document.title}</h1>
+          <h1 className="title-hero mt-3">{stripTitleTypePrefix(document.title)}</h1>
 
           <div className="section-stack mt-6 flex flex-wrap gap-2 space-y-0 text-xs text-muted-fg">
             <span className="document-chip">
@@ -126,7 +175,7 @@ export function ArticlePage({ section }: { section: WikiSection }) {
 
         <aside className="article-aside">
           <p className="eyebrow">목차</p>
-          <nav className="article-toc" aria-label="문서 목차">
+          <nav className="article-toc" aria-label="문서 목차" ref={tocNavRef}>
             {document.headings.length ? document.headings.map((heading) => (
               <a
                 key={heading.id}
@@ -147,5 +196,19 @@ export function ArticlePage({ section }: { section: WikiSection }) {
 
       <ArticleAskPanel documents={documents} pageId={document.id} />
     </div>
+  );
+}
+
+function BackArrowIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" className="h-4 w-4">
+      <path
+        d="M12.5 15.5 7 10l5.5-5.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }

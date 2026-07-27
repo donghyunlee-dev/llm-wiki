@@ -1,4 +1,4 @@
-import { HOME_CONTENT, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
+import { HOME_CONTENT, getWikiDocumentHref, stripTitleTypePrefix, type WikiDocument } from "@sfood/wiki-core";
 import { startTransition, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
@@ -10,10 +10,6 @@ type FeaturedGuide = {
   isPinned?: boolean;
   description?: string;
 };
-
-function stripGuidePrefix(title: string) {
-  return title.replace(/^\[(?:Guide|guide)\]\s*/i, "");
-}
 
 function isOnboardingPage(title: string, slug: string) {
   return (
@@ -128,7 +124,7 @@ function buildFeaturedGuides(documents: WikiDocument[]): FeaturedGuide[] {
     .filter((document) => document.id !== startingGuide?.id && document.slug !== startingGuide?.slug)
     .slice(0, 4)
     .map((document) => ({
-      title: stripGuidePrefix(document.title),
+      title: stripTitleTypePrefix(document.title),
       href: getWikiDocumentHref(document) ?? `/guides/${document.slug}`,
     }));
 
@@ -137,7 +133,7 @@ function buildFeaturedGuides(documents: WikiDocument[]): FeaturedGuide[] {
         title: "시작 가이드",
         href: startingGuideHref,
         isPinned: true,
-        description: stripGuidePrefix(startingGuide.title),
+        description: stripTitleTypePrefix(startingGuide.title),
       }
     : {
         title: "시작 가이드",

@@ -308,7 +308,7 @@ a {
   }
 
   .eyebrow {
-    @apply text-xs font-semibold uppercase text-accent;
+    @apply text-sm font-bold uppercase tracking-wide text-accent;
   }
 
   .text-link {
@@ -321,6 +321,12 @@ a {
 
   .category-home-link {
     @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-card-bg text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg hover:text-accent;
+  }
+
+  .article-back-link {
+    /* Absolutely positioned so the back link no longer reserves a line inside the reading
+       column — it floats at the top-left of the article/TOC grid instead. */
+    @apply absolute left-0 top-0 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-card-bg text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg hover:text-accent;
   }
 
   .control-input {
@@ -933,8 +939,9 @@ a {
 
   .article-body {
     /* No card background/border — the guide content blends directly into the page background.
-       max-width keeps the reading line length comfortable without boxing the content in. */
-    @apply mx-auto w-full max-w-[760px];
+       max-width keeps the reading line length comfortable without boxing the content in.
+       pt-4 matches .article-aside's p-4 so the docType/목차 eyebrow labels line up. */
+    @apply mx-auto w-full max-w-[760px] pt-4;
   }
 
   .article-aside {
