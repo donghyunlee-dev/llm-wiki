@@ -141,7 +141,7 @@ export function ArticlePage({ section }: { section: WikiSection }) {
 
   return (
     <div className="page-shell">
-      <div className="page-width article-layout pb-32 pt-10 relative">
+      <div className="page-width guide-article-layout pb-32 pt-10 relative">
         <Link
           className="article-back-link"
           to={`/${section}`}

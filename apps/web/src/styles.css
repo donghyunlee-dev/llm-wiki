@@ -64,6 +64,7 @@
   --font-body: var(--font-sans);
   --article-toc-width: 240px;
   --article-toc-gap: 2rem;
+  --article-content-width: 760px;
 }
 
 :root[data-theme="dark"] {
@@ -933,32 +934,57 @@ a {
   }
 
   .article-layout {
-    /* grid-cols-1 below xl gives the single column an explicit minmax(0,1fr) track — without it,
-       an implicit grid track sizes to content (max-content) and wide children (e.g. tables) can
-       overflow the page horizontally. The xl gap widens via the media query below to give the
-       TOC clearer separation from the reading column. */
-    @apply grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_var(--article-toc-width)];
+    /* Plain single-column grid wrapper — used by pages with no TOC (e.g. ProjectDetailPage).
+       grid-cols-1 gives the column an explicit minmax(0,1fr) track — without it, an implicit
+       grid track sizes to content (max-content) and wide children (e.g. tables) can overflow
+       the page horizontally. Guide/article pages with a TOC use .guide-article-layout instead —
+       do not add TOC-specific behavior here, it would also apply to non-TOC consumers. */
+    @apply grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_240px];
   }
 
-  @media (min-width: 1280px) {
-    .article-layout {
-      gap: var(--article-toc-gap);
-    }
+  .guide-article-layout {
+    /* Same base as .article-layout, but for pages that render a TOC (.article-aside): only one
+       column at every breakpoint, since .article-aside takes itself out of this grid via
+       xl:fixed below rather than sharing a grid track with it — the content column is genuinely
+       standalone inside .page-shell, not sharing a container with the TOC. */
+    @apply grid grid-cols-1 gap-4;
   }
 
   .article-body {
     /* No card background/border — the guide content blends directly into the page background.
        max-width keeps the reading line length comfortable without boxing the content in.
        pt-4 matches .article-aside's p-4 so the docType/목차 eyebrow labels line up. */
-    @apply mx-auto w-full max-w-[760px] pt-4;
+    @apply mx-auto w-full max-w-[var(--article-content-width)] pt-4;
   }
 
   .article-aside {
-    /* xl:top/max-h account for the sticky .site-header's rendered height (~72px) plus a 16px gap
-       so the TOC no longer scrolls under the header. No bg — the TOC blends into the page
-       background. A neutral left border (not an accent color) marks it as a separate panel from
-       the reading column once the layout splits into two tracks at xl. */
-    @apply rounded-[var(--radius-lg)] p-4 xl:sticky xl:top-[88px] xl:max-h-[calc(100vh-104px)] xl:self-start xl:overflow-y-auto xl:border-l xl:border-panel-border-soft;
+    /* Below xl: a normal stacked block under the article (same .page-shell/.page-width container
+       as the content — there's no room for a separate floating panel on narrow screens).
+       At xl+: taken out of .guide-article-layout's grid entirely and pinned to the viewport via
+       xl:fixed, independent of .page-shell/.page-width's padding and max-width — this is what
+       "TOC를 page-shell에서 뺀다" means structurally, not just a divider inside the same box.
+       xl:top/max-h account for the sticky .site-header's rendered height (~72px) plus a 16px gap.
+       No bg/border — the TOC is separated from the reading column purely by being pinned well
+       clear of it, not by a card/box treatment (consistent with the flat design elsewhere). */
+    @apply rounded-[var(--radius-lg)] p-4 xl:fixed xl:top-[88px] xl:max-h-[calc(100vh-104px)] xl:w-[var(--article-toc-width)] xl:overflow-y-auto;
+  }
+
+  @media (min-width: 1280px) {
+    .article-aside {
+      /* Anchors the TOC just right of the content column's right edge, wherever that edge
+         actually sits — content is always centered on the viewport (page-shell/page-width use
+         only symmetric padding/mx-auto, no asymmetric offsets), so its right edge is always
+         50% + half of --article-content-width from the viewport's left edge. The min() clamp
+         guards a narrow but real case: a fixed element's "50%"/"100%" resolve against the
+         viewport width including the scrollbar gutter, while normal-flow content (.article-body)
+         is centered excluding it — at viewport widths just above the xl breakpoint (~1280-1300px)
+         the unclamped calc can push the TOC a few px past the visible content area. The second
+         min() branch keeps it flush against the right edge instead whenever that would happen. */
+      left: min(
+        calc(50% + (var(--article-content-width) / 2) + var(--article-toc-gap)),
+        calc(100% - var(--article-toc-width) - 1rem)
+      );
+    }
   }
 
   .article-toc {
@@ -1201,29 +1227,19 @@ a {
   }
 
   .article-ask-dock {
-    /* Fixed to the viewport, centered independently of the article/TOC grid so it never competes
-       with or scrolls alongside the guide content underneath it. The reading column's available
-       width is narrowed by two nested paddings: .site-shell (px-3/sm:px-5, wraps every route) and
-       .page-shell (px-4/sm:px-6, this page only). A position:fixed element's own "100%" is the same
-       viewport width both of those paddings are subtracted from, so the w-[...] steps below mirror
-       the COMBINED inset at each breakpoint (base: 12+16=28px/side → 3.5rem; sm: 20+24=44px/side →
-       5.5rem) to keep the dock's width tracking .article-body's actual available width, not just
-       .page-shell's own padding. At xl, the TOC track shifts the reading column's visual center left
-       of the viewport center by half of (TOC width + column gap) — the media query re-centers the
-       dock on that same point instead, using the shared --article-toc-width/--article-toc-gap tokens
-       so it can never drift out of sync with the .article-layout grid. */
-    @apply fixed inset-x-0 bottom-5 z-20 mx-auto w-[calc(100%-3.5rem)] sm:w-[calc(100%-5.5rem)] max-w-[760px];
+    /* Fixed to the viewport, centered independently of .guide-article-layout so it never competes with
+       or scrolls alongside the guide content underneath it. .article-aside (the TOC) is pinned via
+       xl:fixed rather than sharing a grid track with the content, so the content column — and this
+       dock — stay centered on the plain viewport center at every breakpoint; no TOC-width offset
+       needed here. The reading column's available width is narrowed by two nested paddings:
+       .site-shell (px-3/sm:px-5, wraps every route) and .page-shell (px-4/sm:px-6, this page only).
+       A position:fixed element's own "100%" is the same viewport width both of those paddings are
+       subtracted from, so the w-[...] steps below mirror the COMBINED inset at each breakpoint
+       (base: 12+16=28px/side → 3.5rem; sm: 20+24=44px/side → 5.5rem) to keep the dock's width
+       tracking .article-body's actual available width, not just .page-shell's own padding. */
+    @apply fixed inset-x-0 bottom-5 z-20 mx-auto w-[calc(100%-3.5rem)] sm:w-[calc(100%-5.5rem)] max-w-[var(--article-content-width)];
     height: var(--article-ask-height, 68px);
     max-height: 420px;
-  }
-
-  @media (min-width: 1280px) {
-    .article-ask-dock {
-      left: calc(50% - (var(--article-toc-width) + var(--article-toc-gap)) / 2);
-      right: auto;
-      margin: 0;
-      transform: translateX(-50%);
-    }
   }
 
   .article-ask-turns {
@@ -1243,10 +1259,11 @@ a {
   }
 
   .article-ask-form {
-    /* No border here — .article-ask already frames the whole panel, and a second border on the
-       form read as a double outline. The page-bg vs panel-bg color contrast keeps the input area
-       visually distinct without one. */
-    @apply mt-auto cursor-default rounded-[var(--radius-md)] bg-page-bg p-2;
+    /* No border and no background here — .article-ask already frames the whole panel with its
+       own background, so the form shares that same surface instead of reading as a second nested
+       box (a prior version gave this its own bg-page-bg, which still looked like a box-inside-a-box
+       even without a border). One flat surface, one input area. */
+    @apply mt-auto cursor-default rounded-[var(--radius-md)] p-2;
   }
 
   .article-ask-form-textarea {

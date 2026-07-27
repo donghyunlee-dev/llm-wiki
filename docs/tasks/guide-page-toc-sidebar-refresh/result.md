@@ -25,4 +25,14 @@
 - TOC가 없는 문서(헤딩 0개)에서의 컨텐츠 폭 활용은 기존부터 있던 동작(컬럼이 좁게 유지됨)이며 이번 스코프에서 개선하지 않음.
 
 ## Next Steps
-- 텍스트 드래그 선택 → 질문하기 기능에 대한 별도 브레인스토밍/스펙 작성.
+- 텍스트 드래그 선택 → 질문하기 기능에 대한 별도 브레인스토밍/스펙 작성. (완료 — `docs/tasks/guide-page-text-selection-ask/`)
+
+## 추가 수정 (2026-07-27) — TOC 구조적 분리, 검색창 단일 레이어화
+
+사용자가 직전 구현을 재검토한 결과, 원래 지시("page-shell에서 목차를 빼라", "하나의 검색 영역(div)로 심플하게")가 문자 그대로 반영되지 않았다고 지적함 — 위 "Key Decisions"의 "간격 확대 + 좌측 보더" 방식은 TOC를 여전히 같은 그리드/컨테이너 안에 두는 것이라 구조적 분리가 아니었고, Ask 패널의 `bg-page-bg`/`bg-panel-bg` 배경색 차이가 보더 제거 후에도 "박스 안의 박스"처럼 보이는 문제를 남겼음.
+
+- **TOC 구조적 분리**: `.guide-article-layout`(신규, `ArticlePage`/`StartingGuidePage` 전용)을 단일 컬럼 그리드로 변경하고, `.article-aside`를 `xl:fixed`로 전환해 `.page-shell`/`.page-width` 컨테이너 밖 좌표계에서 화면 우측에 독립적으로 고정. 컨텐츠는 이제 TOC 유무와 무관하게 뷰포트 중앙에 정렬됨. `left` 계산은 `--article-content-width`(760px, 신규 공유 토큰) 기반으로 컨텐츠 우측 끝 + `--article-toc-gap` 지점에 앵커링하고, `min()`으로 좁은 xl 경계(1280~1300px 부근)에서 스크롤바 거터로 인한 미세 오버플로(Playwright로 1280px에서 실측 7px 확인)를 클램프.
+- **`.article-layout` vs `.guide-article-layout` 분리**: Codex 크리티컬 리뷰가 `.article-layout`이 `ProjectDetailPage`(TOC 없음)에서도 재사용됨을 지적 — 그리드 변경이 그 페이지 폭에 의도치 않은 영향을 줄 뻔함. `.article-layout`은 원래 정의(2-컬럼 그리드)로 복원해 `ProjectDetailPage` 전용으로 남기고, TOC 분리 동작은 `.guide-article-layout`(신규)로 분리해 `ArticlePage.tsx`/`GuidesPage.tsx`만 사용하도록 className 변경.
+- **Ask 패널 검색창 단일 레이어화**: `.article-ask-form`의 `bg-page-bg` 배경을 제거(투명) — 이제 `.article-ask` 하나의 배경/보더만 보이는 완전한 단일 표면.
+- **Ask 도크 xl 오프셋 제거**: TOC가 더 이상 그리드 트랙을 공유하지 않으므로, 컨텐츠는 모든 브레이크포인트에서 뷰포트 정중앙에 위치 — 기존 `.article-ask-dock`의 xl 전용 `left`/`transform` 보정 규칙이 불필요해져 제거(단순화).
+- 검증: `pnpm typecheck`/`test`(17 files/68 tests)/`build` 통과. Playwright로 1280px(경계값, 클램프 확인)/1920px(클램프 미개입 확인)/800px(태블릿, 정상 스택)/390px(모바일) + 라이트·다크 + 스크롤 중 TOC 고정 유지 + `StartingGuidePage` 재확인. `ProjectDetailPage`는 실제 데이터 로드가 이 환경에서 되지 않아 합성 DOM 요소로 `.article-layout`의 그리드 계산이 원래 값(`1fr 240px`)으로 복원됐음을 직접 확인.

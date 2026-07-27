@@ -16,6 +16,14 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-27 — 가이드 페이지 TOC 구조적 분리(page-shell 밖으로), 검색창 단일 레이어화 (재검토 수정)
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 사용자가 같은 날 앞서 완료한 `docs/tasks/guide-page-toc-sidebar-refresh/` 구현을 실제 화면에서 재검토한 뒤, 지시("page-shell에서 목차를 빼라", "검색을 하나의 div로 심플하게")가 문자 그대로 반영되지 않았다고 지적 — 이전 구현은 TOC를 같은 그리드 안에 두고 보더/간격만 추가했고, Ask 패널은 보더만 없앴지 배경색 차이로 인한 "박스 안의 박스"가 남아 있었음. Playwright로 직접 재확인해 두 문제 모두 실제로 남아있음을 검증한 뒤 수정.
+- 구현: `.article-aside`(TOC)를 `xl:fixed`로 전환해 `.page-shell`/`.page-width` 컨테이너 밖 좌표계에서 화면 우측에 독립적으로 고정(신규 `.guide-article-layout` 단일 컬럼 그리드 + `--article-content-width` 공유 토큰 기반 `left` 앵커링). `.article-ask-form`의 남은 배경색 차이를 제거해 Ask 패널을 완전한 단일 표면으로 통일. 컨텐츠는 TOC 유무와 무관하게 모든 브레이크포인트에서 뷰포트 정중앙 정렬.
+- Codex 크리티컬 리뷰에서 발견: (1) `.article-layout` 클래스가 TOC 없는 `ProjectDetailPage`에도 재사용되고 있어, 그리드 변경이 그 페이지에 의도치 않게 영향을 줄 뻔함 → `.article-layout`(원래 정의로 복원, `ProjectDetailPage` 전용)과 `.guide-article-layout`(신규, TOC 있는 페이지 전용)로 분리. (2) 1280~1300px 부근에서 `fixed` 요소의 `50%` 계산이 스크롤바 거터를 포함한 뷰포트 폭을 참조해 TOC가 실제 컨텐츠 영역보다 몇 px 밖으로 밀려날 수 있음(Playwright로 1280px 실측 7px 확인) → `min()` 클램프로 보정.
+- 검증: `pnpm test`(17 files/68 tests)/`typecheck`/`build` 통과. Playwright로 1280px(경계, 클램프 확인)/1920px(클램프 미개입 확인)/800px(태블릿)/390px(모바일) + 라이트·다크 + 스크롤 중 TOC 고정 유지 + `StartingGuidePage` 재확인 + 합성 DOM으로 `.article-layout`(원래 2-컬럼 그리드 복원) 확인.
+- 태스크 문서: `docs/tasks/guide-page-toc-sidebar-refresh/result.md`("추가 수정" 섹션).
+
 ### 2026-07-27 — 가이드 문서 텍스트 선택 → 질문하기 기능 추가
 - 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
 - 배경: 직전 태스크(`docs/tasks/guide-page-toc-sidebar-refresh/`)에서 사용자가 함께 요청했으나 새 인터랙션 기능이라 별도 스코프로 분리하기로 합의 — brainstorming → writing-plans → subagent-driven-development 전체 프로세스로 진행(설계 `docs/superpowers/specs/2026-07-27-guide-text-selection-ask-design.md`, 계획 `docs/superpowers/plans/2026-07-27-guide-text-selection-ask.md`).

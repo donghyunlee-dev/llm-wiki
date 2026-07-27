@@ -130,7 +130,7 @@ export function StartingGuidePage() {
 
   return (
     <div className="page-shell">
-      <div className="page-width article-layout">
+      <div className="page-width guide-article-layout">
         <article className="article-body">
           {gettingStarted ? (
             <>
