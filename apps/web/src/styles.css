@@ -1293,7 +1293,12 @@ a {
   }
 
   .article-ask-form-textarea {
-    @apply min-h-[56px] w-full border-0 bg-transparent px-2 py-1.5 text-[14px] leading-6 text-page-fg outline-none placeholder:text-subtle-fg;
+    /* min-h matches minRows=1 (leading-6=24px + py-1.5=12px) — this is a floor for before/without
+       PromptComposer's JS-computed inline height, so it must track minRows here, not be left over
+       from an earlier value. A stale larger floor here previously forced the textarea (and the
+       whole form/button under it) taller than .article-ask's own budgeted height, overflowing
+       past its rounded bottom edge. */
+    @apply min-h-[36px] w-full border-0 bg-transparent px-2 py-1.5 text-[14px] leading-6 text-page-fg outline-none placeholder:text-subtle-fg;
     font-family: var(--font-body);
     font-size: 14px !important;
   }

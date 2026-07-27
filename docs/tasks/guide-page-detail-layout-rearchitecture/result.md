@@ -32,3 +32,10 @@
 
 ## Next Steps
 - 없음.
+
+## 추가 수정 (2026-07-27) — Ask 패널 전송 버튼이 컨테이너 밖으로 삐져나오는 버그
+
+사용자가 검색창 스크린샷을 다시 제시하며 지적 — 실측 결과 전송 버튼이 `.article-ask` 바깥 둥근 컨테이너 아래로 5px 튀어나와 있었음(`getBoundingClientRect()`로 확인). 원인: `.article-ask-form-textarea`의 `min-h-[56px]`가 이전 `minRows=2`/도크 92px 시절 값 그대로 남아 있었음 — `min-height`는 JS가 계산한 인라인 `height`보다 항상 우선 적용되는 하한선이라, `minRows`를 1로, 도크 높이를 68px로 줄인 이후에도 텍스트영역이 56px로 강제되어 폼 전체가 도크보다 커져 버튼이 밀려 나옴.
+
+- 수정: `min-h-[56px]` → `min-h-[36px]`(minRows=1 기준: leading-6 24px + py-1.5 12px)로 정정.
+- 검증: `pnpm typecheck`/`test`(68)/`build` 통과. Playwright로 버튼-컨테이너 겹침 재측정(`overflow: -11`, 더 이상 넘치지 않음) + 데스크톱/모바일/다크 모드 스크린샷 확인.
