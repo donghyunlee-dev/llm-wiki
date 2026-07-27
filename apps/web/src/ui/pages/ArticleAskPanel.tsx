@@ -45,7 +45,7 @@ type AskTurn = {
   errorMessage?: string;
 };
 
-const COLLAPSED_HEIGHT = 92;
+const COLLAPSED_HEIGHT = 68;
 const EXPANDED_HEIGHT = 320;
 
 export function ArticleAskPanel({
@@ -202,7 +202,7 @@ export function ArticleAskPanel({
         ariaLabel="문서 질문"
         buttonAriaLabel="질문 전송"
         buttonTitle="질문 전송"
-        minRows={2}
+        minRows={1}
         maxRows={7}
         placeholder="이 문서에서 궁금한 내용을 입력하세요"
         buttonIcon={<SendIcon />}

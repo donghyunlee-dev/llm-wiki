@@ -16,6 +16,15 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-27 — 가이드 페이지 TOC 우측 분리, 컨텐츠 정렬, Ask 패널 폭 정렬/이중 보더 제거
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 사용자가 "TOC를 우측 사이드 패널로 명확히 분리하고, 컨텐츠는 그 왼쪽 영역 안에서 중앙 정렬, 하단 플로팅 검색창은 컨텐츠 폭에 맞추고 이중 보더/큰 높이/각진 라운드를 개선"해 달라고 요청 — spec-driven-workflow에 따라 `docs/tasks/guide-page-toc-sidebar-refresh/`에 spec.md/plan.md 작성 후 승인받고 구현.
+- 구현: `.article-layout`(`ArticlePage.tsx`/`GuidesPage.tsx`의 `StartingGuidePage` 공유)의 xl 그리드 gap을 새 토큰 `--article-toc-gap`(2rem)으로 확대하고, `.article-aside`(TOC)에 `xl:border-l xl:border-panel-border-soft`(중립 톤, "no colored accent bar" 원칙 준수)를 추가해 시각적 분리를 명확히 함. `.article-ask-dock`은 `--article-toc-width`/`--article-toc-gap` 공유 토큰 기반 `left: calc(50% - (toc폭+gap)/2)` + `transform: translateX(-50%)`로 재계산해 컨텐츠 컬럼(`.article-body`)과 폭·중심을 픽셀 단위로 일치시킴. `.article-ask-form`의 중복 보더 제거(바깥 `.article-ask` 프레임만 유지), `.article-ask` 라운드를 `--radius-lg`→`--radius-xl`로, `ArticleAskPanel.tsx`의 `COLLAPSED_HEIGHT`를 92px→68px(PromptComposer `minRows` 2→1)로 축소.
+- 아웃오브스코프(사용자 확인): 문서 본문 텍스트 드래그 선택 → 컨텍스트 메뉴 → "질문하기" → Ask 인풋 포커스 이동 기능은 새 인터랙션 기능이라 이번 스코프에서 제외, 별도 세션에서 브레인스토밍부터 진행 예정.
+- 검증: `pnpm --filter @sfood/web typecheck`/`test`(56 통과)/`build` 통과. Playwright로 데스크톱(1280x900) 라이트·다크, 모바일(390x844, 가로 스크롤 없음 확인), Ask 패널 확장 상태(질문 1건 등록 후 정렬 유지)까지 확인 — `.article-body`/`.article-ask-dock`의 `getBoundingClientRect()`가 동일 좌표(`left:119 / right:879`)로 일치함을 확인.
+- Codex 크리티컬 리뷰(6c)에서 `sm`(640px)~`xl`(1280px) 사이 구간에서 Ask 패널 폭이 `.article-body`보다 넓어지는 문제를 지적 — `.article-body`는 `.site-shell`(px-3/sm:px-5)과 `.page-shell`(px-4/sm:px-6) 두 겹 패딩을 거치는데 기존 dock 폭 계산이 `.page-shell` 패딩만 반영했던 것이 원인. 두 레이어 합산 인셋 기준(`base: calc(100%-3.5rem)`, `sm: calc(100%-5.5rem)`)으로 재계산해 639/800/1280/390px 4개 뷰포트 전부에서 `.article-body`/`.article-ask-dock` 좌표 일치를 재확인.
+- 태스크 문서: `docs/tasks/guide-page-toc-sidebar-refresh/`(spec/plan/tasks/test-result/result).
+
 ### 2026-07-27 — 가이드 문서 페이지 후속 수정 (full-bleed 본문, 하단 고정 Ask 도크, 얇은 스크롤바)
 - 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
 - 배경: 사용자가 개편된 가이드 문서 페이지가 여전히 이전 디자인과 "거의 비슷"하다고 지적 — 본문(`.page-panel`)이 border/shadow는 제거됐지만 여전히 별도 배경색+둥근 모서리로 카드처럼 보였음.
