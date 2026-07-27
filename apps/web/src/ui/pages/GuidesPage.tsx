@@ -128,54 +128,57 @@ export function StartingGuidePage() {
     );
   }
 
-  const hasToc = Boolean(gettingStarted && gettingStarted.headings.length > 0);
+  const articleContent = gettingStarted ? (
+    <>
+      <h1 className="title-hero">
+        {stripTitleTypePrefix(gettingStarted.title)}
+      </h1>
+      <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-fg">
+        <span className="document-chip">{gettingStarted.metadata.audience}</span>
+        <span className="document-chip">{gettingStarted.updatedAt}</span>
+      </div>
+      <ArticleContentRenderer
+        headings={gettingStarted.headings}
+        html={gettingStarted.contentHtml}
+        title={gettingStarted.title}
+        documents={documents}
+      />
+    </>
+  ) : (
+    <p className="body-copy text-muted-fg">시작 가이드를 찾을 수 없습니다.</p>
+  );
 
   return (
-    <div className="page-shell">
-      <div className={`page-width ${hasToc ? "guide-article-layout" : "article-layout"}`}>
-        <article className="article-body">
-          {gettingStarted ? (
-            <>
-              <h1 className="title-hero">
-                {stripTitleTypePrefix(gettingStarted.title)}
-              </h1>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-fg">
-                <span className="document-chip">{gettingStarted.metadata.audience}</span>
-                <span className="document-chip">{gettingStarted.updatedAt}</span>
-              </div>
-              <ArticleContentRenderer
-                headings={gettingStarted.headings}
-                html={gettingStarted.contentHtml}
-                title={gettingStarted.title}
-                documents={documents}
-              />
-            </>
-          ) : (
-            <p className="body-copy text-muted-fg">시작 가이드를 찾을 수 없습니다.</p>
-          )}
+    <div className="guide-detail-shell">
+      {gettingStarted && gettingStarted.headings.length > 0 ? (
+        <div className="guide-detail-row">
+          <article className="guide-detail-content article-body">{articleContent}</article>
 
-        </article>
-
-        {gettingStarted && gettingStarted.headings.length > 0 && (
-          <aside className="article-aside">
-            <p className="eyebrow">목차</p>
-            <nav className="article-toc" aria-label="문서 목차" ref={tocNavRef}>
-              {gettingStarted.headings.map((heading) => (
-                <a
-                  key={heading.id}
-                  href={`#${heading.id}`}
-                  onClick={(event) => handleTocClick(event, heading.id)}
-                  className={`article-toc-link article-toc-level-${Math.min(heading.level, 4)}${
-                    activeHeadingId === heading.id ? " article-toc-link-active" : ""
-                  }`}
-                >
-                  {heading.text}
-                </a>
-              ))}
-            </nav>
+          <aside className="guide-detail-toc">
+            <div className="guide-detail-toc-header">
+              <p className="eyebrow">목차</p>
+            </div>
+            <div className="guide-detail-toc-scroll">
+              <nav className="article-toc" aria-label="문서 목차" ref={tocNavRef}>
+                {gettingStarted.headings.map((heading) => (
+                  <a
+                    key={heading.id}
+                    href={`#${heading.id}`}
+                    onClick={(event) => handleTocClick(event, heading.id)}
+                    className={`article-toc-link article-toc-level-${Math.min(heading.level, 4)}${
+                      activeHeadingId === heading.id ? " article-toc-link-active" : ""
+                    }`}
+                  >
+                    {heading.text}
+                  </a>
+                ))}
+              </nav>
+            </div>
           </aside>
-        )}
-      </div>
+        </div>
+      ) : (
+        <article className="article-body pb-32 pt-10">{articleContent}</article>
+      )}
     </div>
   );
 }

@@ -140,7 +140,7 @@ export function ArticlePage({ section }: { section: WikiSection }) {
   }
 
   return (
-    <>
+    <div className="guide-detail-shell">
       <Link
         className="article-back-link"
         to={`/${section}`}
@@ -150,35 +150,37 @@ export function ArticlePage({ section }: { section: WikiSection }) {
         <BackArrowIcon />
       </Link>
 
-      <div className="page-shell">
-        <div className="page-width guide-article-layout pb-32 pt-10">
-          <article className="article-body" ref={articleRef}>
-            <p className="eyebrow">
+      <div className="guide-detail-row">
+        <article className="guide-detail-content article-body" ref={articleRef}>
+          <p className="eyebrow">
+            {document.metadata.docType}
+          </p>
+          <h1 className="title-hero mt-3">{stripTitleTypePrefix(document.title)}</h1>
+
+          <div className="section-stack mt-6 flex flex-wrap gap-2 space-y-0 text-xs text-muted-fg">
+            <span className="document-chip">
               {document.metadata.docType}
-            </p>
-            <h1 className="title-hero mt-3">{stripTitleTypePrefix(document.title)}</h1>
+            </span>
+            <span className="document-chip">
+              {document.metadata.audience}
+            </span>
+            <span className="document-chip">
+              {document.updatedAt}
+            </span>
+          </div>
+          <ArticleContentRenderer
+            headings={document.headings}
+            html={document.contentHtml}
+            title={document.title}
+            documents={documents}
+          />
+        </article>
 
-            <div className="section-stack mt-6 flex flex-wrap gap-2 space-y-0 text-xs text-muted-fg">
-              <span className="document-chip">
-                {document.metadata.docType}
-              </span>
-              <span className="document-chip">
-                {document.metadata.audience}
-              </span>
-              <span className="document-chip">
-                {document.updatedAt}
-              </span>
-            </div>
-            <ArticleContentRenderer
-              headings={document.headings}
-              html={document.contentHtml}
-              title={document.title}
-              documents={documents}
-            />
-          </article>
-
-          <aside className="article-aside">
+        <aside className="guide-detail-toc">
+          <div className="guide-detail-toc-header">
             <p className="eyebrow">목차</p>
+          </div>
+          <div className="guide-detail-toc-scroll">
             <nav className="article-toc" aria-label="문서 목차" ref={tocNavRef}>
               {document.headings.length ? document.headings.map((heading) => (
                 <a
@@ -195,17 +197,17 @@ export function ArticlePage({ section }: { section: WikiSection }) {
                 <span className="article-toc-empty">목차가 없습니다.</span>
               )}
             </nav>
-          </aside>
-        </div>
-
-        <ArticleSelectionAskButton
-          containerRef={articleRef}
-          onAsk={(text) => askPanelRef.current?.fillAndFocus(text)}
-        />
-
-        <ArticleAskPanel ref={askPanelRef} documents={documents} pageId={document.id} />
+          </div>
+        </aside>
       </div>
-    </>
+
+      <ArticleSelectionAskButton
+        containerRef={articleRef}
+        onAsk={(text) => askPanelRef.current?.fillAndFocus(text)}
+      />
+
+      <ArticleAskPanel ref={askPanelRef} documents={documents} pageId={document.id} />
+    </div>
   );
 }
 

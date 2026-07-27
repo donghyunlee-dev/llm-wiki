@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from "react";
-import { getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
+import { getWikiDocumentHref, stripTitleTypePrefix, type WikiDocument } from "@sfood/wiki-core";
 import { isStandaloneCommandText } from "../StructuredAnswerView";
 import { WikiCallout, WikiCodeBlock } from "../wikiRichBlocks";
 
@@ -380,7 +380,7 @@ function resolveConfluenceLinkElement(document: Document, linkNode: Element, doc
     searchAnchor.setAttribute("data-wiki-link", "true");
     searchAnchor.setAttribute("target", "_blank");
     searchAnchor.setAttribute("rel", "noreferrer");
-    searchAnchor.textContent = linkedTitle;
+    searchAnchor.textContent = stripTitleTypePrefix(linkedTitle);
     return searchAnchor;
   }
 
@@ -391,7 +391,7 @@ function resolveConfluenceLinkElement(document: Document, linkNode: Element, doc
     anchor.setAttribute("target", "_blank");
     anchor.setAttribute("rel", "noreferrer");
   }
-  anchor.textContent = linkedTitle;
+  anchor.textContent = stripTitleTypePrefix(linkedTitle);
 
   return anchor;
 }
@@ -605,7 +605,7 @@ function rewritePlainTextWikiTitleReferences(document: Document, documents: Wiki
     anchor.setAttribute("data-wiki-link", "true");
     anchor.setAttribute("target", "_blank");
     anchor.setAttribute("rel", "noreferrer");
-    anchor.textContent = text;
+    anchor.textContent = stripTitleTypePrefix(text);
 
     target.textContent = "";
     target.appendChild(anchor);

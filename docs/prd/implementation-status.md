@@ -16,6 +16,14 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-27 — 가이드 상세 페이지 레이아웃 재구조화 (3차, flex 기반 — TOC/site-shell 완전 분리, 목차 라벨 버그, blueprint 숨김, 접두어 필터 보완)
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 직전 두 차례(`docs/tasks/guide-page-toc-sidebar-refresh/`) 모두 `position:fixed`+뷰포트 계산식을 사용해 스크롤바 폭 오차를 반복 유발. 사용자가 "벌써 3번째 반복"이라며 5개 항목(TOC 우측 사이드 패널 재구성, 목차 라벨 스크롤 버그, Ask 버튼 위치, 홈 blueprint 숨김, `[Type]` 접두어 공통 필터)을 정밀하게 재요청, Playwright+Codex 이중 검증을 명시적으로 요구.
+- 구현(근본 원인 제거): `ArticlePage`/`StartingGuidePage`를 `CardLayout`(공용 `site-shell`, max-w-6xl) 밖 — `AppLayout`의 직계 자식으로 재배치(`SearchPage`와 동일 선례). 이 전체 폭 위에서 순수 flex 2단 레이아웃(`.guide-detail-shell > .guide-detail-row > .guide-detail-content(flex-1) + .guide-detail-toc(xl:sticky, 고정폭)`)으로 재구성 — 계산식이 전혀 없어 스크롤바 오차가 원천적으로 발생하지 않음. "목차" 라벨을 내부 스크롤 박스 밖의 별도 헤더로 분리해 긴 목차 스크롤 시 라벨이 사라지는 버그를 구조적으로 수정(Playwright로 뷰포트 높이를 좁혀 강제 재현 후 확인). Ask 도크/뒤로가기 버튼은 양쪽 anchor 명시+mx-auto 패턴으로 재계산. 홈 화면 blueprint(`ProjectDesignCta`) 렌더 제거 및 데드 코드/텍스트 헬퍼(`homeContent.ts`) 정리. `[Type]` 접두어 stripping을 문서 내 인라인 링크/그래프 포커스바/정책 출처 링크에 추가 적용(표시 텍스트만, href/매칭 로직 불변).
+- Codex 크리티컬 리뷰(라우팅 정확성, flex 박스 모델, sticky 동작, Ask 도크 cascade, 접두어 stripping이 표시 전용인지 전부 확인) — 2건 발견(데드 `.home-blueprint*` CSS, `homeContent.ts`의 검증 헬퍼가 숨겨진 텍스트를 여전히 포함) 즉시 반영.
+- 검증: `pnpm test`(web 68/wiki-core 171)/`typecheck`/`build` 통과. Playwright로 1280/1920/800/390px + 라이트·다크, `/guides/map` 라우팅 충돌 없음, 텍스트 선택→질문하기 정상 동작, 홈 blueprint 미노출까지 확인.
+- 태스크 문서: `docs/tasks/guide-page-detail-layout-rearchitecture/`(spec/plan/tasks/test-result/result).
+
 ### 2026-07-27 — 가이드 페이지 컨텐츠 재중앙정렬(TOC 제외 영역 기준), 뒤로가기 버튼 site-shell 정렬 (2차 재검토 수정)
 - 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
 - 배경: 바로 이전 항목("TOC 구조적 분리")의 구현을 사용자가 재검토한 결과, TOC를 `xl:fixed`로 분리하면서 컨텐츠가 "TOC 제외 영역"이 아니라 "뷰포트 전체" 기준으로 중앙 정렬되어 버리는 회귀를 지적 — 최초 요청("목차 왼쪽 영역에서 중앙 정렬")과 어긋남. "목록으로 돌아가기" 버튼도 `page-shell`의 추가 패딩 때문에 다른 페이지 컨텐츠 시작 위치와 어긋나 어색하게 떠 보인다는 지적도 함께 받음.

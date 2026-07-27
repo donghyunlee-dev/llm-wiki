@@ -223,12 +223,7 @@ a {
   }
 
   .site-shell {
-    /* relative so page-level absolute-positioned overlays (e.g. .article-back-link) can anchor to
-       this shared frame's own edge instead of a page-specific inner wrapper (like .page-shell,
-       which adds its own extra padding on top of this) — keeps such overlays visually consistent
-       with every other route's content edge. Harmless for other absolutely-positioned elements
-       elsewhere in the app: they all already have a nearer positioned ancestor of their own. */
-    @apply relative mx-auto max-w-6xl px-3 py-3 sm:px-5 sm:py-5;
+    @apply mx-auto max-w-6xl px-3 py-3 sm:px-5 sm:py-5;
   }
 
   .site-header {
@@ -332,15 +327,13 @@ a {
   }
 
   .article-back-link {
-    /* Absolutely positioned against .site-shell (the frame every route shares), not .page-shell
-       (which adds its own extra padding on top of .site-shell's) — so it sits at the same left/top
-       edge other pages' content starts from, instead of being indented further in by page-shell's
-       padding on article/guide pages specifically. Rendered as a sibling of .page-shell in the
-       JSX, directly inside .site-shell. left/top mirror .site-shell's own px-3/py-3 (sm:px-5/
-       sm:py-5) padding exactly — .site-shell's own getBoundingClientRect() is its outer border-box
-       (before that padding), so left-0/top-0 alone would sit flush with the viewport edge, ignoring
-       the padding every other page's content respects. */
-    @apply absolute left-3 top-3 sm:left-5 sm:top-5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-card-bg text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg hover:text-accent;
+    /* Absolutely positioned against .guide-detail-shell (its own relatively-positioned wrapper —
+       see that class), floating at its top-left instead of reserving a line inside the reading
+       column. An absolutely positioned child's left/top:0 aligns with the shell's OUTER edge
+       (the containing block is the padding box, whose own edges sit outside the padding) — so
+       left/top must mirror .guide-detail-shell's own px-4/py-7 (sm:px-6) padding exactly for the
+       button to visually align with where the shell's actual (padded) content starts. */
+    @apply absolute left-4 top-7 sm:left-6 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-card-bg text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg hover:text-accent;
   }
 
   .control-input {
@@ -953,56 +946,65 @@ a {
     @apply grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_240px];
   }
 
-  .guide-article-layout {
-    /* Same base as .article-layout, but for pages that render a TOC (.article-aside): only one
-       column at every breakpoint, since .article-aside takes itself out of this grid via
-       xl:fixed below rather than sharing a grid track with it — the content column is genuinely
-       standalone inside .page-shell, not sharing a container with the TOC.
-       xl:pr reserves the TOC's own footprint (width + gap) on the right at the container level,
-       so .article-body's mx-auto centers within "container minus TOC space" — i.e. within the
-       area to the LEFT of the TOC, not the full container — even though the TOC itself is no
-       longer a grid participant. Half of this padding is exactly how far left of the plain
-       container/viewport center the content ends up (see .article-ask-dock's matching offset). */
-    @apply grid grid-cols-1 gap-4 xl:pr-[calc(var(--article-toc-width)+var(--article-toc-gap))];
+  .guide-detail-shell {
+    /* ArticlePage/StartingGuidePage are NOT nested under CardLayout's .site-shell (see
+       router.tsx) — they render as direct children of .site-main instead, which has no
+       max-width of its own. That gives this row the full app width to work with, so the TOC can
+       be a genuine right-edge sidebar instead of sharing a max-width-capped, centered container
+       with the rest of the site. relative so .article-back-link can anchor to this shell's own
+       top-left corner. No max-width here is intentional: the TOC is meant to sit at the actual
+       right edge of the app frame, however wide that is, with content centering independently in
+       whatever space remains to its left (see .guide-detail-content). */
+    @apply relative px-4 py-7 sm:px-6;
+  }
+
+  .guide-detail-row {
+    /* Below xl: TOC stacks below the article in normal document flow. At xl+: a genuine
+       two-pane row — .guide-detail-content flexes to fill the remaining width after the fixed-
+       width .guide-detail-toc sidebar. Both are ordinary in-flow flex children: no
+       position:fixed or calc() anywhere in this rule, so there is no viewport-vs-scrollbar-
+       gutter math to get wrong (the repeated bug in earlier attempts at this same layout). */
+    @apply flex flex-col gap-4 pb-32 pt-10 xl:flex-row xl:items-start xl:gap-[var(--article-toc-gap)];
+  }
+
+  .guide-detail-content {
+    /* min-w-0 is required on a flex item that contains wide children (tables, code blocks) —
+       without it a flex item refuses to shrink below its content's intrinsic width and can
+       overflow the row horizontally. */
+    @apply min-w-0 flex-1;
   }
 
   .article-body {
     /* No card background/border — the guide content blends directly into the page background.
        max-width keeps the reading line length comfortable without boxing the content in.
-       pt-4 matches .article-aside's p-4 so the docType/목차 eyebrow labels line up. */
+       mx-auto centers it within .guide-detail-content's flex-1 width, i.e. within the space to
+       the LEFT of the TOC sidebar — not the full row — even at very wide viewports where that
+       leaves a wide gap before the TOC (the TOC is anchored to the row's actual right edge, not
+       derived from content's position). pt-4 matches .guide-detail-toc-header's own pt-4 so the
+       docType/목차 eyebrow labels line up. */
     @apply mx-auto w-full max-w-[var(--article-content-width)] pt-4;
   }
 
-  .article-aside {
-    /* Below xl: a normal stacked block under the article (same .page-shell/.page-width container
-       as the content — there's no room for a separate floating panel on narrow screens).
-       At xl+: taken out of .guide-article-layout's grid entirely and pinned to the viewport via
-       xl:fixed, independent of .page-shell/.page-width's padding and max-width — this is what
-       "TOC를 page-shell에서 뺀다" means structurally, not just a divider inside the same box.
-       xl:top/max-h account for the sticky .site-header's rendered height (~72px) plus a 16px gap.
-       No bg/border — the TOC is separated from the reading column purely by being pinned well
-       clear of it, not by a card/box treatment (consistent with the flat design elsewhere). */
-    @apply rounded-[var(--radius-lg)] p-4 xl:fixed xl:top-[88px] xl:max-h-[calc(100vh-104px)] xl:w-[var(--article-toc-width)] xl:overflow-y-auto;
+  .guide-detail-toc {
+    /* A fixed-width sidebar column at xl+ — its horizontal position comes entirely from being
+       .guide-detail-row's second flex child, not from any viewport-relative positioning.
+       xl:sticky (not fixed) keeps it visible while scrolling without taking it out of normal
+       flow. xl:top/max-h account for the sticky .site-header's rendered height (~72px) plus a
+       16px gap. Split into a non-scrolling header (label) + separately scrolling nav below —
+       see .guide-detail-toc-header/.guide-detail-toc-scroll for why. */
+    @apply flex flex-col xl:w-[var(--article-toc-width)] xl:flex-shrink-0 xl:sticky xl:top-[88px] xl:max-h-[calc(100vh-104px)] xl:self-start;
   }
 
-  @media (min-width: 1280px) {
-    .article-aside {
-      /* Anchors the TOC just right of the content column's right edge. .guide-article-layout's
-         xl:pr reserves the TOC's footprint, which shifts .article-body's own center left of the
-         plain viewport/container center by half of (toc width + gap) — so the content's right
-         edge sits at 50% + half of --article-content-width MINUS that same half-offset, and the
-         TOC starts --article-toc-gap past that (full derivation: centering "content + gap + TOC"
-         as one combined block on the viewport, which is what a shared grid track would have done,
-         without actually sharing one). The min() clamp guards a narrow but real case: a fixed
-         element's "50%"/"100%" resolve against the viewport width including the scrollbar gutter,
-         while normal-flow content is centered excluding it — at viewport widths just above the xl
-         breakpoint (~1280-1300px) the unclamped calc can push the TOC a few px past the visible
-         content area. The second min() branch keeps it flush against the right edge instead. */
-      left: min(
-        calc(50% + (var(--article-content-width) / 2) - (var(--article-toc-width) / 2) + (var(--article-toc-gap) / 2)),
-        calc(100% - var(--article-toc-width) - 1rem)
-      );
-    }
+  .guide-detail-toc-header {
+    /* Deliberately OUTSIDE .guide-detail-toc-scroll's overflow-y-auto box, so the "목차" label
+       stays visible even when a long TOC list scrolls internally — previously the label lived
+       inside the same scrolling box as the links, so scrolling to a heading near the bottom of a
+       long TOC could scroll the label itself out of view above the visible area. */
+    @apply shrink-0 px-4 pt-4;
+  }
+
+  .guide-detail-toc-scroll {
+    @apply min-h-0 flex-1 overflow-y-auto px-4 pb-4;
   }
 
   .article-toc {
@@ -1245,28 +1247,24 @@ a {
   }
 
   .article-ask-dock {
-    /* Fixed to the viewport, centered independently of .guide-article-layout so it never competes
-       with or scrolls alongside the guide content underneath it. Below xl the TOC track doesn't
-       exist, so viewport-centering (inset-x-0 + mx-auto) already lines up with the reading column
-       — the sm:w-[...] step mirrors the COMBINED inset of the two nested paddings that narrow the
-       reading column's available width at every breakpoint: .site-shell (px-3/sm:px-5, wraps every
-       route) and .page-shell (px-4/sm:px-6, this page only). A position:fixed element's own "100%"
-       is the same viewport width both of those paddings are subtracted from, so the w-[...] steps
-       mirror that COMBINED inset (base: 12+16=28px/side → 3.5rem; sm: 20+24=44px/side → 5.5rem) to
-       keep the dock's width tracking .article-body's actual available width. At xl, .guide-article-
-       layout's xl:pr shifts the content column's center left of the plain viewport center by half of
-       (TOC width + gap) — the media query below re-centers the dock on that same shifted point. */
-    @apply fixed inset-x-0 bottom-5 z-20 mx-auto w-[calc(100%-3.5rem)] sm:w-[calc(100%-5.5rem)] max-w-[var(--article-content-width)];
+    /* Fixed to the viewport so it never scrolls alongside the guide content underneath it.
+       left/right are both explicit at every breakpoint (never a bare 50%/100vw calc) — this is
+       the same double-anchor technique .guide-detail-row's flex layout uses structurally: with
+       both edges pinned, the box's width resolves against the real visible viewport (matching
+       .guide-detail-shell's own px-4/sm:px-6 padding) instead of the viewport-including-scrollbar
+       width a single 50%-anchor calc would use. mx-auto + max-w then centers the dock within that
+       box to match .article-body's own capped width, instead of stretching edge-to-edge. */
+    @apply fixed bottom-5 z-20 left-4 right-4 mx-auto max-w-[var(--article-content-width)] sm:left-6 sm:right-6;
     height: var(--article-ask-height, 68px);
     max-height: 420px;
   }
 
   @media (min-width: 1280px) {
     .article-ask-dock {
-      left: calc(50% - (var(--article-toc-width) + var(--article-toc-gap)) / 2);
-      right: auto;
-      margin: 0;
-      transform: translateX(-50%);
+      /* Reserves the same TOC footprint (width + gap) that .guide-detail-row's flex layout gives
+         .guide-detail-toc, so the dock's available box still spans exactly .guide-detail-content's
+         width — mx-auto then centers the capped-width dock within that box, same as below xl. */
+      right: calc(1.5rem + var(--article-toc-width) + var(--article-toc-gap));
     }
   }
 
@@ -1857,31 +1855,6 @@ a {
     @apply mt-0.5 block text-[11px] leading-4 text-muted-fg;
   }
 
-  .home-blueprint {
-    @apply flex flex-col gap-4 rounded-[var(--radius-lg)] border border-cta-bg bg-cta-bg px-4 py-4 text-cta-fg sm:flex-row sm:items-center sm:justify-between;
-  }
-
-  .home-blueprint-title {
-    @apply text-[15px] font-bold text-cta-fg;
-  }
-
-  .home-blueprint-body {
-    @apply mt-1 text-[13px] leading-5 text-cta-muted-fg;
-  }
-
-  .home-blueprint-button {
-    @apply inline-flex w-fit items-center justify-center rounded-[var(--radius-md)] px-3 py-2 text-[13px] font-bold transition hover:bg-accent-soft;
-    background: var(--blueprint-button-bg);
-    color: var(--blueprint-button-fg);
-  }
-
-  .home-blueprint-button-label {
-    color: #54585A;
-  }
-
-  :root[data-theme="dark"] .home-blueprint-button-label {
-    color: #ffffff;
-  }
 }
 
 @keyframes chat-spin {

@@ -267,7 +267,7 @@ function ArticleAskResult({
             <div className="answer-policy-sources" aria-label="정책 원천 페이지">
               {result.policyNotice.sources.map((source) => (
                 <a key={source.id} href={source.href} target="_blank" rel="noreferrer">
-                  {source.title}
+                  {stripTitleTypePrefix(source.title)}
                 </a>
               ))}
             </div>

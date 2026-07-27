@@ -169,29 +169,6 @@ function GuideCard(props: {
   );
 }
 
-function ProjectDesignCta() {
-  return (
-    <section className="home-section-compact">
-      <div className="home-blueprint home-support-frame">
-        <div>
-          <h2 className="home-blueprint-title">
-            {HOME_CONTENT.projectDesign.title}
-          </h2>
-          <p className="home-blueprint-body">{HOME_CONTENT.projectDesign.body}</p>
-        </div>
-        <Link
-          to={HOME_CONTENT.projectDesign.href}
-          className="home-blueprint-button"
-        >
-          <span className="home-blueprint-button-label">
-            {HOME_CONTENT.projectDesign.cta}
-          </span>
-        </Link>
-      </div>
-    </section>
-  );
-}
-
 function GuideRowIcon({ pinned }: { pinned: boolean }) {
   return (
     <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none">
@@ -230,7 +207,6 @@ export function HomePage() {
     <>
       <SearchHero />
       <RecommendedGuidesSection guides={featuredGuides} isLoading={isLoading} />
-      <ProjectDesignCta />
     </>
   );
 }

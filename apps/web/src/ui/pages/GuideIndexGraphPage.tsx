@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { stripTitleTypePrefix } from "@sfood/wiki-core";
 import { useWikiData } from "../../data/WikiDataProvider";
 import {
   buildGuideIndexGraphLayout,
@@ -129,7 +130,7 @@ export function GuideIndexGraphPage() {
             <div className="guide-graph-focus-bar-info">
               <span className="guide-graph-focus-bar-label">선택된 index</span>
               <span className="guide-graph-focus-bar-title">
-                {expandedGroup.indexDocument.title}
+                {stripTitleTypePrefix(expandedGroup.indexDocument.title)}
               </span>
             </div>
             <div className="guide-graph-focus-bar-meta">

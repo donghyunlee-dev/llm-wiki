@@ -25,18 +25,21 @@ export const router = createBrowserRouter([
         path: "search",
         element: <SearchPage />,
       },
+      // Guide/article detail pages render their own full-width two-pane (content + TOC sidebar)
+      // layout and are deliberately NOT nested under CardLayout's .site-shell (which caps width
+      // at max-w-6xl) — same reasoning as SearchPage above. See .guide-detail-shell in styles.css.
+      { path: "guides/agent-start", element: <StartingGuidePage /> },
+      { path: "guides/start", element: <StartingGuidePage /> },
+      { path: "guides/:slug", element: <ArticlePage section="guides" /> },
+      { path: "library/:slug", element: <ArticlePage section="library" /> },
+      { path: "faq/:slug", element: <ArticlePage section="faq" /> },
       {
         element: <CardLayout />,
         children: [
           { path: "guides", element: <GuidesPage /> },
           { path: "guides/map", element: <GuideIndexGraphPage /> },
-          { path: "guides/agent-start", element: <StartingGuidePage /> },
-          { path: "guides/start", element: <StartingGuidePage /> },
-          { path: "guides/:slug", element: <ArticlePage section="guides" /> },
           { path: "library", element: <LibraryPage /> },
-          { path: "library/:slug", element: <ArticlePage section="library" /> },
           { path: "faq", element: <FaqPage /> },
-          { path: "faq/:slug", element: <ArticlePage section="faq" /> },
           { path: "projects", element: <ProjectsPage /> },
           { path: "projects/:slug", element: <ProjectDetailPage /> },
           { path: "project-design/start", element: <ProjectDesignPage /> },

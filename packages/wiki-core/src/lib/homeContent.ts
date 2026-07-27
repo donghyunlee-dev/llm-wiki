@@ -81,6 +81,9 @@ export const HOME_CONTENT: HomeContent = {
 };
 
 export function collectVisibleText(content: HomeContent) {
+  // content.projectDesign is intentionally excluded — HomePage.tsx currently hides that CTA
+  // (unfinished feature), so its copy isn't actually rendered anywhere. Re-add it here if that
+  // CTA is un-hidden.
   return [
     content.hero.eyebrow,
     content.hero.title,
@@ -88,9 +91,6 @@ export function collectVisibleText(content: HomeContent) {
     content.search.placeholder,
     ...content.search.examples,
     ...content.entryCards.flatMap((card) => [card.title, card.description]),
-    content.projectDesign.title,
-    content.projectDesign.body,
-    content.projectDesign.cta,
     "LLM Wiki",
   ].join(" ");
 }

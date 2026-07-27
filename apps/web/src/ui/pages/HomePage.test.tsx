@@ -124,7 +124,8 @@ describe("HomePage", () => {
     expect(markup).not.toContain("가이드 5");
     expect(markup).toContain("home-guide-card-featured");
     expect(markup).toContain("home-guide-card-grid");
-    expect(markup).toContain("만들고 싶은 방향이 정리되었나요?");
+    // The project-design blueprint CTA is hidden (not yet complete) — see HomePage.tsx.
+    expect(markup).not.toContain("만들고 싶은 방향이 정리되었나요?");
     expect(markup).not.toContain("프로젝트 사례");
     expect(markup).not.toContain("자료실");
   });
