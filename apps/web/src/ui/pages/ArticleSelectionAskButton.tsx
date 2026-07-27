@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 
 const MAX_SELECTION_LENGTH = 500;
 const BUTTON_GAP = 8;
+// Minimum vertical space needed above the selection to place the button
+// above it without pushing it off-screen; falls back to "below" otherwise.
 const MIN_TOP_ROOM = 48;
 const HORIZONTAL_MARGIN = 72;
 
@@ -38,6 +40,7 @@ export function ArticleSelectionAskButton({
 }) {
   const [position, setPosition] = useState<ButtonPosition | null>(null);
   const [selectedText, setSelectedText] = useState("");
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
 
   const hide = useCallback(() => {
     setPosition(null);
@@ -80,7 +83,7 @@ export function ArticleSelectionAskButton({
     const handlePointerDown = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
 
-      if (!target.closest(".article-selection-ask-button")) {
+      if (!buttonRef.current?.contains(target)) {
         hide();
       }
     };
@@ -110,6 +113,7 @@ export function ArticleSelectionAskButton({
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       className="article-selection-ask-button"
       style={{

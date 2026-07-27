@@ -191,4 +191,109 @@ describe("ArticleSelectionAskButton", () => {
 
     expect(screen.queryByRole("button", { name: /질문하기/ })).not.toBeInTheDocument();
   });
+
+  it("places the button below the selection when there is not enough room above", () => {
+    const originalGetBoundingClientRect = Range.prototype.getBoundingClientRect;
+    Range.prototype.getBoundingClientRect = function getBoundingClientRect() {
+      return {
+        top: 10,
+        bottom: 30,
+        left: 100,
+        width: 50,
+        right: 150,
+        height: 20,
+        x: 100,
+        y: 10,
+        toJSON() {
+          return this;
+        },
+      } as DOMRect;
+    };
+
+    try {
+      const containerRef = createRef<HTMLDivElement>();
+      const onAsk = vi.fn();
+
+      render(
+        <div>
+          <div ref={containerRef}>
+            <p>선택할 문장입니다</p>
+          </div>
+          <ArticleSelectionAskButton containerRef={containerRef} onAsk={onAsk} />
+        </div>,
+      );
+
+      selectTextInside(containerRef.current!.querySelector("p")!);
+
+      const button = screen.getByRole("button", { name: /질문하기/ });
+      expect(button.style.transform).toBe("translate(-50%, 0)");
+    } finally {
+      Range.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+  });
+
+  it("clamps the button's left position to the horizontal margin near the viewport edge", () => {
+    const originalGetBoundingClientRect = Range.prototype.getBoundingClientRect;
+    Range.prototype.getBoundingClientRect = function getBoundingClientRect() {
+      return {
+        top: 100,
+        bottom: 120,
+        left: 0,
+        width: 10,
+        right: 10,
+        height: 20,
+        x: 0,
+        y: 100,
+        toJSON() {
+          return this;
+        },
+      } as DOMRect;
+    };
+
+    try {
+      const containerRef = createRef<HTMLDivElement>();
+      const onAsk = vi.fn();
+
+      render(
+        <div>
+          <div ref={containerRef}>
+            <p>선택할 문장입니다</p>
+          </div>
+          <ArticleSelectionAskButton containerRef={containerRef} onAsk={onAsk} />
+        </div>,
+      );
+
+      selectTextInside(containerRef.current!.querySelector("p")!);
+
+      const button = screen.getByRole("button", { name: /질문하기/ });
+      expect(button.style.left).toBe("72px");
+    } finally {
+      Range.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+  });
+
+  it("hides the button when the same-container selection collapses", () => {
+    const containerRef = createRef<HTMLDivElement>();
+    const onAsk = vi.fn();
+
+    render(
+      <div>
+        <div ref={containerRef}>
+          <p>선택할 문장입니다</p>
+        </div>
+        <ArticleSelectionAskButton containerRef={containerRef} onAsk={onAsk} />
+      </div>,
+    );
+
+    selectTextInside(containerRef.current!.querySelector("p")!);
+    expect(screen.getByRole("button", { name: /질문하기/ })).toBeInTheDocument();
+
+    const selection = window.getSelection();
+    act(() => {
+      selection?.removeAllRanges();
+      document.dispatchEvent(new Event("selectionchange"));
+    });
+
+    expect(screen.queryByRole("button", { name: /질문하기/ })).not.toBeInTheDocument();
+  });
 });
