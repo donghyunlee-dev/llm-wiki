@@ -17,9 +17,9 @@ export function isNoPageStyleSearchAnswer(answer: SearchAnswerStateLike | null |
 }
 
 export function isFullyUnsupportedSearchAnswerState(answer: SearchAnswerStateLike | null | undefined) {
-  return Boolean(
-    answer &&
-    (answer.confluenceData?.length ?? 0) === 0 &&
-    ((answer.unsupportedClaims?.length ?? 0) > 0 || isNoPageStyleSearchAnswer(answer)),
-  );
+  // confluenceData is a structured field the AI can only populate with real page citations — unlike
+  // unsupportedClaims (which the model sometimes leaves empty) or the visible answer text (whose
+  // exact wording varies run to run), an empty confluenceData reliably means the AI had no page to
+  // answer from, since it is instructed to answer only from Confluence content.
+  return Boolean(answer && (answer.confluenceData?.length ?? 0) === 0);
 }
