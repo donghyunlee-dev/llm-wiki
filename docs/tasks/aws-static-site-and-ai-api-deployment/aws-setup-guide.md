@@ -133,6 +133,14 @@ for FN in sfood-wiki-pages sfood-ai-ask sfood-ai-search; do
     --action lambda:InvokeFunctionUrl \
     --principal "*" \
     --function-url-auth-type NONE
+
+  # 이 두 번째 문이 없으면 위 문만으로는 403 Forbidden이 발생한다(트러블슈팅 섹션 참고)
+  aws lambda add-permission \
+    --function-name "$FN" \
+    --statement-id FunctionURLAllowInvokeAction \
+    --action lambda:InvokeFunction \
+    --principal "*" \
+    --invoked-via-function-url
 done
 ```
 
@@ -197,6 +205,14 @@ aws lambda update-function-code --function-name sfood-ai-search --zip-file fileb
 | CORS 오류(브라우저 클라이언트) | `WIKI_ALLOWED_ORIGIN`을 배포된 웹사이트 도메인으로 설정 |
 | Lambda import 오류 | 핸들러가 `<파일명>.handler`인지, ZIP 루트에 해당 `.mjs`가 있는지 확인 |
 | Playbook 로깅이 동작하지 않음 | `CONFLUENCE_PLAYBOOK_PAGE_ID` 미설정 시 정상적으로 생략됨(선택 기능) |
+| Function URL(`auth-type NONE`) 호출 시 `403 Forbidden`("For troubleshooting Function URL authorization issues...") — `AuthType: NONE`과 `lambda:InvokeFunctionUrl` 리소스 정책은 정상 등록되어 있는데도 발생 | **해결됨 (2026-07-28)**: `create-function-url-config` + `add-permission --action lambda:InvokeFunctionUrl`만으로는 부족하다 — Function URL을 통한 실제 공개 호출이 되려면 **`lambda:InvokeFunction` 권한도 별도로 추가**해야 한다(조건: `lambda:InvokedViaFunctionUrl: true`). 이 계정의 다른 정상 동작 중인 Function URL 기반 Lambda(`sfood-ax-wms-stock-proxy`)와 리소스 정책을 비교해 발견함. 아래 명령을 3개 함수 모두에 추가로 실행하면 해결된다(이미 이 저장소의 3개 함수에는 적용 완료):
+```bash
+aws lambda add-permission --function-name <함수명> \
+  --statement-id FunctionURLAllowInvokeAction \
+  --action lambda:InvokeFunction --principal "*" \
+  --invoked-via-function-url
+```
+`--function-url-auth-type` 플래그는 `lambda:InvokeFunctionUrl` 액션에만 쓸 수 있어 이 두 번째 문에는 쓸 수 없다 — 대신 `--invoked-via-function-url` 플래그를 사용한다. (참고: `--invoked-via-function-url` 없이 `lambda:InvokeFunction`을 `Principal: "*"`에 조건 없이 부여하면 Function URL을 거치지 않고도 누구나 Lambda Invoke API로 직접 호출 가능해지는 진짜 보안 위험이므로 반드시 조건을 포함해야 한다.)
 
 ---
 

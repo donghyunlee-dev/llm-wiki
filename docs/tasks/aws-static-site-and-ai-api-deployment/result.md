@@ -33,11 +33,19 @@
 - **CORS-only access control on the new public AI endpoints**: matches the existing `wikiPagesHandler` precedent exactly. Codex flagged this as a real but pre-existing pattern in this codebase, not a new regression — documented as an accepted, known risk rather than silently fixed with new auth logic that wasn't requested or scoped.
 - **Projects/GitHub required zero code changes**: grep-confirmed the feature was already unreachable from all navigation surfaces before this task started (a prior session's changes appear to have already dropped its home-page entry point). Routes remain per the "keep routes, don't delete" scope decision.
 
-## Gaps / Follow-ups (require the user's AWS access — not executable from this session)
-- Actual AWS resource creation (Lambda functions, Function URLs, IAM role) per `aws-setup-guide.md` — one-time manual step.
-- Confirming the existing S3 bucket/CloudFront distribution IDs and populating the GitHub Secrets/Variables listed in `aws-setup-guide.md`.
-- First real deploy run of `.github/workflows/deploy.yml` against the user's AWS account.
-- PR not yet opened — pending user confirmation this is ready to push (see below).
+## Post-PR Live Deployment (2026-07-28)
+The user created the 3 Lambda functions via console (`sfood-ax-wiki-pages`, `sfood-ax-ai-ask`, `sfood-ax-ai-search`) and this session completed the rest end-to-end using AWS CLI + `gh` CLI, both already authenticated in the sandbox:
+- Built and deployed code to all 3 functions (esbuild bundle → zip as `index.mjs` → `update-function-code`), fixed timeout/memory (30s/60s, 256MB).
+- Registered all GitHub Secrets/Variables (`WEB_S3_BUCKET`, `CLOUDFRONT_DISTRIBUTION_ID`, 3 Lambda names, 3 `VITE_*_ENDPOINT` Function URLs — discovered the real S3 bucket/CloudFront distribution via `aws cloudfront list-distributions`). `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` were registered by the user directly (a dedicated CI IAM user, not the session's personal AWS identity).
+- Diagnosed and fixed two real production issues via `superpowers:systematic-debugging`:
+  1. **Confluence 502/CloudFront 403 on wiki-pages** — root cause was a stale/wrong `ATLASSIAN_API_TOKEN`; fixed by the user updating it. (The intermittent CloudFront-edge 403 seen during diagnosis was very likely Atlassian's edge temporarily flagging repeated failed-auth attempts — it stopped reproducing once the token was corrected.)
+  2. **Function URL 403 Forbidden despite correct `AuthType: NONE` + resource policy** — initially hypothesized as an AWS Organizations-level RCP/SCP blocking public Function URLs (this account has other IAM/S3 read actions blocked by a permission boundary). That hypothesis was **wrong**. The actual root cause, found by comparing against another working Function URL-based Lambda already in this account (`sfood-ax-wms-stock-proxy`): a public Function URL needs a **second** resource-policy statement granting `lambda:InvokeFunction` (condition: `lambda:InvokedViaFunctionUrl: true`) in addition to the commonly-documented `lambda:InvokeFunctionUrl` grant. Added via `aws lambda add-permission --action lambda:InvokeFunction --principal "*" --invoked-via-function-url` for all 3 functions — confirmed working immediately after.
+- End-to-end verification: all 3 Function URLs now return correct real responses (`wiki-pages` → 331 real documents, `ai-ask` → real structured AI answer for a real guide page, `ai-search` → real AI search response).
+- `aws-setup-guide.md` updated with the corrected Function URL setup command (now includes both permission statements) and the resolved troubleshooting entries.
+
+## Gaps / Follow-ups
+- First real run of `.github/workflows/deploy.yml` triggered by a merge to `main` — not yet exercised (PR #2 still open).
+- CloudWatch Logs access is blocked for the session's IAM identity by the same permission boundary that blocks IAM/S3 admin reads — any future Lambda debugging needing log inspection will require the user's own console access.
 
 ## Validation
-See `test-result.md`: `pnpm -r typecheck`/`test` pass (316 tests), `packages/serverless` build produces all 3 bundles, live local smoke test against real Confluence/OpenAI credentials confirms zero behavioral regression in AI ask/search, and Codex critical review findings (1 High, 3 Medium, 1 Low) were all fixed and re-verified.
+See `test-result.md`: `pnpm -r typecheck`/`test` pass (316 tests), `packages/serverless` build produces all 3 bundles, live local smoke test against real Confluence/OpenAI credentials confirms zero behavioral regression in AI ask/search, and Codex critical review findings (1 High, 3 Medium, 1 Low) were all fixed and re-verified. Live AWS Lambda Function URLs additionally verified end-to-end post-deployment (this session, 2026-07-28).
