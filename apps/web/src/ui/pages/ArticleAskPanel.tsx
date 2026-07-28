@@ -299,21 +299,15 @@ function ArticleAskResult({
             {result.suggestedNextPages.map((item) => {
               const document = getWikiDocumentByIdFrom(documents, item.pageId);
               const dt = document?.metadata.docType;
-              if (dt === "nav" || dt === "ops" || dt === "policy") {
+              if (!document || (dt !== "guide" && dt !== "page")) {
                 return null;
               }
 
               return (
                 <li key={`${item.pageId}-${item.reason}`}>
-                  {document ? (
-                    <Link className="article-link-card" to={getWikiDocumentHref(document) ?? "#"} target="_blank" rel="noreferrer">
-                      <strong>{stripTitleTypePrefix(item.title)}</strong>
-                    </Link>
-                  ) : (
-                    <div className="article-link-card">
-                      <strong>{stripTitleTypePrefix(item.title)}</strong>
-                    </div>
-                  )}
+                  <Link className="article-link-card" to={getWikiDocumentHref(document) ?? "#"} target="_blank" rel="noreferrer">
+                    <strong>{stripTitleTypePrefix(item.title)}</strong>
+                  </Link>
                 </li>
               );
             })}

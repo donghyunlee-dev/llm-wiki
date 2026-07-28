@@ -32,6 +32,7 @@ describe("searchRecommendations", () => {
   it("uses AI recommended pages before fallback recommendations", () => {
     const result = resolveSearchRecommendedDocuments(
       {
+        confluenceData: [{ pageId: "page-3" }],
         recommendedDocuments: [{ id: "page-3", title: "Third", summary: "Third summary", href: "/guides/third" }],
       },
       [{ id: "page-1", title: "First", summary: "First summary", href: "/guides/first" }],
@@ -43,7 +44,7 @@ describe("searchRecommendations", () => {
   it("falls back to generic recommendations only when the answer omits page links", () => {
     const result = resolveSearchRecommendedDocuments(
       {
-        confluenceData: [],
+        confluenceData: [{ pageId: "page-1" }],
         recommendedDocuments: [],
       },
       [
@@ -72,9 +73,22 @@ describe("searchRecommendations", () => {
     ]);
   });
 
+  it("only selects guide/page documents for fallback recommendations, excluding every other docType", () => {
+    const docs = [
+      document({ id: "page-1", title: "Codex Guide", slug: "codex-guide", metadata: { docType: "guide", audience: "beginner", status: "published", prerequisites: [], next: [], related: [] } }),
+      document({ id: "page-2", title: "Codex Page", slug: "codex-page", metadata: { docType: "page", audience: "beginner", status: "published", prerequisites: [], next: [], related: [] } }),
+      document({ id: "page-3", title: "Codex FAQ", slug: "codex-faq", metadata: { docType: "faq", audience: "beginner", status: "published", prerequisites: [], next: [], related: [] } }),
+      document({ id: "page-4", title: "Codex Library", slug: "codex-library", metadata: { docType: "library", audience: "beginner", status: "published", prerequisites: [], next: [], related: [] } }),
+      document({ id: "page-5", title: "Codex Index", slug: "codex-index", metadata: { docType: "nav", audience: "beginner", status: "published", prerequisites: [], next: [], related: [] } }),
+    ];
+
+    expect(buildFallbackRecommendedDocuments(docs, "codex").map((item) => item.id)).toEqual(["page-1", "page-2"]);
+  });
+
   it("splits strong recommended documents from related documents (legacy fallback path)", () => {
     const result = resolveSearchDocumentSections(
       {
+        confluenceData: [{ pageId: "page-1" }],
         recommendedDocuments: [
           { id: "page-1", title: "Primary", summary: "Primary summary", href: "/guides/primary" },
         ],
@@ -93,6 +107,7 @@ describe("searchRecommendations", () => {
   it("uses server-provided relatedDocuments when present (AI-split path)", () => {
     const result = resolveSearchDocumentSections(
       {
+        confluenceData: [{ pageId: "page-1" }],
         recommendedDocuments: [
           { id: "page-1", title: "Primary", summary: "Primary summary", href: "/guides/primary" },
           { id: "page-2", title: "Second", summary: "Second summary", href: "/guides/second" },
@@ -111,6 +126,7 @@ describe("searchRecommendations", () => {
   it("falls back to fallback documents when server recommendedDocuments is empty in AI-split path", () => {
     const result = resolveSearchDocumentSections(
       {
+        confluenceData: [{ pageId: "page-1" }],
         recommendedDocuments: [],
         relatedDocuments: [],
       },

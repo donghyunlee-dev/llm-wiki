@@ -640,7 +640,7 @@ export async function handleAiSearchRequest(
       : rawResult;
 
     const rankingRecommendedDocuments = getIndexFirstSearchWikiDocumentsIn(cache.documents, searchQuery, 8)
-      .filter((document) => !isIndexWikiDocument(document))
+      .filter((document) => document.metadata.docType === "guide" || document.metadata.docType === "page")
       .map((document) => ({
         id: document.id,
         title: document.title,
@@ -659,8 +659,7 @@ export async function handleAiSearchRequest(
       .filter((document) => {
         if (!recommendedPageIds.has(document.id)) return false;
         const dt = document.metadata.docType;
-        if (dt === "nav" || dt === "ops" || dt === "policy" || dt === "playbook") return false;
-        return true;
+        return dt === "guide" || dt === "page";
       })
       .map((document) => ({
         id: document.id,

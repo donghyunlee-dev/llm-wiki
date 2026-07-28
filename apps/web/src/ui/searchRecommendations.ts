@@ -106,7 +106,7 @@ export function buildFallbackRecommendedDocuments(documents: WikiDocument[], que
   return getIndexFirstSearchWikiDocumentsIn(documents, query, 6)
     .filter((document) => {
       const dt = document.metadata.docType;
-      return dt !== "policy" && dt !== "ops" && dt !== "nav";
+      return dt === "guide" || dt === "page";
     })
     .map((document) => ({
       id: document.id,

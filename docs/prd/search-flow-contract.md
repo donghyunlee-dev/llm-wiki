@@ -116,15 +116,19 @@
 
 검색 API 응답의 `recommendedDocuments`와 `relatedDocuments`는 서버에서 다음 방식으로 구성한다.
 
-- 완전 미지원 응답(`confluenceData` 없음 + `unsupportedClaims` 있음)은 두 배열을 모두 비운다. 클라이언트도 fallback 추천과 FAQ를 추가하지 않는다.
-- AI가 보이는 답변에서 "현재 위키에 해당 주제에 대한 페이지가 없습니다"처럼 no-page 문구를 반환했는데 `unsupportedClaims`를 비워 둔 경우, 서버는 이를 완전 미지원 응답으로 정규화해야 한다.
+- 완전 미지원 응답 판정은 **`confluenceData`가 비어있는지만으로 판단한다.** `confluenceData`는 AI가 실제로 인용한 근거 문서(pageId+quote) 목록이며, AI는 Confluence 안의 내용으로만 답하도록 지시받으므로 이 필드가 비어있다는 것은 곧 답할 근거 문서가 없다는 뜻이다. 완전 미지원으로 판정되면 `recommendedDocuments`/`relatedDocuments`를 모두 비운다. 클라이언트도 fallback 추천과 FAQ를 추가하지 않는다.
+- `unsupportedClaims` 유무나 보이는 답변 문구(예: "현재 위키에 해당 주제에 대한 페이지가 없습니다")로 완전 미지원 여부를 판정하지 않는다. 두 신호 모두 AI의 자유 텍스트 출력이라 문구가 매번 조금씩 달라지고(`"I'm sorry, but ..."`처럼 접두어가 붙거나 표현이 바뀜), `unsupportedClaims`는 모델이 채우지 않는 경우도 있어 하드코딩된 정규식 매칭으로는 안정적으로 감지할 수 없다 — 실제로 이 방식 때문에 근거 없는 답변에도 추천/관련 페이지가 노출되는 버그가 있었다(2026-07-28).
 
 ### 추천 페이지 (`recommendedDocuments`, 최대 4개)
-1. AI가 선택한 `recommendedPages` 중 index·navigation·onboarding 페이지를 제외한 결과를 우선 사용한다.
-2. AI가 선택하지 않았거나 결과가 없으면, 랭킹 상위 후보(`getIndexFirstSearchWikiDocumentsIn`)로 보완한다.
+- **docType이 `guide` 또는 `page`인 문서만 후보가 될 수 있다 (선택 방식, 제외 방식 아님).** `nav`/`ops`/`policy`/`playbook`은 물론, `faq`/`library` 등 다른 모든 docType도 이 목록에는 나오지 않는다 — FAQ는 검색 화면의 별도 `faq` 섹션에서만 노출된다. docType을 하나씩 나열해 제외하는 방식은 새 docType이 추가될 때마다 놓치기 쉬우므로(예: `faq` 계열 Index 문서가 `nav`가 아니라는 이유로 새어나간 사례, 2026-07-28), "허용된 두 타입만 선택"하는 방식으로 고정한다.
+1. AI가 선택한 `recommendedPages` 중 위 조건을 만족하는 결과를 우선 사용한다.
+2. AI가 선택하지 않았거나 결과가 없으면, 랭킹 상위 후보(`getIndexFirstSearchWikiDocumentsIn`, 동일하게 `guide`/`page`만) 로 보완한다.
 
 ### 관련 페이지 (`relatedDocuments`, 최대 4개)
-1. 랭킹 상위 후보 중 `recommendedDocuments`에 이미 포함된 것을 제외한 나머지다.
+1. 랭킹 상위 후보(`guide`/`page`만) 중 `recommendedDocuments`에 이미 포함된 것을 제외한 나머지다.
+
+### 문서 상세 페이지의 추천 페이지 (`ArticleAskPanel`의 `suggestedNextPages`)
+- 위와 동일하게 docType이 `guide` 또는 `page`인 문서만 노출한다.
 
 AI 원시 출력의 `recommendedPages` 필드는 서버에서 제거되고 클라이언트에 전달되지 않는다.
 
