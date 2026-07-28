@@ -120,11 +120,15 @@
 - AI가 보이는 답변에서 "현재 위키에 해당 주제에 대한 페이지가 없습니다"처럼 no-page 문구를 반환했는데 `unsupportedClaims`를 비워 둔 경우, 서버는 이를 완전 미지원 응답으로 정규화해야 한다.
 
 ### 추천 페이지 (`recommendedDocuments`, 최대 4개)
-1. AI가 선택한 `recommendedPages` 중 index·navigation·onboarding 페이지를 제외한 결과를 우선 사용한다.
-2. AI가 선택하지 않았거나 결과가 없으면, 랭킹 상위 후보(`getIndexFirstSearchWikiDocumentsIn`)로 보완한다.
+- **docType이 `guide` 또는 `page`인 문서만 후보가 될 수 있다 (선택 방식, 제외 방식 아님).** `nav`/`ops`/`policy`/`playbook`은 물론, `faq`/`library` 등 다른 모든 docType도 이 목록에는 나오지 않는다 — FAQ는 검색 화면의 별도 `faq` 섹션에서만 노출된다. docType을 하나씩 나열해 제외하는 방식은 새 docType이 추가될 때마다 놓치기 쉬우므로(예: `faq` 계열 Index 문서가 `nav`가 아니라는 이유로 새어나간 사례, 2026-07-28), "허용된 두 타입만 선택"하는 방식으로 고정한다.
+1. AI가 선택한 `recommendedPages` 중 위 조건을 만족하는 결과를 우선 사용한다.
+2. AI가 선택하지 않았거나 결과가 없으면, 랭킹 상위 후보(`getIndexFirstSearchWikiDocumentsIn`, 동일하게 `guide`/`page`만) 로 보완한다.
 
 ### 관련 페이지 (`relatedDocuments`, 최대 4개)
-1. 랭킹 상위 후보 중 `recommendedDocuments`에 이미 포함된 것을 제외한 나머지다.
+1. 랭킹 상위 후보(`guide`/`page`만) 중 `recommendedDocuments`에 이미 포함된 것을 제외한 나머지다.
+
+### 문서 상세 페이지의 추천 페이지 (`ArticleAskPanel`의 `suggestedNextPages`)
+- 위와 동일하게 docType이 `guide` 또는 `page`인 문서만 노출한다.
 
 AI 원시 출력의 `recommendedPages` 필드는 서버에서 제거되고 클라이언트에 전달되지 않는다.
 

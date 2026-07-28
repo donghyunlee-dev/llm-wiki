@@ -72,6 +72,18 @@ describe("searchRecommendations", () => {
     ]);
   });
 
+  it("only selects guide/page documents for fallback recommendations, excluding every other docType", () => {
+    const docs = [
+      document({ id: "page-1", title: "Codex Guide", slug: "codex-guide", metadata: { docType: "guide", audience: "beginner", status: "published", prerequisites: [], next: [], related: [] } }),
+      document({ id: "page-2", title: "Codex Page", slug: "codex-page", metadata: { docType: "page", audience: "beginner", status: "published", prerequisites: [], next: [], related: [] } }),
+      document({ id: "page-3", title: "Codex FAQ", slug: "codex-faq", metadata: { docType: "faq", audience: "beginner", status: "published", prerequisites: [], next: [], related: [] } }),
+      document({ id: "page-4", title: "Codex Library", slug: "codex-library", metadata: { docType: "library", audience: "beginner", status: "published", prerequisites: [], next: [], related: [] } }),
+      document({ id: "page-5", title: "Codex Index", slug: "codex-index", metadata: { docType: "nav", audience: "beginner", status: "published", prerequisites: [], next: [], related: [] } }),
+    ];
+
+    expect(buildFallbackRecommendedDocuments(docs, "codex").map((item) => item.id)).toEqual(["page-1", "page-2"]);
+  });
+
   it("splits strong recommended documents from related documents (legacy fallback path)", () => {
     const result = resolveSearchDocumentSections(
       {
