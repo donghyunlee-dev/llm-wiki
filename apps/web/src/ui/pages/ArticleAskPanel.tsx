@@ -77,9 +77,16 @@ export const ArticleAskPanel = forwardRef<
   }), []);
 
   useEffect(() => {
-    if (turnsRef.current) {
-      turnsRef.current.scrollTop = turnsRef.current.scrollHeight;
+    const container = turnsRef.current;
+
+    if (!container) {
+      return;
     }
+
+    // Scroll to the top of the latest turn (not the container's absolute bottom) so a long
+    // answer starts in view instead of showing its tail end, which would force scrolling back up.
+    const lastTurn = container.lastElementChild as HTMLElement | null;
+    container.scrollTop = lastTurn ? lastTurn.offsetTop : container.scrollHeight;
   }, [turns]);
 
   const startResize = (event: ReactPointerEvent<HTMLElement>) => {

@@ -1249,7 +1249,11 @@ a {
   }
 
   .article-ask {
-    @apply flex cursor-ns-resize flex-col rounded-[var(--radius-xl)] border border-panel-border bg-panel-bg p-2 shadow-sm;
+    /* overflow-hidden: the form's natural minimum height (button + its own padding) is a couple
+       px taller than the panel's hard resize-drag floor (64px) once .article-ask-turns has already
+       shrunk to 0 — without clipping, that residual overflow pushed the send button visibly past
+       the panel's rounded bottom edge at the smallest manual resize sizes. */
+    @apply flex cursor-ns-resize flex-col overflow-hidden rounded-[var(--radius-xl)] border border-panel-border bg-panel-bg p-2 shadow-sm;
   }
 
   .article-ask-dock {
@@ -1294,8 +1298,12 @@ a {
     /* No border and no background here — .article-ask already frames the whole panel with its
        own background, so the form shares that same surface instead of reading as a second nested
        box (a prior version gave this its own bg-page-bg, which still looked like a box-inside-a-box
-       even without a border). One flat surface, one input area. */
-    @apply mt-auto cursor-default rounded-[var(--radius-md)] p-2;
+       even without a border). One flat surface, one input area.
+       shrink-0 matches .guide-detail-toc-header's pattern: without it, dragging the panel shorter
+       than the form's natural height shrinks the form (and its button) along with .article-ask-turns
+       instead of letting only the turns list absorb the resize, which pushed the button below the
+       panel's visible bottom edge. */
+    @apply mt-auto shrink-0 cursor-default rounded-[var(--radius-md)] p-2;
   }
 
   .article-ask-form-textarea {
