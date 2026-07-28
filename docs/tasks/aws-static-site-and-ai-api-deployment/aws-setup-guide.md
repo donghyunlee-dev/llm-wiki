@@ -229,6 +229,7 @@ aws lambda add-permission --function-name <함수명> \
 | `WIKI_PAGES_LAMBDA_NAME` | Secret | 위 2번 단계에서 생성한 wiki-pages 함수 이름 (예: `sfood-wiki-pages`) |
 | `AI_ASK_LAMBDA_NAME` | Secret | ai-ask 함수 이름 (예: `sfood-ai-ask`) |
 | `AI_SEARCH_LAMBDA_NAME` | Secret | ai-search 함수 이름 (예: `sfood-ai-search`) |
+| `SFOOD_DESIGN_SYSTEM_TOKEN` | Secret | `sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM`(private, `@sfood/ui`가 의존하는 저장소) 읽기 전용 fine-grained PAT — 없으면 `pnpm install`이 `could not read Username for 'https://github.com'`로 실패함 |
 | `VITE_WIKI_REMOTE_ENDPOINT` | Variable | 프로덕션 빌드가 문서 목록을 가져올 엔드포인트 — 4번 단계에서 얻은 `wiki-pages` Function URL |
 | `VITE_AI_ASK_ENDPOINT` | Variable | 프로덕션 빌드가 AI 질문 기능이 호출할 엔드포인트 — 4번 단계에서 얻은 `ai-ask` Function URL |
 | `VITE_AI_SEARCH_ENDPOINT` | Variable | 프로덕션 빌드가 AI 검색 기능이 호출할 엔드포인트 — 4번 단계에서 얻은 `ai-search` Function URL |

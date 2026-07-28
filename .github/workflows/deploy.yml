@@ -23,6 +23,9 @@ jobs:
           node-version: 22
           cache: pnpm
 
+      - name: Configure git credentials for private @sfood/ui dependency
+        run: git config --global url."https://x-access-token:${{ secrets.SFOOD_DESIGN_SYSTEM_TOKEN }}@github.com/sfood-it-dev-ax-org/".insteadOf "https://github.com/sfood-it-dev-ax-org/"
+
       - run: pnpm install --frozen-lockfile
 
       - name: Build apps/web (remote AI/wiki data source)
@@ -61,6 +64,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+
+      - name: Configure git credentials for private @sfood/ui dependency
+        run: git config --global url."https://x-access-token:${{ secrets.SFOOD_DESIGN_SYSTEM_TOKEN }}@github.com/sfood-it-dev-ax-org/".insteadOf "https://github.com/sfood-it-dev-ax-org/"
 
       - run: pnpm install --frozen-lockfile
 
