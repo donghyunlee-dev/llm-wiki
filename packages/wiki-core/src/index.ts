@@ -10,3 +10,6 @@ export * from "./lib/githubClient";
 export * from "./lib/playbookLogger";
 export * from "./lib/promptRulesLoader";
 export * from "./lib/playbookAnalyzer";
+export * from "./lib/aiSearchResponse";
+export * from "./lib/searchAnswerState";
+export * from "./lib/aiOrchestration";

@@ -1,32 +1,34 @@
 @import "tailwindcss";
+@import "@sfood/ui/tokens/base.css";
+@import "@sfood/ui/tokens/semantic.css";
 
 :root {
-  --page-bg: #f4f4f4;
-  --page-fg: #54585A;
-  --panel-bg: #ffffff;
-  --panel-border: #e8e8e8;
-  --panel-border-soft: #f0f0f0;
-  --panel-shadow: rgba(0,0,0,0.02) 0px 0px 0px 1px, rgba(0,0,0,0.04) 0px 2px 6px, rgba(0,0,0,0.10) 0px 4px 8px;
-  --muted-fg: #6a6a6a;
-  --subtle-fg: #929292;
-  --accent: #e4002b;
-  --accent-strong: #c80025;
-  --accent-soft: #fdf2f4;
-  --card-bg: #ffffff;
-  --card-hover-bg: #fdf8f8;
-  --cta-bg: #222222;
-  --cta-fg: #ffffff;
+  --page-bg: var(--color-background);
+  --page-fg: var(--color-foreground);
+  --panel-bg: var(--color-surface);
+  --panel-border: var(--color-border);
+  --panel-border-soft: var(--color-border-subtle);
+  --panel-shadow: var(--shadow-card);
+  --muted-fg: var(--color-secondary);
+  --subtle-fg: var(--color-muted);
+  --accent: var(--color-brand);
+  --accent-strong: var(--color-brand-hover);
+  --accent-soft: var(--color-brand-subtle);
+  --card-bg: var(--color-surface);
+  --card-hover-bg: var(--color-surface-subtle);
+  --cta-bg: var(--gray-900);
+  --cta-fg: var(--color-on-brand);
   --cta-muted-fg: rgba(255,255,255,0.65);
-  --blueprint-button-bg: #ffffff;
-  --blueprint-button-fg: #54585A;
-  --code-frame-bg: #f8f8f8;
-  --code-frame-border: #e0e0e0;
-  --code-header-bg: #f2f2f2;
-  --code-body-bg: #f8f8f8;
-  --code-gutter-bg: #f2f2f2;
-  --code-gutter-border: #e4e4e4;
-  --code-fg: #3f3f3f;
-  --code-muted: #6a6a6a;
+  --blueprint-button-bg: var(--color-surface);
+  --blueprint-button-fg: var(--color-foreground);
+  --code-frame-bg: var(--color-surface-subtle);
+  --code-frame-border: var(--color-border);
+  --code-header-bg: var(--color-border-subtle);
+  --code-body-bg: var(--color-surface-subtle);
+  --code-gutter-bg: var(--color-surface-subtle);
+  --code-gutter-border: var(--color-border);
+  --code-fg: var(--color-foreground);
+  --code-muted: var(--color-secondary);
   --code-font-family: var(--font-mono);
   --code-body-font-size: 12px;
   --code-meta-font-size: 10px;
@@ -45,9 +47,12 @@
   --guide-graph-edge-related: rgba(167, 139, 250, 0.55);
   --guide-graph-edge-orphan: rgba(245, 158, 11, 0.55);
   --guide-graph-edge-missing: rgba(251, 113, 133, 0.55);
-  --radius-xl: 20px;
-  --radius-lg: 8px;
-  --radius-md: 6px;
+  /* aligned with @sfood/ui tokens/base.css radius scale (xl/lg/md share the same
+     custom property names as our own tokens, so they are set as literals here
+     instead of var() references to avoid a self-referencing cascade). */
+  --radius-xl: 16px;
+  --radius-lg: 12px;
+  --radius-md: 8px;
   --space-page: 16px;
   --space-section: 18px;
   --space-block: 12px;
@@ -55,38 +60,40 @@
   --font-size-body: 13px;
   --font-size-title: 18px;
   --font-size-section: 15px;
-  --font-display: "맑은 고딕", "Malgun Gothic", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-body: "맑은 고딕", "Malgun Gothic", Pretendard, -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "IBM Plex Mono", "JetBrains Mono", monospace;
+  --font-display: var(--font-sans);
+  --font-body: var(--font-sans);
+  --article-toc-width: 240px;
+  --article-toc-gap: 2rem;
+  --article-content-width: 760px;
 }
 
 :root[data-theme="dark"] {
-  --page-bg: #020617;
-  --page-fg: #f8fafc;
-  --panel-bg: #0f172a;
-  --panel-border: #1e293b;
-  --panel-border-soft: #1e293b;
+  --page-bg: var(--gray-900);
+  --page-fg: var(--gray-50);
+  --panel-bg: color-mix(in srgb, var(--gray-900) 88%, white 12%);
+  --panel-border: var(--gray-700);
+  --panel-border-soft: color-mix(in srgb, var(--gray-700) 60%, var(--gray-900) 40%);
   --panel-shadow: rgba(0,0,0,0.04) 0px 0px 0px 1px, rgba(0,0,0,0.10) 0px 2px 6px, rgba(0,0,0,0.22) 0px 4px 8px;
-  --muted-fg: #94a3b8;
-  --subtle-fg: #64748b;
-  --accent: #ff3358;
-  --accent-strong: #e4002b;
-  --accent-soft: #3d0a12;
-  --card-bg: #0f172a;
-  --card-hover-bg: #1f1215;
-  --cta-bg: #f1f5f9;
-  --cta-fg: #020617;
+  --muted-fg: var(--gray-400);
+  --subtle-fg: var(--gray-500);
+  --accent: var(--brand-400);
+  --accent-strong: var(--brand-300);
+  --accent-soft: color-mix(in srgb, var(--brand-900) 55%, var(--gray-900) 45%);
+  --card-bg: color-mix(in srgb, var(--gray-900) 88%, white 12%);
+  --card-hover-bg: color-mix(in srgb, var(--gray-900) 80%, white 20%);
+  --cta-bg: var(--white);
+  --cta-fg: var(--gray-900);
   --cta-muted-fg: #475569;
-  --blueprint-button-bg: #020617;
-  --blueprint-button-fg: #ffffff;
-  --code-frame-bg: #0b1220;
-  --code-frame-border: #1f2a3d;
-  --code-header-bg: #111a2d;
-  --code-body-bg: #020817;
-  --code-gutter-bg: #0f172a;
-  --code-gutter-border: #243147;
-  --code-fg: #e5eef9;
-  --code-muted: #94a3b8;
+  --blueprint-button-bg: var(--gray-900);
+  --blueprint-button-fg: var(--white);
+  --code-frame-bg: var(--gray-900);
+  --code-frame-border: var(--gray-700);
+  --code-header-bg: color-mix(in srgb, var(--gray-900) 80%, white 20%);
+  --code-body-bg: var(--gray-900);
+  --code-gutter-bg: color-mix(in srgb, var(--gray-900) 88%, white 12%);
+  --code-gutter-border: var(--gray-700);
+  --code-fg: var(--gray-50);
+  --code-muted: var(--gray-400);
   --code-font-family: var(--font-mono);
   --code-body-font-size: 12px;
   --code-meta-font-size: 10px;
@@ -152,6 +159,40 @@ body {
   min-height: 100vh;
 }
 
+/* Thin scrollbars that become slightly more visible on hover/focus (Chromium + Firefox). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover,
+*:focus-within {
+  scrollbar-color: var(--panel-border-soft) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: transparent;
+  border-radius: 9999px;
+}
+
+*:hover::-webkit-scrollbar-thumb,
+*:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--panel-border-soft);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--panel-border);
+}
+
 button,
 input,
 select,
@@ -183,10 +224,6 @@ a {
 
   .site-shell {
     @apply mx-auto max-w-6xl px-3 py-3 sm:px-5 sm:py-5;
-  }
-
-  .site-surface {
-    @apply rounded-[var(--radius-xl)] border border-panel-border bg-panel-bg shadow-[var(--panel-shadow)];
   }
 
   .site-header {
@@ -226,7 +263,7 @@ a {
   }
 
   .page-shell {
-    @apply px-4 py-5 sm:px-5;
+    @apply px-4 py-7 sm:px-6;
   }
 
   .page-width {
@@ -238,11 +275,11 @@ a {
   }
 
   .page-panel {
-    @apply rounded-[var(--radius-xl)] border border-panel-border bg-panel-bg p-5 shadow-[var(--panel-shadow)] md:p-6;
+    @apply rounded-[var(--radius-xl)] bg-panel-bg p-6 md:p-8;
   }
 
   .page-panel-soft {
-    @apply rounded-[var(--radius-lg)] border border-panel-border bg-card-bg p-4;
+    @apply rounded-[var(--radius-lg)] bg-card-bg p-4;
   }
 
   .page-stack {
@@ -251,6 +288,14 @@ a {
 
   .section-stack {
     @apply mt-4 space-y-3;
+  }
+
+  .document-list {
+    @apply mt-4 divide-y divide-panel-border-soft;
+  }
+
+  .document-list .document-list-item {
+    @apply rounded-none bg-transparent px-1 py-4 hover:bg-card-hover-bg;
   }
 
   .title-hero {
@@ -266,7 +311,7 @@ a {
   }
 
   .eyebrow {
-    @apply text-xs font-semibold uppercase text-accent;
+    @apply text-sm font-bold uppercase tracking-wide text-accent;
   }
 
   .text-link {
@@ -279,6 +324,16 @@ a {
 
   .category-home-link {
     @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-card-bg text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg hover:text-accent;
+  }
+
+  .article-back-link {
+    /* Absolutely positioned against .guide-detail-shell (its own relatively-positioned wrapper —
+       see that class), floating at its top-left instead of reserving a line inside the reading
+       column. An absolutely positioned child's left/top:0 aligns with the shell's OUTER edge
+       (the containing block is the padding box, whose own edges sit outside the padding) — so
+       left/top must mirror .guide-detail-shell's own px-4/py-7 (sm:px-6) padding exactly for the
+       button to visually align with where the shell's actual (padded) content starts. */
+    @apply absolute left-4 top-7 sm:left-6 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-card-bg text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg hover:text-accent;
   }
 
   .control-input {
@@ -317,15 +372,15 @@ a {
   }
 
   .empty-card {
-    @apply rounded-[var(--radius-md)] border border-panel-border bg-card-bg px-3.5 py-3 text-[13px] leading-5 text-muted-fg;
+    @apply rounded-[var(--radius-md)] bg-card-bg px-3.5 py-3 text-[13px] leading-5 text-muted-fg;
   }
 
   .list-row-link {
-    @apply flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-panel-border bg-card-bg px-3.5 py-3 text-[13px] text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg;
+    @apply flex items-center justify-between gap-3 rounded-[var(--radius-md)] bg-card-bg px-3.5 py-3 text-[13px] text-page-fg transition hover:bg-card-hover-bg;
   }
 
   .document-list-item {
-    @apply block rounded-[var(--radius-md)] border border-panel-border bg-card-bg px-3.5 py-3 transition hover:border-accent/30 hover:bg-card-hover-bg;
+    @apply block rounded-[var(--radius-md)] bg-card-bg px-3.5 py-3 transition hover:bg-card-hover-bg;
   }
 
   .document-chip {
@@ -377,7 +432,9 @@ a {
   }
 
   .document-search-button {
-    @apply h-10 w-10;
+    /* Shared "send" style for every search/ask button on the site — see .article-ask-form-button
+       for the full rationale. */
+    @apply h-10 w-10 bg-accent text-white hover:bg-accent-strong;
   }
 
   .link-indicator {
@@ -789,7 +846,7 @@ a {
   }
 
   .home-card {
-    @apply rounded-[var(--radius-lg)] border border-panel-border bg-card-bg;
+    @apply rounded-[var(--radius-lg)] bg-card-bg;
   }
 
   .home-card-padding {
@@ -879,23 +936,93 @@ a {
   }
 
   .article-content {
-    @apply mt-6 text-[13px] leading-6 text-page-fg;
+    @apply mt-6 text-[14px] leading-7 text-page-fg;
   }
 
   .article-layout {
-    @apply grid gap-4 xl:grid-cols-[minmax(0,1fr)_240px];
+    /* Plain single-column grid wrapper — used by pages with no TOC (e.g. ProjectDetailPage).
+       grid-cols-1 gives the column an explicit minmax(0,1fr) track — without it, an implicit
+       grid track sizes to content (max-content) and wide children (e.g. tables) can overflow
+       the page horizontally. Guide/article pages with a TOC use .guide-article-layout instead —
+       do not add TOC-specific behavior here, it would also apply to non-TOC consumers. */
+    @apply grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_240px];
   }
 
-  .article-aside {
-    @apply rounded-[var(--radius-lg)] border border-panel-border bg-panel-bg p-4 xl:sticky xl:top-4 xl:max-h-[calc(100vh-2rem)] xl:self-start xl:overflow-y-auto;
+  .guide-detail-shell {
+    /* ArticlePage/StartingGuidePage are NOT nested under CardLayout's .site-shell (see
+       router.tsx) — they render as direct children of .site-main instead, which has no
+       max-width of its own. That gives this row the full app width to work with, so the TOC can
+       be a genuine right-edge sidebar instead of sharing a max-width-capped, centered container
+       with the rest of the site. relative so .article-back-link can anchor to this shell's own
+       top-left corner. No max-width here is intentional: the TOC is meant to sit at the actual
+       right edge of the app frame, however wide that is, with content centering independently in
+       whatever space remains to its left (see .guide-detail-content). */
+    @apply relative px-4 py-7 sm:px-6;
+  }
+
+  .guide-detail-row {
+    /* Below xl: TOC stacks below the article in normal document flow. At xl+: a genuine
+       two-pane row — .guide-detail-content flexes to fill the remaining width after the fixed-
+       width .guide-detail-toc sidebar. Both are ordinary in-flow flex children: no
+       position:fixed or calc() anywhere in this rule, so there is no viewport-vs-scrollbar-
+       gutter math to get wrong (the repeated bug in earlier attempts at this same layout). */
+    @apply flex flex-col gap-4 pb-32 pt-10 xl:flex-row xl:items-start xl:gap-[var(--article-toc-gap)];
+  }
+
+  .guide-detail-content {
+    /* min-w-0 is required on a flex item that contains wide children (tables, code blocks) —
+       without it a flex item refuses to shrink below its content's intrinsic width and can
+       overflow the row horizontally. */
+    @apply min-w-0 flex-1;
+  }
+
+  .article-body {
+    /* No card background/border — the guide content blends directly into the page background.
+       max-width keeps the reading line length comfortable without boxing the content in.
+       mx-auto centers it within .guide-detail-content's flex-1 width, i.e. within the space to
+       the LEFT of the TOC sidebar — not the full row — even at very wide viewports where that
+       leaves a wide gap before the TOC (the TOC is anchored to the row's actual right edge, not
+       derived from content's position). pt-4 matches .guide-detail-toc-header's own pt-4 so the
+       docType/목차 eyebrow labels line up. */
+    @apply mx-auto w-full max-w-[var(--article-content-width)] pt-4;
+  }
+
+  .guide-detail-toc {
+    /* A fixed-width sidebar column at xl+ — its horizontal position comes entirely from being
+       .guide-detail-row's second flex child, not from any viewport-relative positioning.
+       xl:sticky (not fixed) keeps it visible while scrolling without taking it out of normal
+       flow. xl:top/max-h account for the sticky .site-header's rendered height (~72px) plus a
+       16px gap. Split into a non-scrolling header (label) + separately scrolling nav below —
+       see .guide-detail-toc-header/.guide-detail-toc-scroll for why. */
+    @apply flex flex-col xl:w-[var(--article-toc-width)] xl:flex-shrink-0 xl:sticky xl:top-[88px] xl:max-h-[calc(100vh-104px)] xl:self-start;
+  }
+
+  .guide-detail-toc-header {
+    /* Deliberately OUTSIDE .guide-detail-toc-scroll's overflow-y-auto box, so the "목차" label
+       stays visible even when a long TOC list scrolls internally — previously the label lived
+       inside the same scrolling box as the links, so scrolling to a heading near the bottom of a
+       long TOC could scroll the label itself out of view above the visible area. */
+    @apply shrink-0 px-4 pt-4;
+  }
+
+  .guide-detail-toc-scroll {
+    @apply min-h-0 flex-1 overflow-y-auto px-4 pb-4;
   }
 
   .article-toc {
+    /* Tightened from space-y-1.5 — a long TOC otherwise needs its own scroll (.guide-detail-toc-
+       scroll) far sooner than it should just from inter-item spacing, not actual content length. */
     @apply mt-3 space-y-0.5;
   }
 
   .article-toc-link {
+    /* py-1/leading-5 tightened from py-1.5/leading-6 for the same reason — still comfortably
+       clickable, just without the extra vertical air between entries. */
     @apply block rounded-[var(--radius-md)] px-2 py-1 text-[13px] leading-5 text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
+  }
+
+  .article-toc-link-active {
+    @apply font-semibold text-page-fg;
   }
 
   .article-toc-level-2 {
@@ -934,7 +1061,7 @@ a {
   }
 
   .article-paragraph {
-    @apply mt-3 text-[13px] leading-6 text-page-fg/90;
+    @apply mt-4 text-[14px] leading-7 text-page-fg/90;
   }
 
   .article-content a,
@@ -948,7 +1075,7 @@ a {
   }
 
   .article-list {
-    @apply mt-3 list-disc space-y-1 pl-5 text-[13px] leading-6 text-page-fg/90;
+    @apply mt-3 list-disc space-y-1 pl-5 text-[14px] leading-7 text-page-fg/90;
   }
 
   .article-list-ordered {
@@ -1006,7 +1133,7 @@ a {
   }
 
   .article-table-wrap table {
-    @apply w-full border-collapse text-[13px];
+    @apply w-full border-collapse text-[14px];
   }
 
   .article-table-wrap th,
@@ -1115,14 +1242,36 @@ a {
     @apply text-[14px] font-semibold leading-5 text-page-fg;
   }
 
+  .article-selection-ask-button {
+    /* position:fixed so its top/left (set inline from the selection Range's
+       getBoundingClientRect()) are viewport-relative, independent of scroll. */
+    @apply fixed z-30 inline-flex items-center gap-1.5 rounded-[var(--radius-md)] bg-accent px-3 py-1.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-accent-strong;
+  }
+
   .article-ask {
-    @apply flex cursor-ns-resize flex-col rounded-[var(--radius-lg)] border border-panel-border bg-panel-bg p-2 shadow-sm;
+    @apply flex cursor-ns-resize flex-col rounded-[var(--radius-xl)] border border-panel-border bg-panel-bg p-2 shadow-sm;
   }
 
   .article-ask-dock {
-    @apply sticky bottom-3 z-10 mt-8 w-full;
-    height: var(--article-ask-height, 92px);
+    /* Fixed to the viewport so it never scrolls alongside the guide content underneath it.
+       left/right are both explicit at every breakpoint (never a bare 50%/100vw calc) — this is
+       the same double-anchor technique .guide-detail-row's flex layout uses structurally: with
+       both edges pinned, the box's width resolves against the real visible viewport (matching
+       .guide-detail-shell's own px-4/sm:px-6 padding) instead of the viewport-including-scrollbar
+       width a single 50%-anchor calc would use. mx-auto + max-w then centers the dock within that
+       box to match .article-body's own capped width, instead of stretching edge-to-edge. */
+    @apply fixed bottom-5 z-20 left-4 right-4 mx-auto max-w-[var(--article-content-width)] sm:left-6 sm:right-6;
+    height: var(--article-ask-height, 68px);
     max-height: 420px;
+  }
+
+  @media (min-width: 1280px) {
+    .article-ask-dock {
+      /* Reserves the same TOC footprint (width + gap) that .guide-detail-row's flex layout gives
+         .guide-detail-toc, so the dock's available box still spans exactly .guide-detail-content's
+         width — mx-auto then centers the capped-width dock within that box, same as below xl. */
+      right: calc(1.5rem + var(--article-toc-width) + var(--article-toc-gap));
+    }
   }
 
   .article-ask-turns {
@@ -1142,11 +1291,20 @@ a {
   }
 
   .article-ask-form {
-    @apply mt-auto cursor-default rounded-[var(--radius-md)] border border-panel-border bg-page-bg p-2;
+    /* No border and no background here — .article-ask already frames the whole panel with its
+       own background, so the form shares that same surface instead of reading as a second nested
+       box (a prior version gave this its own bg-page-bg, which still looked like a box-inside-a-box
+       even without a border). One flat surface, one input area. */
+    @apply mt-auto cursor-default rounded-[var(--radius-md)] p-2;
   }
 
   .article-ask-form-textarea {
-    @apply min-h-[56px] w-full border-0 bg-transparent px-2 py-1.5 text-[14px] leading-6 text-page-fg outline-none placeholder:text-subtle-fg;
+    /* min-h matches minRows=1 (leading-6=24px + py-1.5=12px) — this is a floor for before/without
+       PromptComposer's JS-computed inline height, so it must track minRows here, not be left over
+       from an earlier value. A stale larger floor here previously forced the textarea (and the
+       whole form/button under it) taller than .article-ask's own budgeted height, overflowing
+       past its rounded bottom edge. */
+    @apply min-h-[36px] w-full border-0 bg-transparent px-2 py-1.5 text-[14px] leading-6 text-page-fg outline-none placeholder:text-subtle-fg;
     font-family: var(--font-body);
     font-size: 14px !important;
   }
@@ -1156,6 +1314,9 @@ a {
   }
 
   .article-ask-form-button {
+    /* Shared "send" style for every search/ask button on the site (same bg-accent + icon as
+       .home-search-button/.chat-input-bar-button/.document-search-button) — one distinct SFOOD
+       icon and one brand-red background everywhere, instead of each button picking its own. */
     @apply h-10 w-10 bg-accent text-white hover:bg-accent-strong;
   }
 
@@ -1370,7 +1531,7 @@ a {
   }
 
   .chat-structured-answer a {
-    @apply shadow-[inset_0_0_0_1px_rgba(228,0,43,0.04)];
+    @apply shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_4%,transparent)];
   }
 
   .chat-search-shell {
@@ -1411,7 +1572,7 @@ a {
   }
 
   .chat-message-user {
-    @apply ml-auto max-w-2xl bg-accent text-white;
+    @apply ml-auto max-w-2xl rounded-full bg-accent-soft text-page-fg;
   }
 
   .chat-message-user p {
@@ -1431,7 +1592,7 @@ a {
   }
 
   .chat-guide-spotlight {
-    @apply rounded-[var(--radius-lg)] border border-panel-border bg-card-bg px-4 py-4;
+    @apply rounded-[var(--radius-lg)] bg-card-bg px-4 py-4;
   }
 
   .chat-guide-spotlight h2 {
@@ -1592,7 +1753,9 @@ a {
   }
 
   .chat-input-bar-button {
-    @apply text-[18px];
+    /* Shared "send" style for every search/ask button on the site — see .article-ask-form-button
+       for the full rationale. */
+    @apply text-[18px] bg-accent text-white hover:bg-accent-strong;
   }
 
   .chat-input-bar-button svg {
@@ -1617,7 +1780,9 @@ a {
   }
 
   .home-search-button {
-    @apply text-[18px];
+    /* Shared "send" style for every search/ask button on the site — see .article-ask-form-button
+       for the full rationale. */
+    @apply text-[18px] bg-accent text-white hover:bg-accent-strong;
   }
 
   .home-primary-button {
@@ -1649,11 +1814,11 @@ a {
   }
 
   .home-guide-card {
-    @apply relative flex min-h-[104px] items-start gap-3 rounded-[var(--radius-lg)] border border-panel-border bg-card-bg px-3 py-3 text-left transition hover:border-accent/30 hover:bg-card-hover-bg;
+    @apply relative flex min-h-[104px] items-start gap-3 rounded-[var(--radius-lg)] bg-card-bg px-3 py-3 text-left transition hover:bg-card-hover-bg;
   }
 
   .home-guide-card-featured {
-    @apply min-h-[92px] border-accent/20 bg-accent-soft px-4 py-4;
+    @apply min-h-[92px] border border-panel-border bg-card-bg px-4 py-4;
   }
 
   .home-guide-card-icon {
@@ -1661,7 +1826,7 @@ a {
   }
 
   .home-guide-card-icon-featured {
-    @apply h-9 w-9 border-accent/30 bg-card-bg;
+    @apply h-9 w-9 bg-panel-bg;
   }
 
   .home-guide-card-copy {
@@ -1708,31 +1873,6 @@ a {
     @apply mt-0.5 block text-[11px] leading-4 text-muted-fg;
   }
 
-  .home-blueprint {
-    @apply flex flex-col gap-4 rounded-[var(--radius-lg)] border border-cta-bg bg-cta-bg px-4 py-4 text-cta-fg sm:flex-row sm:items-center sm:justify-between;
-  }
-
-  .home-blueprint-title {
-    @apply text-[15px] font-bold text-cta-fg;
-  }
-
-  .home-blueprint-body {
-    @apply mt-1 text-[13px] leading-5 text-cta-muted-fg;
-  }
-
-  .home-blueprint-button {
-    @apply inline-flex w-fit items-center justify-center rounded-[var(--radius-md)] px-3 py-2 text-[13px] font-bold transition hover:bg-accent-soft;
-    background: var(--blueprint-button-bg);
-    color: var(--blueprint-button-fg);
-  }
-
-  .home-blueprint-button-label {
-    color: #54585A;
-  }
-
-  :root[data-theme="dark"] .home-blueprint-button-label {
-    color: #ffffff;
-  }
 }
 
 @keyframes chat-spin {

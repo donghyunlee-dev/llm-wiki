@@ -42,6 +42,16 @@ export function getWikiDocumentHref(document: WikiDocument): string | null {
   return section ? `/${section}/${document.slug}` : null;
 }
 
+/**
+ * Strips a leading "[Type]" bracket prefix (e.g. "[Guide]", "[FAQ]") from a document title.
+ * Confluence authors use this prefix for editorial sorting, but the UI already shows the
+ * document type separately (docType badge/eyebrow), so displaying it a second time in the
+ * title reads as a duplicate.
+ */
+export function stripTitleTypePrefix(title: string): string {
+  return title.replace(/^\[[^\]]+\]\s*/, "");
+}
+
 type RankedSearchDocument = {
   document: WikiDocument;
   score: number;

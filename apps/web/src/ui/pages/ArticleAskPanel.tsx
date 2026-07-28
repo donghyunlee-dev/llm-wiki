@@ -1,16 +1,18 @@
 import {
+  forwardRef,
   startTransition,
   useEffect,
+  useImperativeHandle,
   useRef,
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { Link } from "react-router-dom";
-import { getWikiDocumentByIdFrom, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
+import { getWikiDocumentByIdFrom, getWikiDocumentHref, stripTitleTypePrefix, type WikiDocument } from "@sfood/wiki-core";
 import { getPolicyNoticeMessage, shouldShowPolicyNotice } from "../../lib/policyNotice";
 import { StructuredAnswerView } from "../StructuredAnswerView";
-import { PromptComposer } from "../PromptComposer";
+import { PromptComposer, type PromptComposerHandle } from "../PromptComposer";
 
 type AskResult = {
   answer: string;
@@ -45,22 +47,34 @@ type AskTurn = {
   errorMessage?: string;
 };
 
-const COLLAPSED_HEIGHT = 92;
+const COLLAPSED_HEIGHT = 68;
 const EXPANDED_HEIGHT = 320;
 
-export function ArticleAskPanel({
-  documents,
-  initialQuestion = "",
-  pageId,
-}: {
-  documents: WikiDocument[];
-  initialQuestion?: string;
-  pageId: string;
-}) {
+export type ArticleAskPanelHandle = {
+  fillAndFocus: (text: string) => void;
+};
+
+export const ArticleAskPanel = forwardRef<
+  ArticleAskPanelHandle,
+  {
+    documents: WikiDocument[];
+    initialQuestion?: string;
+    pageId: string;
+  }
+>(function ArticleAskPanel({ documents, initialQuestion = "", pageId }, ref) {
   const [question, setQuestion] = useState(initialQuestion);
   const [turns, setTurns] = useState<AskTurn[]>([]);
   const [panelHeight, setPanelHeight] = useState(COLLAPSED_HEIGHT);
   const turnsRef = useRef<HTMLDivElement | null>(null);
+  const promptComposerRef = useRef<PromptComposerHandle | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    fillAndFocus: (text: string) => {
+      setQuestion(text);
+      setPanelHeight((height) => Math.max(height, EXPANDED_HEIGHT));
+      promptComposerRef.current?.focus();
+    },
+  }), []);
 
   useEffect(() => {
     if (turnsRef.current) {
@@ -106,7 +120,7 @@ export function ArticleAskPanel({
     ]);
 
     try {
-      const response = await fetch("/api/wiki/ai/ask", {
+      const response = await fetch(import.meta.env.VITE_AI_ASK_ENDPOINT?.trim() || "/api/wiki/ai/ask", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -193,6 +207,7 @@ export function ArticleAskPanel({
       ) : null}
 
       <PromptComposer
+        ref={promptComposerRef}
         value={question}
         onValueChange={setQuestion}
         onSubmit={submitQuestion}
@@ -202,14 +217,24 @@ export function ArticleAskPanel({
         ariaLabel="문서 질문"
         buttonAriaLabel="질문 전송"
         buttonTitle="질문 전송"
-        minRows={2}
+        minRows={1}
         maxRows={7}
         placeholder="이 문서에서 궁금한 내용을 입력하세요"
-        buttonIcon={<SendIcon />}
+        buttonIcon={(
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-4 w-4">
+            <path
+              d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
+              stroke="currentColor"
+              strokeWidth="1.7"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
       />
     </section>
   );
-}
+});
 
 function ArticleAskLoading() {
   return (
@@ -252,7 +277,7 @@ function ArticleAskResult({
             <div className="answer-policy-sources" aria-label="정책 원천 페이지">
               {result.policyNotice.sources.map((source) => (
                 <a key={source.id} href={source.href} target="_blank" rel="noreferrer">
-                  {source.title}
+                  {stripTitleTypePrefix(source.title)}
                 </a>
               ))}
             </div>
@@ -275,11 +300,11 @@ function ArticleAskResult({
                 <li key={`${item.pageId}-${item.reason}`}>
                   {document ? (
                     <Link className="article-link-card" to={getWikiDocumentHref(document) ?? "#"} target="_blank" rel="noreferrer">
-                      <strong>{item.title}</strong>
+                      <strong>{stripTitleTypePrefix(item.title)}</strong>
                     </Link>
                   ) : (
                     <div className="article-link-card">
-                      <strong>{item.title}</strong>
+                      <strong>{stripTitleTypePrefix(item.title)}</strong>
                     </div>
                   )}
                 </li>
@@ -292,17 +317,3 @@ function ArticleAskResult({
   );
 }
 
-function SendIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20">
-      <path
-        d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
-        fill="none"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.7"
-      />
-    </svg>
-  );
-}

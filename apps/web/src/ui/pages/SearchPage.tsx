@@ -1,4 +1,4 @@
-import { buildSearchFollowUpQuestion } from "@sfood/wiki-core";
+import { buildSearchFollowUpQuestion, stripTitleTypePrefix } from "@sfood/wiki-core";
 import { startTransition, useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
@@ -75,6 +75,8 @@ export function SearchPage() {
   const [showEmptyHint, setShowEmptyHint] = useState(false);
   const emptyHintTimerRef = useRef<number | null>(null);
   const requestedQuestionsRef = useRef(new Set<string>());
+  const turnRefs = useRef(new Map<string, HTMLDivElement>());
+  const lastScrolledTurnRef = useRef<{ id: string; status: SearchConversationItem["status"] } | null>(null);
 
   useEffect(() => {
     setDraftQuestion("");
@@ -114,7 +116,7 @@ export function SearchPage() {
       },
     ]);
 
-    void fetch("/api/wiki/ai/search", {
+    void fetch(import.meta.env.VITE_AI_SEARCH_ENDPOINT?.trim() || "/api/wiki/ai/search", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -156,6 +158,24 @@ export function SearchPage() {
         );
       });
   }, [documents, errorMessage, isLoading, query]);
+
+  useEffect(() => {
+    const lastItem = conversation[conversation.length - 1];
+    if (!lastItem) {
+      return;
+    }
+
+    const alreadyScrolled =
+      lastScrolledTurnRef.current?.id === lastItem.id &&
+      lastScrolledTurnRef.current?.status === lastItem.status;
+    if (alreadyScrolled) {
+      return;
+    }
+
+    lastScrolledTurnRef.current = { id: lastItem.id, status: lastItem.status };
+    const turnElement = turnRefs.current.get(lastItem.id);
+    turnElement?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [conversation]);
 
   const triggerEmptyHint = useCallback(() => {
     setShowEmptyHint(true);
@@ -222,7 +242,17 @@ export function SearchPage() {
           const faqDocuments = [...aiFaqDocuments, ...directFaqDocuments.filter((d) => !faqSeenIds.has(d.id))];
 
           return (
-            <div className="chat-turn" key={item.id}>
+            <div
+              className="chat-turn"
+              key={item.id}
+              ref={(element) => {
+                if (element) {
+                  turnRefs.current.set(item.id, element);
+                } else {
+                  turnRefs.current.delete(item.id);
+                }
+              }}
+            >
               <div className="chat-message chat-message-user">
                 <p>{item.question}</p>
               </div>
@@ -273,8 +303,13 @@ export function SearchPage() {
               maxRows={8}
               buttonIcon={(
                 <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
-                  <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" strokeWidth="1.6" />
-                  <path d="M13 13L16.5 16.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  <path
+                    d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
+                    stroke="currentColor"
+                    strokeWidth="1.7"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
                 </svg>
               )}
             />
@@ -420,7 +455,7 @@ function PolicyNoticeView({
         <div className="answer-policy-sources" aria-label="정책 원천 페이지">
           {policyNotice.sources.map((source) => (
             <a key={source.id} href={source.href} target="_blank" rel="noreferrer">
-              {source.title}
+              {stripTitleTypePrefix(source.title)}
             </a>
           ))}
         </div>
@@ -477,7 +512,7 @@ function SearchResultSummary({
       {documents.map((document) => (
         <li key={document.id}>
           <Link className="chat-guide-card" to={document.href} target="_blank" rel="noreferrer">
-            <strong>{document.title}</strong>
+            <strong>{stripTitleTypePrefix(document.title)}</strong>
           </Link>
         </li>
       ))}

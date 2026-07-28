@@ -4,9 +4,7 @@ export function CardLayout() {
   return (
     <div className="flex-1 bg-page-bg">
       <div className="site-shell">
-        <div className="site-surface">
-          <Outlet />
-        </div>
+        <Outlet />
       </div>
     </div>
   );

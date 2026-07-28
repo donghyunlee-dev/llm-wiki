@@ -16,6 +16,86 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-27 — AWS 배포(S3+CloudFront+Lambda) 워크플로우, AI 질문/검색 로직 wiki-core 추출
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 사용자가 S3/CloudFront 배포 + GitHub Actions 자동배포를 요청. 3차례 명확화 문답을 거쳐 최종 스코프 확정 — AI 질문/검색은 메인 기능이라 반드시 실사용 가능해야 함(Lambda로 신규 배포), Projects/GitHub 연동은 배제 및 숨김, Lambda는 1회성 신규 생성, OpenAI 키는 기존 값 재사용.
+- 구현: `apps/web/vite.config.ts`의 `/api/wiki/ai/ask`·`/api/wiki/ai/search` dev 미들웨어 로직(~530줄)을 `packages/wiki-core/src/lib/aiOrchestration.ts`의 트랜스포트-비의존 함수(`handleAiAskRequest`/`handleAiSearchRequest`)로 추출 — `architecture.md`의 "Frontend-First Runtime Policy"를 그대로 따름. `vite.config.ts`는 이 함수를 호출하는 얇은 어댑터로 축소(로컬 dev 동작 불변, 실제 Confluence/OpenAI 자격증명으로 라이브 스모크 테스트 확인). `packages/serverless`에 `aiAskHandler`/`aiSearchHandler` Lambda 핸들러 2개 신규 추가(기존 `wikiPagesHandler` 유지) + esbuild 빌드 스크립트/3개 엔트리포인트. `.github/workflows/deploy.yml` 신규 — S3 동기화+CloudFront invalidation, 3개 Lambda 코드 업데이트, 액세스 키 시크릿 인증. 배포된 정적 사이트가 실제 Lambda Function URL을 호출하도록 `VITE_AI_ASK_ENDPOINT`/`VITE_AI_SEARCH_ENDPOINT` 빌드타임 env var 추가(구현 중 발견한 갭 — 상대 경로는 dev 전용이라 정적 배포본에서는 동작하지 않았을 것). Projects/GitHub 기능은 grep으로 이미 모든 내비게이션 표면에서 링크가 없음을 확인 — 코드 변경 불필요.
+- Codex 크리티컬 리뷰(6c)에서 5건 발견 및 수정: (High) `pnpm-lock.yaml` 미스테이징으로 `--frozen-lockfile` 설치 실패 위험 → 스테이징. (Medium) `vite.config.ts` 어댑터가 원래의 try/catch 에러 응답을 누락 → 복원. (Medium) Lambda 핸들러가 `JSON.parse("null")`을 통과시켜 런타임 에러 위험 → non-null-object 가드 추가 + 회귀 테스트. (Medium) CORS만으로는 비-브라우저 클라이언트 직접 호출을 막지 못함 → 기존 `wikiPagesHandler` 선례와 동일한 것으로 확인, spec.md에 알려진 리스크로 명시. (Low) 빈 문자열 env var일 때 폴백 미적용 → `?.trim() || fallback`으로 수정.
+- 검증: `pnpm -r typecheck`/`test`(316개) 통과, `packages/serverless build` 3개 번들 생성 확인, 실제 자격증명으로 `/api/wiki/ai/ask`·`/api/wiki/ai/search` 라이브 스모크 테스트(정상 케이스+에러 케이스 모두)로 추출 무결성 확인. AWS 실제 리소스 생성/첫 배포는 사용자의 AWS 계정이 필요해 이번 세션 범위 밖 — `aws-setup-guide.md`에 1회성 수동 절차로 문서화.
+- 태스크 문서: `docs/tasks/aws-static-site-and-ai-api-deployment/`(spec/plan/tasks/test-result/result/aws-setup-guide).
+
+### 2026-07-27 — 가이드 상세 페이지 레이아웃 재구조화 (3차, flex 기반 — TOC/site-shell 완전 분리, 목차 라벨 버그, blueprint 숨김, 접두어 필터 보완)
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 직전 두 차례(`docs/tasks/guide-page-toc-sidebar-refresh/`) 모두 `position:fixed`+뷰포트 계산식을 사용해 스크롤바 폭 오차를 반복 유발. 사용자가 "벌써 3번째 반복"이라며 5개 항목(TOC 우측 사이드 패널 재구성, 목차 라벨 스크롤 버그, Ask 버튼 위치, 홈 blueprint 숨김, `[Type]` 접두어 공통 필터)을 정밀하게 재요청, Playwright+Codex 이중 검증을 명시적으로 요구.
+- 구현(근본 원인 제거): `ArticlePage`/`StartingGuidePage`를 `CardLayout`(공용 `site-shell`, max-w-6xl) 밖 — `AppLayout`의 직계 자식으로 재배치(`SearchPage`와 동일 선례). 이 전체 폭 위에서 순수 flex 2단 레이아웃(`.guide-detail-shell > .guide-detail-row > .guide-detail-content(flex-1) + .guide-detail-toc(xl:sticky, 고정폭)`)으로 재구성 — 계산식이 전혀 없어 스크롤바 오차가 원천적으로 발생하지 않음. "목차" 라벨을 내부 스크롤 박스 밖의 별도 헤더로 분리해 긴 목차 스크롤 시 라벨이 사라지는 버그를 구조적으로 수정(Playwright로 뷰포트 높이를 좁혀 강제 재현 후 확인). Ask 도크/뒤로가기 버튼은 양쪽 anchor 명시+mx-auto 패턴으로 재계산. 홈 화면 blueprint(`ProjectDesignCta`) 렌더 제거 및 데드 코드/텍스트 헬퍼(`homeContent.ts`) 정리. `[Type]` 접두어 stripping을 문서 내 인라인 링크/그래프 포커스바/정책 출처 링크에 추가 적용(표시 텍스트만, href/매칭 로직 불변).
+- Codex 크리티컬 리뷰(라우팅 정확성, flex 박스 모델, sticky 동작, Ask 도크 cascade, 접두어 stripping이 표시 전용인지 전부 확인) — 2건 발견(데드 `.home-blueprint*` CSS, `homeContent.ts`의 검증 헬퍼가 숨겨진 텍스트를 여전히 포함) 즉시 반영.
+- 검증: `pnpm test`(web 68/wiki-core 171)/`typecheck`/`build` 통과. Playwright로 1280/1920/800/390px + 라이트·다크, `/guides/map` 라우팅 충돌 없음, 텍스트 선택→질문하기 정상 동작, 홈 blueprint 미노출까지 확인.
+- 태스크 문서: `docs/tasks/guide-page-detail-layout-rearchitecture/`(spec/plan/tasks/test-result/result).
+
+### 2026-07-27 — 가이드 페이지 컨텐츠 재중앙정렬(TOC 제외 영역 기준), 뒤로가기 버튼 site-shell 정렬 (2차 재검토 수정)
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 바로 이전 항목("TOC 구조적 분리")의 구현을 사용자가 재검토한 결과, TOC를 `xl:fixed`로 분리하면서 컨텐츠가 "TOC 제외 영역"이 아니라 "뷰포트 전체" 기준으로 중앙 정렬되어 버리는 회귀를 지적 — 최초 요청("목차 왼쪽 영역에서 중앙 정렬")과 어긋남. "목록으로 돌아가기" 버튼도 `page-shell`의 추가 패딩 때문에 다른 페이지 컨텐츠 시작 위치와 어긋나 어색하게 떠 보인다는 지적도 함께 받음.
+- 구현: `.guide-article-layout`에 `xl:pr-[calc(toc폭+gap)]`을 추가해 컨텐츠 컨테이너 우측에 TOC 자리를 예약, `.article-body`의 `mx-auto`가 TOC 제외 영역에서 자연 중앙 정렬되도록 복원. `.article-aside`/`.article-ask-dock`의 `left` 계산식을 이 오프셋에 맞춰 재도출(세 규칙 상호 일치, Codex가 수식 검증). "목록으로 돌아가기" 버튼을 `page-shell` 밖으로 꺼내 `.site-shell`(모든 라우트가 공유하는 프레임, 신규 `position: relative`)의 직계 자식으로 이동, `.site-shell` 자신의 패딩과 동일한 값(`left-3 top-3 sm:left-5 sm:top-5`)으로 재배치해 다른 페이지 컨텐츠 시작 위치와 픽셀 단위로 일치시킴.
+- Codex 크리티컬 리뷰에서 발견: `GuidesPage.tsx`가 TOC 헤딩이 없는 경우에도 `.guide-article-layout`(TOC 공간 예약)을 그대로 써서 존재하지 않는 TOC를 위한 공간이 남는 문제 → `hasToc` 조건부 클래스 적용으로 수정.
+- 사용자가 보고한 "TOC 스크롤 다운 후 업 시 텍스트 안 보임" 버그는 프로그램적/시뮬레이션 스크롤, 클릭+스크롤, 라이트/다크 조합으로 재현을 시도했으나 재현하지 못함 — 추가 재현 조건 확인 필요(미해결로 남김, 은폐하지 않고 명시).
+- 검증: `pnpm typecheck`/`test`(17 files/68 tests)/`build` 통과. Playwright로 1280/800/390px + 라이트·다크에서 컨텐츠/Ask도크/TOC/뒤로가기 버튼의 실측 좌표가 새 수식과 정확히 일치함을 확인.
+- 태스크 문서: `docs/tasks/guide-page-toc-sidebar-refresh/result.md`("추가 수정 (2026-07-27, 2차)" 섹션).
+
+### 2026-07-27 — 가이드 페이지 TOC 구조적 분리(page-shell 밖으로), 검색창 단일 레이어화 (재검토 수정)
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 사용자가 같은 날 앞서 완료한 `docs/tasks/guide-page-toc-sidebar-refresh/` 구현을 실제 화면에서 재검토한 뒤, 지시("page-shell에서 목차를 빼라", "검색을 하나의 div로 심플하게")가 문자 그대로 반영되지 않았다고 지적 — 이전 구현은 TOC를 같은 그리드 안에 두고 보더/간격만 추가했고, Ask 패널은 보더만 없앴지 배경색 차이로 인한 "박스 안의 박스"가 남아 있었음. Playwright로 직접 재확인해 두 문제 모두 실제로 남아있음을 검증한 뒤 수정.
+- 구현: `.article-aside`(TOC)를 `xl:fixed`로 전환해 `.page-shell`/`.page-width` 컨테이너 밖 좌표계에서 화면 우측에 독립적으로 고정(신규 `.guide-article-layout` 단일 컬럼 그리드 + `--article-content-width` 공유 토큰 기반 `left` 앵커링). `.article-ask-form`의 남은 배경색 차이를 제거해 Ask 패널을 완전한 단일 표면으로 통일. 컨텐츠는 TOC 유무와 무관하게 모든 브레이크포인트에서 뷰포트 정중앙 정렬.
+- Codex 크리티컬 리뷰에서 발견: (1) `.article-layout` 클래스가 TOC 없는 `ProjectDetailPage`에도 재사용되고 있어, 그리드 변경이 그 페이지에 의도치 않게 영향을 줄 뻔함 → `.article-layout`(원래 정의로 복원, `ProjectDetailPage` 전용)과 `.guide-article-layout`(신규, TOC 있는 페이지 전용)로 분리. (2) 1280~1300px 부근에서 `fixed` 요소의 `50%` 계산이 스크롤바 거터를 포함한 뷰포트 폭을 참조해 TOC가 실제 컨텐츠 영역보다 몇 px 밖으로 밀려날 수 있음(Playwright로 1280px 실측 7px 확인) → `min()` 클램프로 보정.
+- 검증: `pnpm test`(17 files/68 tests)/`typecheck`/`build` 통과. Playwright로 1280px(경계, 클램프 확인)/1920px(클램프 미개입 확인)/800px(태블릿)/390px(모바일) + 라이트·다크 + 스크롤 중 TOC 고정 유지 + `StartingGuidePage` 재확인 + 합성 DOM으로 `.article-layout`(원래 2-컬럼 그리드 복원) 확인.
+- 태스크 문서: `docs/tasks/guide-page-toc-sidebar-refresh/result.md`("추가 수정" 섹션).
+
+### 2026-07-27 — 가이드 문서 텍스트 선택 → 질문하기 기능 추가
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 직전 태스크(`docs/tasks/guide-page-toc-sidebar-refresh/`)에서 사용자가 함께 요청했으나 새 인터랙션 기능이라 별도 스코프로 분리하기로 합의 — brainstorming → writing-plans → subagent-driven-development 전체 프로세스로 진행(설계 `docs/superpowers/specs/2026-07-27-guide-text-selection-ask-design.md`, 계획 `docs/superpowers/plans/2026-07-27-guide-text-selection-ask.md`).
+- 구현(Task 1-4, 각 태스크마다 spec-compliance + code-quality 2단계 subagent 리뷰 수행): `PromptComposer.tsx`/`ArticleAskPanel.tsx`를 `forwardRef`로 전환해 각각 `focus()`/`fillAndFocus(text)` imperative handle 노출. 신규 `ArticleSelectionAskButton.tsx` — 본문(`.article-body`) 내 텍스트 선택 시 플로팅 "질문하기" 버튼을 위/아래 자동 배치로 표시, 500자 초과 선택은 트렁케이트, 스크롤/바깥클릭/Escape/선택해제 시 dismiss. `ArticlePage.tsx`가 `articleRef`/`askPanelRef`로 둘을 연결 — `ArticleContentRenderer`는 이 기능을 전혀 모름.
+- Codex 크리티컬 리뷰(6c)에서 실제 버그 2건 발견 및 수정: (1) 버튼 클릭 시 mousedown이 브라우저의 텍스트 선택 collapse를 유발해 클릭이 유실될 수 있는 문제 → `onMouseDown`에 `preventDefault()` 추가로 해결. (2) `window` 스크롤만 감지해 코드블록/표 등 내부 스크롤 컨테이너 스크롤 시 버튼이 stale 좌표에 남는 문제 → `document` 캡처 단계 `scroll` 리스너로 교체.
+- 검증: `pnpm test`(17 files/68 tests)/`typecheck`/`build` 통과. Playwright로 실제 브라우저 마우스 클릭(합성 이벤트 아님)으로 선택→버튼→클릭→Ask 인풋 채움/포커스 확인, 라이트/다크, 데스크톱(1280px)/모바일(390px), 컨테이너 바깥 선택 시 버튼 미노출, 코드블록 내부 스크롤 dismiss까지 재확인.
+- 태스크 문서: `docs/tasks/guide-page-text-selection-ask/`(spec/plan/tasks/test-result/result).
+
+### 2026-07-27 — 가이드 페이지 TOC 우측 분리, 컨텐츠 정렬, Ask 패널 폭 정렬/이중 보더 제거
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 사용자가 "TOC를 우측 사이드 패널로 명확히 분리하고, 컨텐츠는 그 왼쪽 영역 안에서 중앙 정렬, 하단 플로팅 검색창은 컨텐츠 폭에 맞추고 이중 보더/큰 높이/각진 라운드를 개선"해 달라고 요청 — spec-driven-workflow에 따라 `docs/tasks/guide-page-toc-sidebar-refresh/`에 spec.md/plan.md 작성 후 승인받고 구현.
+- 구현: `.article-layout`(`ArticlePage.tsx`/`GuidesPage.tsx`의 `StartingGuidePage` 공유)의 xl 그리드 gap을 새 토큰 `--article-toc-gap`(2rem)으로 확대하고, `.article-aside`(TOC)에 `xl:border-l xl:border-panel-border-soft`(중립 톤, "no colored accent bar" 원칙 준수)를 추가해 시각적 분리를 명확히 함. `.article-ask-dock`은 `--article-toc-width`/`--article-toc-gap` 공유 토큰 기반 `left: calc(50% - (toc폭+gap)/2)` + `transform: translateX(-50%)`로 재계산해 컨텐츠 컬럼(`.article-body`)과 폭·중심을 픽셀 단위로 일치시킴. `.article-ask-form`의 중복 보더 제거(바깥 `.article-ask` 프레임만 유지), `.article-ask` 라운드를 `--radius-lg`→`--radius-xl`로, `ArticleAskPanel.tsx`의 `COLLAPSED_HEIGHT`를 92px→68px(PromptComposer `minRows` 2→1)로 축소.
+- 아웃오브스코프(사용자 확인): 문서 본문 텍스트 드래그 선택 → 컨텍스트 메뉴 → "질문하기" → Ask 인풋 포커스 이동 기능은 새 인터랙션 기능이라 이번 스코프에서 제외, 별도 세션에서 브레인스토밍부터 진행 예정.
+- 검증: `pnpm --filter @sfood/web typecheck`/`test`(56 통과)/`build` 통과. Playwright로 데스크톱(1280x900) 라이트·다크, 모바일(390x844, 가로 스크롤 없음 확인), Ask 패널 확장 상태(질문 1건 등록 후 정렬 유지)까지 확인 — `.article-body`/`.article-ask-dock`의 `getBoundingClientRect()`가 동일 좌표(`left:119 / right:879`)로 일치함을 확인.
+- Codex 크리티컬 리뷰(6c)에서 `sm`(640px)~`xl`(1280px) 사이 구간에서 Ask 패널 폭이 `.article-body`보다 넓어지는 문제를 지적 — `.article-body`는 `.site-shell`(px-3/sm:px-5)과 `.page-shell`(px-4/sm:px-6) 두 겹 패딩을 거치는데 기존 dock 폭 계산이 `.page-shell` 패딩만 반영했던 것이 원인. 두 레이어 합산 인셋 기준(`base: calc(100%-3.5rem)`, `sm: calc(100%-5.5rem)`)으로 재계산해 639/800/1280/390px 4개 뷰포트 전부에서 `.article-body`/`.article-ask-dock` 좌표 일치를 재확인.
+- 태스크 문서: `docs/tasks/guide-page-toc-sidebar-refresh/`(spec/plan/tasks/test-result/result).
+
+### 2026-07-27 — 가이드 문서 페이지 후속 수정 (full-bleed 본문, 하단 고정 Ask 도크, 얇은 스크롤바)
+- 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
+- 배경: 사용자가 개편된 가이드 문서 페이지가 여전히 이전 디자인과 "거의 비슷"하다고 지적 — 본문(`.page-panel`)이 border/shadow는 제거됐지만 여전히 별도 배경색+둥근 모서리로 카드처럼 보였음.
+- 구현: `.article-body`(신규, `.page-panel` 대체) — 배경/모서리 없이 페이지와 동화, 읽기 최대폭(760px) 유지. `ArticlePage.tsx`/`GuidesPage.tsx`의 `StartingGuidePage` 양쪽 적용. `ArticleAskPanel`을 그리드 밖으로 옮기고 `.article-ask-dock`을 `sticky`→`fixed inset-x-0 bottom-5`(하단 중앙 고정, 검색 페이지 `.chat-input-dock`과 동일 패턴)로 변경. 전역 얇은 스크롤바(hover/focus 시에만 보임) 추가.
+- 부수 발견/수정: `.article-layout`이 `xl` 미만에서 명시적 grid-template-columns이 없어 넓은 표가 있는 문서에서 모바일 가로 스크롤 발생 — `grid-cols-1` 추가로 수정(사전 존재 버그, 이번 회귀 아님).
+- 검증: `pnpm test`/`typecheck`/`build` 통과, Playwright 라이트/다크 + 모바일(390px) 확인.
+- 커밋: `c2ba613`. 태스크 문서: `docs/tasks/notion-style-ui-refresh/result.md`(Follow-up 섹션).
+
+### 2026-07-24 — Notion/Linear 스타일 UI 개편 (구현 + 검증 완료, Codex 리뷰만 보류)
+- 브랜치: `feature/sfood-design-system-tone`(직전 세션과 동일 브랜치에서 이어서 작업).
+- 배경: 직전 세션에서 `@sfood/ui` 브랜드 컬러 스케일을 `#d65050`(코랄 레드)로 갱신 반영한 위에서, 사용자가 지적한 잔여 문제(가이드 문서 구식 스타일, TOC 폰트/간격/줄바꿈 불편, 배경-패널 구분 방식이 구식, 낯선 톤)를 브레인스토밍(3안 중 Notion/Linear 미니멀 A안 선택)으로 해결.
+- 구현(Task 1-6, subagent-driven-development로 각 태스크마다 spec-compliance + code-quality 2단계 리뷰 수행, 발견된 3건 회귀 즉시 수정):
+  - `.page-panel`/`.home-card`/`.home-guide-card`/`.article-aside`(TOC)/`.chat-guide-spotlight`/`.empty-card` 등 패널·카드에서 `border`/`box-shadow` 제거, 배경 톤 차이만으로 구분(버튼/입력 등 기능 컨트롤은 테두리 유지).
+  - 홈 "시작 가이드" 카드의 좌측 액센트/브랜드 틴트를 중립 1px 테두리(`border-panel-border`+`bg-card-bg`)로 교체 — 좌측 액센트 바 패턴 전면 제거(최초 배경-톤-only 시도는 라이트모드 시인성 저하로 리뷰에서 반려, 재수정).
+  - 본문/TOC/리스트/테이블 타이포그래피·여백 확대(13px→14px, `leading-6`→`leading-7`, TOC 간격 확대로 긴 제목 2줄 줄바꿈 여유 확보).
+  - `/guides` 목록을 카드형에서 신규 `.document-list`(divider) 클래스 기반 리스트로 전환. `.document-list-item`은 `.document-list` 내부에서만 divider 스타일이 적용되도록 스코프(최초 전역 변경은 `/projects` 등 다른 화면의 시각적 구분을 없애는 회귀로 리뷰에서 발견, 재수정). `guide` docType only 필터(Frozen Behavior)는 불변.
+  - `ArticlePage.tsx`와 `/guides/agent-start`를 담당하는 별도 컴포넌트 `StartingGuidePage` 양쪽에 `IntersectionObserver` 기반 TOC scroll-spy 추가, 활성 항목은 `.article-toc-link-active`(텍스트 색상+semibold만, 막대 없음)로 표시. `StartingGuidePage` 쪽은 계획에 없었으나 Task 8 Playwright 검증 중 "TOC 클릭해도 활성 표시 안 됨" 버그로 발견 — 라우터 확인 결과 별도 컴포넌트임을 파악해 동일 로직 이식.
+  - 검색 페이지 사용자 질문 말풍선(`.chat-message-user`)을 솔리드 브랜드 블록에서 연한 pill(`rounded-full bg-accent-soft`)로 교체.
+- 검증(Task 8): `pnpm test`(wiki-core 168/web 55/edge-sidebar 21/mcp-server 36/serverless 5) 통과, `pnpm typecheck` 전체 통과, `pnpm --filter @sfood/web build` 통과. Playwright MCP로 홈/검색/`/guides`/문서 상세 4개 화면 × 라이트·다크 + 모바일(390x844) 확인. **Codex 비판 리뷰는 사용량 한도(2026-07-29 재시도 가능)로 이번 세션에서 수행 불가** — `docs/tasks/notion-style-ui-refresh/test-result.md`에 사유와 대체 검증(subagent 2단계 리뷰) 기록, 스킵이 아니라 명시적으로 남김.
+- 태스크 문서: `docs/tasks/notion-style-ui-refresh/`, 계획: `docs/superpowers/plans/2026-07-24-notion-style-ui-refresh.md`, 설계: `docs/superpowers/specs/2026-07-24-notion-style-ui-refresh-design.md`.
+
+### 2026-07-24 — SFOOD 디자인 시스템(@sfood/ui) 톤앤매너 적용 + 검색 스크롤/TOC 겹침 수정
+- 브랜치: `develop` 신규 생성, `feature/sfood-design-system-tone`(base: develop)에서 작업. 커밋은 아직 하지 않음.
+- 대상: 사용자 확인(service 축)에 따라 `apps/web`의 컬러/폰트/배경/radius를 사내 디자인 시스템(`@sfood/ui`, private repo) semantic 토큰 기준으로 전면 교체. 페이지 내부 구성은 불변.
+- 구현: `apps/web/src/styles.css`에서 `@sfood/ui/tokens/base.css`+`tokens/semantic.css`를 import하고, `--accent`/`--page-bg`/`--panel-bg`/`--font-body` 등 기존 로컬 변수를 `--color-brand`/`--color-background`/`--color-surface`/`--font-sans` 등으로 재매핑. 다크모드는 동일 원시 스케일(`--gray-*`, `--brand-*`) + `color-mix()`로 자체 구성(디자인 시스템이 다크 기본값 미제공). `--radius-xl/lg/md`는 `@sfood/ui/base.css`의 동일 이름 프리미티브와의 자기참조 충돌을 피하기 위해 리터럴 픽셀(16/12/8)로 적용.
+- 버그 수정: (1) `SearchPage.tsx` — 새 답변 turn 추가/loading→complete 전환 시 `scrollIntoView`로 자동 스크롤. (2) `.article-aside`(TOC) sticky top을 `.site-header` 실측 높이에 맞춰 `top-4`→`top-[88px]`로 수정, 겹침 제거.
+- 환경 제약: 이 세션의 pnpm은 `@sfood/ui`의 git 의존성 `prepare`(vite build) 스크립트를 임시 디렉터리에서 성공적으로 빌드하지만(로그로 확인) 산출물(`dist/index.js`)을 최종 패키지 경로에 반영하는 단계가 반복적으로 누락되어, React 컴포넌트(Button/Card 등) import는 이번 세션에서 사용하지 못함. CSS 토큰(`tokens/*.css`)은 빌드 불필요라 정상 적용됨. 후속 세션에서 정상 환경 재설치 후 컴포넌트 교체 필요.
+- 검증: `pnpm test`(wiki-core 168/web 52/edge-sidebar 21/mcp-server 36/serverless 5) 통과, `pnpm typecheck` 전체 통과, `pnpm --filter @sfood/web build` 통과. Playwright MCP로 홈(라이트/다크)/검색 스크롤/`/guides`/가이드 상세 TOC/모바일(390x844) 확인. Codex 비판 리뷰 완료(Critical 0, non-critical 1건 — 무관한 `pnpm-lock.yaml` 변경 혼입 → unstage로 반영).
+- 태스크 문서: `docs/tasks/sfood-design-system-tone/`.
+
 ### 2026-07-23 — 웹 검색/문서 note 이중 표시 및 목차 정리
 - 대상: (1) Confluence ADF 확장(`<ac:adf-extension>`) 패널이 웹 아티클/검색에서 이중 렌더 + `panel-type` "note" 텍스트 누출, (2) 목차 마커(`•`/`—`) 세로중앙 배치로 정렬 어긋남 + 항목 간격 과다.
 - 근본 원인: 두 렌더러(`confluenceCleanHtml.ts`, `ArticleContentRenderer.tsx`) 모두 `ac:adf-extension` 미처리 → `ac:adf-content`와 `ac:adf-fallback`(`.panel`)이 동시 출력.

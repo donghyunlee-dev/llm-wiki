@@ -1,4 +1,4 @@
-import type { WikiDocument } from "@sfood/wiki-core";
+import { stripTitleTypePrefix, type WikiDocument } from "@sfood/wiki-core";
 import { Link } from "react-router-dom";
 
 export const DOC_TYPE_LABELS: Record<WikiDocument["metadata"]["docType"], string> = {
@@ -40,7 +40,7 @@ export function WikiDocumentListItem({
               {eyebrow}
             </p>
           ) : null}
-          <p className="document-title">{document.title}</p>
+          <p className="document-title">{stripTitleTypePrefix(document.title)}</p>
         </div>
         <span className="link-indicator">보기</span>
       </div>

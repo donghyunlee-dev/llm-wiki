@@ -1,0 +1,64 @@
+# notion-style-ui-refresh Result
+
+> 상태: Task 1-8 전체 완료 (Codex 비판 리뷰만 사용량 한도로 이번 세션에서 수행 불가 — `test-result.md`에 사유와 대체 검증 기록).
+
+## Delivered Scope
+- `apps/web`의 시각 톤을 Notion/Linear 스타일로 개편(브랜드 컬러 토큰 체계는 유지, `@sfood/ui` semantic 토큰만 참조):
+  - **패널/카드 플랫화**: `.page-panel`/`.page-panel-soft`, `.empty-card`, `.list-row-link`, `.document-list-item`, `.home-card`, `.article-aside`(TOC), `.chat-guide-spotlight`, `.home-guide-card`에서 `border`/`box-shadow`를 제거하고 배경 톤 차이만으로 구분. 버튼/입력/페이지네이션 등 기능 컨트롤은 기존 테두리를 그대로 유지.
+  - **좌측 액센트 바/브랜드 틴트 제거**: 홈 "시작 가이드" 카드(`.home-guide-card-featured`)를 브랜드 색 배경/테두리 대신 중립 1px 테두리(`border-panel-border` + `bg-card-bg`)로 재작성 — 최초 시도(배경 톤만으로 구분)는 코드 리뷰에서 라이트모드 시인성 저하와 hover 피드백 상실이 발견되어 수정.
+  - **타이포그래피/여백 확대**: `.page-shell` 패딩 확대, `.article-content`/`.article-paragraph`/`.article-list`/`.article-table-wrap table` 본문 폰트 13px→14px·`leading-6`→`leading-7`(코드 리뷰로 리스트/테이블 누락분도 추가 반영), `.article-toc`/`.article-toc-link` 간격 확대.
+  - **`/guides` 카드→구분선 리스트 전환**: 신규 `.document-list` 클래스(`divide-y`)를 `CategoryPage.tsx`에 적용. `.document-list-item`은 `.document-list` 내부에서만 divider row 스타일이 적용되도록 중첩 셀렉터로 스코프 한정하고, 베이스 규칙은 카드 스타일로 유지 — 코드 리뷰에서 전역 클래스 변경이 `/projects`/정적 페이지의 시각적 구분을 완전히 없애는 회귀를 발견해 수정.
+  - **TOC 활성 헤딩 표시(scroll-spy)**: `ArticlePage.tsx`와 `GuidesPage.tsx`의 `StartingGuidePage`(`/guides/agent-start`, `/guides/start`) **양쪽 모두**에 `IntersectionObserver` 기반 `activeHeadingId` 상태를 추가하고 `.article-toc-link-active`(텍스트 색상 + semibold만, 막대/배경 없음)로 표시. `StartingGuidePage`는 Task 8 Playwright 검증 중 발견된 실제 누락(별도 컴포넌트라 처음에는 기능이 전혀 반영되지 않았음)이라 추가로 수정했다. 2026-05-06에 기록된 "TOC 활성 하이라이트 제거" 결정을 이번 세션의 명시적 요청으로 대체.
+  - **검색 사용자 질문 pill 말풍선**: `.chat-message-user`를 솔리드 브랜드 배경 블록에서 `rounded-full bg-accent-soft text-page-fg` 연한 pill로 교체.
+- 다크모드는 기존 `[data-theme="dark"]` 토글 메커니즘 위에서 동일한 플랫/좌측-바-금지 원칙을 적용 — Playwright로 4개 화면 모두 라이트/다크 확인 완료.
+
+## Changed Files
+- `apps/web/src/styles.css` — 위 모든 컴포넌트 클래스 재작성/신규 추가(`.document-list`, `.document-list .document-list-item`, `.article-toc-link-active`)
+- `apps/web/src/ui/pages/CategoryPage.tsx` — `section-stack` → `document-list` 클래스 교체
+- `apps/web/src/ui/pages/ArticlePage.tsx` — TOC scroll-spy(`IntersectionObserver`, `activeHeadingId`) 추가
+- `apps/web/src/ui/pages/ArticlePage.test.tsx` — 신규, TOC 활성 클래스 클릭 동작 + IntersectionObserver sort 로직 테스트
+- `apps/web/src/ui/pages/GuidesPage.tsx` — `StartingGuidePage`에 동일 scroll-spy 로직 추가
+- `apps/web/src/ui/pages/GuidesPage.test.tsx` — 활성 클래스 클릭 동작 테스트 추가
+- `apps/web/package.json`, `apps/web/vite.config.ts`, `pnpm-lock.yaml` — jsdom 테스트 환경 추가
+- `docs/tasks/notion-style-ui-refresh/{spec,plan,tasks,test-result,result}.md` — 이 태스크 문서
+
+## Key Decisions
+- `@sfood/ui` React 컴포넌트는 직전 세션에서 확인된 이 실행 환경의 dist 빌드 산출물 미반영 제약이 해소되지 않아, 이번 개편도 CSS 토큰 레벨(`@apply` + 기존 semantic 변수)에서만 진행했다.
+- `.section-stack`을 직접 수정하지 않고 `/guides` 전용 `.document-list` 클래스를 신설한 것은, `StaticPageShell.tsx`/`ProjectsPage.tsx`/`ArticlePage.tsx` 메타데이터 칩 행 등 다른 화면이 `.section-stack`을 공유하기 때문 — 회귀 범위를 `/guides`로 격리하기 위한 의도적 선택이다.
+- TOC 활성 표시를 텍스트 굵기(semibold)만으로 제한한 것은, 사용자가 명시적으로 거부한 "좌측 액센트 바" 패턴(`feedback_no_ai_cliche_accent_bar` 메모리)을 다시 도입하지 않기 위한 설계 원칙 준수다.
+- jsdom을 신규 devDependency로 추가한 것은, 이 저장소가 지금까지 `renderToStaticMarkup`만으로 테스트해 왔고 클릭 인터랙션을 검증하는 테스트가 없었기 때문 — Task 5의 "클릭 시 활성 표시" 요구사항을 실제로 테스트하려면 DOM 이벤트가 필요해 최소 범위로 추가했다(다른 워크스페이스 패키지에는 영향 없음, `apps/edge-sidebar`의 기존 `test: {environment: "node"}` 패턴과 같은 위치에 추가).
+
+## Follow-up (2026-07-27) — 가이드 문서 페이지 후속 수정
+사용자가 개편된 가이드 문서(article) 페이지가 여전히 이전 디자인과 "거의 비슷"하다고 지적 — `.page-panel`이 border/shadow는 제거됐지만 여전히 별도 배경색+둥근 모서리로 카드처럼 보였음. 후속 확인(2문항) 후 다음을 적용:
+- `.article-body`(신규) — `.page-panel`을 대체, 배경/모서리 없이 페이지와 완전히 동화. 읽기 최대폭(760px)은 유지(사용자 확인: 폭 제한 없는 옵션 대신 이 옵션 선택). `ArticlePage.tsx`와 `GuidesPage.tsx`의 `StartingGuidePage` 양쪽에 적용.
+- `ArticleAskPanel`을 `.article-layout` 그리드 밖으로 이동, `.article-ask-dock`을 `sticky`(아티클 컬럼 내부 종속)에서 `fixed inset-x-0 bottom-5`(뷰포트 기준 하단 중앙 고정)로 변경 — 검색 페이지의 `.chat-input-dock`과 동일한 패턴(사용자 확인: 고정 도크 선택). 그리드 컨테이너에 `pb-32` 추가로 콘텐츠 끝부분이 도크에 가리지 않도록 처리.
+- 전역 얇은 스크롤바 스타일 추가(Chromium `::-webkit-scrollbar` + Firefox `scrollbar-width: thin`), 평상시 투명, hover/focus 시에만 옅게 보이도록.
+- **부수 발견 및 수정(회귀 아님, 사전 존재 버그)**: `.article-layout`이 `xl` 미만 브레이크포인트에서 명시적 grid-template-columns이 없어(암묵적 grid 트랙이 `auto` 사이징) 폭이 넓은 표가 포함된 문서에서 모바일 뷰포트 가로 스크롤이 발생함을 Playwright 모바일 검증 중 발견 — `grid-cols-1`(=`minmax(0,1fr)`) 추가로 수정.
+- 커밋: `c2ba613`.
+- 검증: `pnpm test`/`typecheck`/`build` 전체 통과, Playwright로 라이트/다크 + 모바일(390px, 넓은 표 포함 문서) 확인.
+
+### 추가 수정 — 사용자가 "여전히 둥근 모서리/보더가 보인다"고 재지적
+`.article-body` 변경만으로는 카드 느낌이 사라지지 않음을 재확인 — 원인은 `router.tsx`에서 `/guides`, `/library`, `/faq`, `/projects`와 그 하위 상세 라우트 전체를 감싸는 `CardLayout.tsx`가 `.site-surface`(rounded + border + shadow) 래퍼를 별도로 씌우고 있었기 때문. `ArticlePage`/`StartingGuidePage` 자체는 올바르게 수정됐지만, 그 바깥을 감싸는 이 레이어를 놓쳤음.
+- `CardLayout.tsx`에서 `.site-surface` 래퍼 div 제거, 미사용된 `.site-surface` CSS 규칙도 함께 제거(`.site-surface`는 이 파일에서만 쓰이고 있었음을 확인 후 제거).
+- 결과: `/guides` 목록 등 `CategoryPage` 기반 페이지는 자체 `.page-panel`(단일 플랫 카드)만 남아 이중 카드 중첩이 해소됨. 가이드 문서 상세 페이지는 바깥/안쪽 어디에도 카드 박스가 남지 않음.
+- 커밋: `d60c60c`.
+- 검증: `pnpm test`/`typecheck`/`build` 통과, Playwright로 가이드 상세("Claude 모델 선택 가이드")와 `/guides` 목록 재확인 — 카드 박스 완전히 사라짐, `/guides` 목록은 여전히 정상적인 단일 카드+구분선 리스트로 렌더링됨.
+
+### 추가 수정 (2026-07-27) — TOC 스크롤 동기화, 목록으로 돌아가기 위치, GUIDE 라벨, 제목 중복 제거
+사용자 지적 4건:
+1. **TOC가 스크롤 최상단에서도 최상단으로 안 움직임**: 두 가지 원인 확인. (a) TOC 자체의 내부 스크롤(`overflow-y-auto`)이 활성 항목을 따라가지 않음 → `activeHeadingId` 변경 시 해당 TOC 링크로 `scrollIntoView({block:"nearest"})` 추가. (b) 더 근본적 원인: `IntersectionObserver`의 `rootMargin`(상단 96px·하단 70% 제외)이 만드는 관찰 밴드가 첫 번째 헤딩(제목/칩 아래 위치)보다 아래에 있어서, 페이지 진짜 최상단에서도 첫 헤딩이 "교차"로 잡히지 않아 이전 활성 상태가 그대로 남아있었음 → `IntersectionObserver` 지원 여부와 무관하게 독립적으로 동작하는 `scroll` 리스너를 추가해 `window.scrollY < 80`이면 첫 헤딩을 강제로 활성화. `ArticlePage.tsx`/`GuidesPage.tsx` 양쪽에 동일 적용.
+2. **"목록으로 돌아가기"가 본문 공간을 차지**: `<article>` 내부에서 빼내어 `.article-back-link`(절대 위치, 좌측 상단, 아이콘 전용)로 변경. 그리드에 `pt-10` 추가로 겹침 방지.
+3. **GUIDE 라벨이 작고 목차와 위치가 안 맞음**: `.eyebrow`를 `text-xs font-semibold` → `text-sm font-bold tracking-wide`로 강조. `.article-body`에 `pt-4` 추가해 `.article-aside`의 `p-4`와 상단 정렬 일치.
+4. **제목에 "[Guide]" 중복 노출**: `@sfood/wiki-core`에 공통 `stripTitleTypePrefix(title)` 유틸(임의의 선행 `[...]` 대괄호 제거, 특정 타입 하드코딩 없음) 신규 추가, `ArticlePage`/`WikiDocumentListItem`/`SearchPage`/`ArticleAskPanel`/`HomePage`/`StartingGuidePage`의 기존 개별 정규식(`stripGuidePrefix` 등)을 모두 이 공통 함수로 교체.
+- 커밋: `5d49c11`(유틸), `928b774`(적용 + TOC/back-link/eyebrow 수정).
+- 검증: `pnpm test`(wiki-core 171/web 56) 통과 — jsdom에 `scrollIntoView` 미구현이라 기존 가드 패턴 재사용, `IntersectionObserver` 미지원 환경에서도 top-of-page 로직이 독립 동작하도록 재구성하며 테스트로 실제 회귀(첫 실행에서 발견)를 잡음. `pnpm typecheck`/`build` 통과. Playwright로 실제 스크롤(맨 아래→맨 위) 후 TOC 활성 항목이 첫 헤딩으로 정확히 복귀하는지, 라이트/다크/모바일(390px) 모두 확인.
+
+## Open Gaps
+- **Codex 비판 리뷰 미수행**: `mcp__codex__codex` 호출이 사용량 한도(2026-07-29 이후 재시도 가능)로 실패했다. 대신 `subagent-driven-development` 워크플로우의 2단계(spec-compliance + code-quality) 서브에이전트 리뷰를 Task 1-6 각각에 대해 수행했고, 실제로 3건의 회귀(Task 2 배경 대비, Task 4 전역 클래스 스코프, Task 5 커밋 스코프/테스트 커버리지)를 발견·수정했다. 재시도 가능 시점 이후 전체 diff에 대한 독립 Codex 리뷰를 한 번 더 받는 것을 권장한다.
+- `@sfood/ui` React 컴포넌트(Button/Card 등)는 여전히 이 실행 환경의 dist 빌드 미반영 제약으로 사용하지 못했다 — 정상 환경 재검증 후 컴포넌트 단위 교체를 후속 과제로 남긴다.
+- 검증 중 발견한 무관 이슈(수정하지 않음, 별도 트리아지 필요): `/search` 일부 질의에서 AI 답변 본문이 빈 문자열로 반환되는 현상(이번 CSS/레이아웃 변경과 무관), `ArticleContentRenderer`의 사전 존재하던 React key 경고.
+
+## Next Steps
+- 2026-07-29 이후 Codex 재시도 가능 시 전체 diff 최종 리뷰.
+- 사용자 승인 시 `develop` 브랜치로 병합.
+- `/search` AI 답변 빈 본문 현상은 별도 이슈로 트리아지.

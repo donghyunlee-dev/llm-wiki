@@ -1,4 +1,4 @@
-import { HOME_CONTENT, getWikiDocumentHref, type WikiDocument } from "@sfood/wiki-core";
+import { HOME_CONTENT, getWikiDocumentHref, stripTitleTypePrefix, type WikiDocument } from "@sfood/wiki-core";
 import { startTransition, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
@@ -10,10 +10,6 @@ type FeaturedGuide = {
   isPinned?: boolean;
   description?: string;
 };
-
-function stripGuidePrefix(title: string) {
-  return title.replace(/^\[(?:Guide|guide)\]\s*/i, "");
-}
 
 function isOnboardingPage(title: string, slug: string) {
   return (
@@ -63,8 +59,13 @@ function SearchHero() {
           maxRows={8}
           buttonIcon={(
             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" className="h-5 w-5">
-              <circle cx="8.5" cy="8.5" r="5" stroke="currentColor" strokeWidth="1.6" />
-              <path d="M13 13L16.5 16.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+              <path
+                d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
             </svg>
           )}
         />
@@ -128,7 +129,7 @@ function buildFeaturedGuides(documents: WikiDocument[]): FeaturedGuide[] {
     .filter((document) => document.id !== startingGuide?.id && document.slug !== startingGuide?.slug)
     .slice(0, 4)
     .map((document) => ({
-      title: stripGuidePrefix(document.title),
+      title: stripTitleTypePrefix(document.title),
       href: getWikiDocumentHref(document) ?? `/guides/${document.slug}`,
     }));
 
@@ -137,7 +138,7 @@ function buildFeaturedGuides(documents: WikiDocument[]): FeaturedGuide[] {
         title: "시작 가이드",
         href: startingGuideHref,
         isPinned: true,
-        description: stripGuidePrefix(startingGuide.title),
+        description: stripTitleTypePrefix(startingGuide.title),
       }
     : {
         title: "시작 가이드",
@@ -170,29 +171,6 @@ function GuideCard(props: {
       </span>
       <span className="home-guide-card-arrow">→</span>
     </Link>
-  );
-}
-
-function ProjectDesignCta() {
-  return (
-    <section className="home-section-compact">
-      <div className="home-blueprint home-support-frame">
-        <div>
-          <h2 className="home-blueprint-title">
-            {HOME_CONTENT.projectDesign.title}
-          </h2>
-          <p className="home-blueprint-body">{HOME_CONTENT.projectDesign.body}</p>
-        </div>
-        <Link
-          to={HOME_CONTENT.projectDesign.href}
-          className="home-blueprint-button"
-        >
-          <span className="home-blueprint-button-label">
-            {HOME_CONTENT.projectDesign.cta}
-          </span>
-        </Link>
-      </div>
-    </section>
   );
 }
 
@@ -234,7 +212,6 @@ export function HomePage() {
     <>
       <SearchHero />
       <RecommendedGuidesSection guides={featuredGuides} isLoading={isLoading} />
-      <ProjectDesignCta />
     </>
   );
 }
