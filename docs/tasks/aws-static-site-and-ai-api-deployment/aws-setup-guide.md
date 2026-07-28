@@ -1,6 +1,8 @@
 # aws-static-site-and-ai-api-deployment — AWS 1회성 설정 가이드
 
-`packages/serverless`의 3개 핸들러(`wiki-pages`, `ai-ask`, `ai-search`)를 AWS Lambda + Function URL로 최초 1회 생성하는 절차입니다. `apps/mcp-server`의 배포 선례(`docs/tasks/wiki-mcp-server/aws-deployment-guide.md`)와 동일한 패턴(esbuild 단일 번들 + Function URL, API Gateway 없음)을 따릅니다.
+`packages/serverless`의 4개 핸들러(`wiki-pages`, `ai-ask`, `ai-search`, `wiki-documents`)를 AWS Lambda + Function URL로 최초 1회 생성하는 절차입니다. `apps/mcp-server`의 배포 선례(`docs/tasks/wiki-mcp-server/aws-deployment-guide.md`)와 동일한 패턴(esbuild 단일 번들 + Function URL, API Gateway 없음)을 따릅니다.
+
+`wiki-documents`는 2026-07-28에 추가됨 — `apps/edge-sidebar`(브라우저 사이드패널 확장)가 가이드 본문을 인라인으로 보여줄 때 호출하는 API로, 정적 웹앱은 쓰지 않는다.
 
 S3 버킷과 CloudFront distribution은 **이미 존재**하므로 이 문서에서 생성하지 않습니다 — 아래 "0. 기존 리소스 정보 확인"에서 ID만 확인합니다.
 
@@ -22,7 +24,7 @@ aws cloudfront list-distributions \
 
 ---
 
-## 1. 배포 아티팩트 생성 (3개 핸들러 공통)
+## 1. 배포 아티팩트 생성 (4개 핸들러 공통)
 
 ```bash
 pnpm install
@@ -30,6 +32,7 @@ pnpm --filter @sfood/serverless build
 # → packages/serverless/dist/wiki-pages.mjs
 # → packages/serverless/dist/ai-ask.mjs
 # → packages/serverless/dist/ai-search.mjs
+# → packages/serverless/dist/wiki-documents.mjs
 ```
 
 각각 ZIP으로 압축합니다 (핸들러 파일명이 곧 Lambda `Handler` 설정의 접두어가 됩니다).
@@ -39,21 +42,23 @@ cd packages/serverless/dist
 zip wiki-pages.zip wiki-pages.mjs
 zip ai-ask.zip ai-ask.mjs
 zip ai-search.zip ai-search.mjs
+zip wiki-documents.zip wiki-documents.mjs
 ```
 
 → 검증: `unzip -l wiki-pages.zip`(등)에 해당 `.mjs` 파일이 포함되어 있어야 한다.
 
 ---
 
-## 2. Lambda 함수 3개 생성
+## 2. Lambda 함수 4개 생성
 
-세 함수 모두 동일한 런타임/아키텍처 설정을 사용합니다. **`--handler`는 파일명 접두어 + `.handler`** 형식입니다 (예: `wiki-pages.mjs` → `wiki-pages.handler`).
+네 함수 모두 동일한 런타임/아키텍처 설정을 사용합니다. **`--handler`는 파일명 접두어 + `.handler`** 형식입니다 (예: `wiki-pages.mjs` → `wiki-pages.handler`).
 
 | 함수 이름(예시) | 핸들러 | ZIP |
 |---|---|---|
 | `sfood-wiki-pages` | `wiki-pages.handler` | `wiki-pages.zip` |
 | `sfood-ai-ask` | `ai-ask.handler` | `ai-ask.zip` |
 | `sfood-ai-search` | `ai-search.handler` | `ai-search.zip` |
+| `sfood-wiki-documents` | `wiki-documents.handler` | `wiki-documents.zip` |
 
 공통 설정: Node.js 22.x / arm64 / 메모리 256MB / 타임아웃 30초.
 **`ai-ask`/`ai-search`는 OpenAI 응답 대기 시간이 길 수 있으므로 타임아웃을 60초로 늘리는 것을 권장합니다.**
@@ -79,7 +84,16 @@ aws lambda create-function \
   --handler ai-search.handler --timeout 60 --memory-size 256 \
   --role arn:aws:iam::<ACCOUNT_ID>:role/<lambda-basic-exec-role> \
   --zip-file fileb://packages/serverless/dist/ai-search.zip
+
+aws lambda create-function \
+  --function-name sfood-wiki-documents \
+  --runtime nodejs22.x --architectures arm64 \
+  --handler wiki-documents.handler --timeout 30 --memory-size 256 \
+  --role arn:aws:iam::<ACCOUNT_ID>:role/<lambda-basic-exec-role> \
+  --zip-file fileb://packages/serverless/dist/wiki-documents.zip
 ```
+
+콘솔에서 생성할 경우, 함수 생성 시 핸들러가 기본값 `index.handler`로 남을 수 있습니다 — 이 경우 배포 코드(zip)도 `index.mjs`라는 파일명으로 넣어야 합니다(`aws-static-site-and-ai-api-deployment` 태스크의 트러블슈팅 참고: 파일명 불일치 시 `Runtime.ImportModuleError` 발생).
 
 → 검증: `aws lambda get-function --function-name <이름>`으로 각 함수 `State: Active` 확인.
 
@@ -87,7 +101,7 @@ aws lambda create-function \
 
 ## 3. 환경변수 설정
 
-세 함수 모두 Confluence 접근이 필요하고, `ai-ask`/`ai-search`는 추가로 OpenAI 키가 필요합니다. `OPENAI_API_KEY`는 **기존에 다른 곳(예: dev 환경)에서 사용 중인 값을 그대로 재사용**합니다 — 새로 발급하지 않습니다.
+네 함수 모두 Confluence 접근이 필요하고, `ai-ask`/`ai-search`는 추가로 OpenAI 키가 필요합니다. `OPENAI_API_KEY`는 **기존에 다른 곳(예: dev 환경)에서 사용 중인 값을 그대로 재사용**합니다 — 새로 발급하지 않습니다.
 
 ```bash
 COMMON_ENV="ATLASSIAN_SITE_NAME=sfoodxproject,\
@@ -109,7 +123,13 @@ aws lambda update-function-configuration \
   --environment "Variables={$COMMON_ENV,OPENAI_API_KEY=<기존 OPENAI 키>,\
 CONFLUENCE_PLAYBOOK_PAGE_ID=<선택, Playbook 로깅 페이지 ID>,\
 CONFLUENCE_PROMPT_RULES_PAGE_ID=<선택, 동적 프롬프트 룰 페이지 ID>}"
+
+aws lambda update-function-configuration \
+  --function-name sfood-wiki-documents \
+  --environment "Variables={$COMMON_ENV}"
 ```
+
+`wiki-documents`는 브라우저 확장(`apps/edge-sidebar`)에서 직접 호출되므로 `WIKI_ALLOWED_ORIGIN`을 특정 도메인으로 좁히면 확장에서 호출이 막힐 수 있습니다 — 확장은 페이지 origin이 아니라 확장 자체의 origin(`chrome-extension://...`)에서 호출하므로, 이 함수만 `WIKI_ALLOWED_ORIGIN=*`로 두는 것을 권장합니다.
 
 - `CONFLUENCE_SPACE_ID`는 **숫자 ID**입니다.
 - `CONFLUENCE_PLAYBOOK_PAGE_ID`/`CONFLUENCE_PROMPT_RULES_PAGE_ID`는 선택 사항 — 미설정 시 각각 Playbook 로깅 생략, 기본 프롬프트 룰 사용으로 정상 동작합니다.
@@ -119,10 +139,10 @@ CONFLUENCE_PROMPT_RULES_PAGE_ID=<선택, 동적 프롬프트 룰 페이지 ID>}"
 
 ---
 
-## 4. Function URL 활성화 (3개 함수 공통)
+## 4. Function URL 활성화 (4개 함수 공통)
 
 ```bash
-for FN in sfood-wiki-pages sfood-ai-ask sfood-ai-search; do
+for FN in sfood-wiki-pages sfood-ai-ask sfood-ai-search sfood-wiki-documents; do
   aws lambda create-function-url-config \
     --function-name "$FN" \
     --auth-type NONE
@@ -156,6 +176,7 @@ done
 WIKI_PAGES_URL="https://xxxx.lambda-url.ap-northeast-2.on.aws/"
 AI_ASK_URL="https://yyyy.lambda-url.ap-northeast-2.on.aws/"
 AI_SEARCH_URL="https://zzzz.lambda-url.ap-northeast-2.on.aws/"
+WIKI_DOCUMENTS_URL="https://wwww.lambda-url.ap-northeast-2.on.aws/"
 
 # wiki-pages: GET → pages 배열
 curl -s "$WIKI_PAGES_URL" | head -c 200
@@ -168,12 +189,16 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST "$AI_ASK_URL" \
 curl -s -X POST "$AI_SEARCH_URL" \
   -H "content-type: application/json" \
   -d '{"question":"반품 규정이 궁금해요"}' | head -c 300
+
+# wiki-documents: GET → contentHtml/related가 포함된 pages 배열
+curl -s "$WIKI_DOCUMENTS_URL" | head -c 300
 ```
 
 → 검증:
 - `wiki-pages` GET → `{"pages": [...]}`
 - `ai-ask` 파라미터 누락 → HTTP 400, `code: "BAD_REQUEST"`
 - `ai-search` 정상 질문 → HTTP 200, `answer`/`recommendedDocuments` 필드 포함
+- `wiki-documents` GET → `{"pages": [{"contentHtml": "...", "related": [...] }]}`
 
 ---
 
@@ -184,11 +209,12 @@ GitHub Actions 워크플로우(`.github/workflows/deploy.yml`)가 `main` push �
 ```bash
 pnpm --filter @sfood/serverless build
 cd packages/serverless/dist
-zip wiki-pages.zip wiki-pages.mjs && zip ai-ask.zip ai-ask.mjs && zip ai-search.zip ai-search.mjs
+zip wiki-pages.zip wiki-pages.mjs && zip ai-ask.zip ai-ask.mjs && zip ai-search.zip ai-search.mjs && zip wiki-documents.zip wiki-documents.mjs
 cd -
 aws lambda update-function-code --function-name sfood-wiki-pages --zip-file fileb://packages/serverless/dist/wiki-pages.zip
 aws lambda update-function-code --function-name sfood-ai-ask --zip-file fileb://packages/serverless/dist/ai-ask.zip
 aws lambda update-function-code --function-name sfood-ai-search --zip-file fileb://packages/serverless/dist/ai-search.zip
+aws lambda update-function-code --function-name sfood-wiki-documents --zip-file fileb://packages/serverless/dist/wiki-documents.zip
 ```
 
 환경변수만 바꿀 때는 `update-function-configuration`만 다시 실행합니다.
@@ -229,11 +255,19 @@ aws lambda add-permission --function-name <함수명> \
 | `WIKI_PAGES_LAMBDA_NAME` | Secret | 위 2번 단계에서 생성한 wiki-pages 함수 이름 (예: `sfood-wiki-pages`) |
 | `AI_ASK_LAMBDA_NAME` | Secret | ai-ask 함수 이름 (예: `sfood-ai-ask`) |
 | `AI_SEARCH_LAMBDA_NAME` | Secret | ai-search 함수 이름 (예: `sfood-ai-search`) |
+| `WIKI_DOCUMENTS_LAMBDA_NAME` | Secret | wiki-documents 함수 이름 (예: `sfood-wiki-documents`) — `.github/workflows/deploy.yml`이 참조 |
 | `SFOOD_DESIGN_SYSTEM_TOKEN` | Secret | `sfood-it-dev-ax-org/SFOOD-DESIGN-SYSTEM`(private, `@sfood/ui`가 의존하는 저장소) 읽기 전용 fine-grained PAT — 없으면 `pnpm install`이 `could not read Username for 'https://github.com'`로 실패함 |
 | `VITE_WIKI_REMOTE_ENDPOINT` | Variable | 프로덕션 빌드가 문서 목록을 가져올 엔드포인트 — 4번 단계에서 얻은 `wiki-pages` Function URL |
 | `VITE_AI_ASK_ENDPOINT` | Variable | 프로덕션 빌드가 AI 질문 기능이 호출할 엔드포인트 — 4번 단계에서 얻은 `ai-ask` Function URL |
 | `VITE_AI_SEARCH_ENDPOINT` | Variable | 프로덕션 빌드가 AI 검색 기능이 호출할 엔드포인트 — 4번 단계에서 얻은 `ai-search` Function URL |
 
-IAM 사용자에게 필요한 최소 권한: `s3:PutObject`/`s3:DeleteObject`/`s3:ListBucket`(대상 버킷), `cloudfront:CreateInvalidation`(대상 distribution), `lambda:UpdateFunctionCode`(3개 함수).
+IAM 사용자에게 필요한 최소 권한: `s3:PutObject`/`s3:DeleteObject`/`s3:ListBucket`(대상 버킷), `cloudfront:CreateInvalidation`(대상 distribution), `lambda:UpdateFunctionCode`(4개 함수).
+
+**참고 — `apps/edge-sidebar`(브라우저 확장)**: 이 앱은 `.github/workflows/deploy.yml`로 배포되지 않고(수동 "Load unpacked"), 빌드 시점에 `VITE_AI_SEARCH_ENDPOINT`/`VITE_WIKI_DOCUMENTS_ENDPOINT` 환경변수를 셸에서 직접 넣어 로컬에서 빌드합니다:
+```bash
+VITE_AI_SEARCH_ENDPOINT="<ai-search Function URL>" \
+VITE_WIKI_DOCUMENTS_ENDPOINT="<wiki-documents Function URL>" \
+pnpm --filter @sfood/edge-sidebar build
+```
 
 **참고**: `apps/web`은 빌드 시점에 `VITE_AI_ASK_ENDPOINT`/`VITE_AI_SEARCH_ENDPOINT`/`VITE_WIKI_REMOTE_ENDPOINT`가 설정되어 있으면 그 절대 URL(각 Lambda Function URL)로 직접 요청하고, 없으면 dev 전용 상대 경로(`/api/wiki/ai/ask` 등)로 폴백합니다. 따라서 위 3개 Variable을 4번 단계에서 발급받은 Function URL로 반드시 설정해야 배포된 사이트에서 AI 질문/검색/문서 목록이 정상 동작합니다. Lambda Function URL은 기본적으로 CORS를 지원하지 않으므로, 핸들러 자체의 `WIKI_ALLOWED_ORIGIN` 환경변수를 배포된 웹사이트 도메인으로 설정해 브라우저 요청이 차단되지 않도록 합니다.

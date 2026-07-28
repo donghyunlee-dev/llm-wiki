@@ -8,15 +8,15 @@ import {
   hasOpenAiConfig,
 } from "../../packages/wiki-core/src/lib/aiOrchestration.ts";
 import { fetchConfluencePageRecords } from "../../packages/wiki-core/src/lib/confluenceClient.ts";
-import { renderConfluenceContentToCleanHtml } from "../../packages/wiki-core/src/lib/confluenceCleanHtml.ts";
 import {
   buildWikiDocumentsFromRecords,
   buildPolicyDocumentsFromRecords,
   parseRemotePolicyPageRecords,
   parseRemoteWikiPageRecords,
 } from "../../packages/wiki-core/src/lib/wikiDataSource.ts";
-import { getWikiDocumentHref, type WikiDocument } from "../../packages/wiki-core/src/lib/wikiDocuments.ts";
+import { type WikiDocument } from "../../packages/wiki-core/src/lib/wikiDocuments.ts";
 import { fetchGitHubOrgProjects, type GitHubProject } from "../../packages/wiki-core/src/lib/githubClient.ts";
+import { buildCleanWikiDocumentsList } from "../../packages/wiki-core/src/lib/wikiDocumentsService.ts";
 
 const WIKI_CACHE_TTL_MS = 30 * 60 * 1000;
 const GITHUB_CACHE_TTL_MS = 30 * 60 * 1000;
@@ -133,24 +133,7 @@ function confluenceDevApiPlugin(env: Record<string, string>): Plugin {
 
         try {
           const cache = await loadVisibleDevWikiCache(env);
-          const byId = new Map(cache.documents.map((document) => [document.id, document]));
-
-          const pages = cache.documents.map((document) => ({
-            id: document.id,
-            slug: document.slug,
-            title: document.title,
-            summary: document.summary,
-            href: getWikiDocumentHref(document) ?? `/wiki/${document.id}`,
-            docType: document.metadata.docType,
-            contentHtml: renderConfluenceContentToCleanHtml(document.contentHtml, cache.documents),
-            related: document.metadata.related
-              .map((relatedId) => byId.get(relatedId))
-              .filter((related): related is NonNullable<typeof related> => Boolean(related))
-              .map((related) => ({
-                title: related.title,
-                href: getWikiDocumentHref(related) ?? `/wiki/${related.id}`,
-              })),
-          }));
+          const pages = buildCleanWikiDocumentsList(cache.documents);
 
           response.end(JSON.stringify({ pages }));
         } catch (error) {
