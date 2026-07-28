@@ -83,7 +83,9 @@ jobs:
       - name: Update wiki-pages Lambda code
         run: |
           cd packages/serverless/dist
-          zip wiki-pages.zip wiki-pages.mjs
+          cp wiki-pages.mjs index.mjs
+          zip wiki-pages.zip index.mjs
+          rm index.mjs
           aws lambda update-function-code \
             --function-name "${{ secrets.WIKI_PAGES_LAMBDA_NAME }}" \
             --zip-file fileb://wiki-pages.zip
@@ -91,7 +93,9 @@ jobs:
       - name: Update ai-ask Lambda code
         run: |
           cd packages/serverless/dist
-          zip ai-ask.zip ai-ask.mjs
+          cp ai-ask.mjs index.mjs
+          zip ai-ask.zip index.mjs
+          rm index.mjs
           aws lambda update-function-code \
             --function-name "${{ secrets.AI_ASK_LAMBDA_NAME }}" \
             --zip-file fileb://ai-ask.zip
@@ -99,7 +103,9 @@ jobs:
       - name: Update ai-search Lambda code
         run: |
           cd packages/serverless/dist
-          zip ai-search.zip ai-search.mjs
+          cp ai-search.mjs index.mjs
+          zip ai-search.zip index.mjs
+          rm index.mjs
           aws lambda update-function-code \
             --function-name "${{ secrets.AI_SEARCH_LAMBDA_NAME }}" \
             --zip-file fileb://ai-search.zip
