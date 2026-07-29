@@ -51,7 +51,7 @@ jobs:
         run: aws cloudfront create-invalidation --distribution-id "${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}" --paths "/*"
 
   deploy-serverless:
-    name: Deploy Lambda handlers (wiki-pages / ai-ask / ai-search)
+    name: Deploy Lambda handlers (wiki-pages / ai-ask / ai-search / wiki-documents)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -109,3 +109,13 @@ jobs:
           aws lambda update-function-code \
             --function-name "${{ secrets.AI_SEARCH_LAMBDA_NAME }}" \
             --zip-file fileb://ai-search.zip
+
+      - name: Update wiki-documents Lambda code
+        run: |
+          cd packages/serverless/dist
+          cp wiki-documents.mjs index.mjs
+          zip wiki-documents.zip index.mjs
+          rm index.mjs
+          aws lambda update-function-code \
+            --function-name "${{ secrets.WIKI_DOCUMENTS_LAMBDA_NAME }}" \
+            --zip-file fileb://wiki-documents.zip

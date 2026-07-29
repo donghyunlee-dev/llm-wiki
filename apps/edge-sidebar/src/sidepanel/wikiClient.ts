@@ -49,7 +49,7 @@ type WikiDocumentLike = {
   slug?: unknown;
 };
 
-export const DEFAULT_WIKI_BASE_URL = "http://localhost:5173";
+export const DEFAULT_WIKI_BASE_URL = "https://ax-wiki.s-food.ai";
 
 export function normalizeWikiBaseUrl(value: string): string {
   const trimmed = value.trim();
@@ -85,7 +85,11 @@ export function resolveWikiHref(baseUrl: string, href: string): string {
 
 export async function requestWikiSearch(baseUrl: string, question: string): Promise<WikiSearchResult> {
   const normalizedBaseUrl = normalizeWikiBaseUrl(baseUrl);
-  const response = await fetch(`${normalizedBaseUrl}/api/wiki/ai/search`, {
+  // Built with a real endpoint (production Lambda Function URL), this is used verbatim instead of
+  // the dev-only `{baseUrl}/api/wiki/ai/search` relative path, which only exists via Vite's dev
+  // middleware and is never served by the deployed static site.
+  const endpoint = import.meta.env.VITE_AI_SEARCH_ENDPOINT?.trim() || `${normalizedBaseUrl}/api/wiki/ai/search`;
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -103,7 +107,9 @@ export async function requestWikiSearch(baseUrl: string, question: string): Prom
 
 export async function requestWikiDocumentByHref(baseUrl: string, href: string): Promise<WikiSidebarDocument> {
   const normalizedBaseUrl = normalizeWikiBaseUrl(baseUrl);
-  const response = await fetch(`${normalizedBaseUrl}/api/wiki/documents`);
+  // Same production-endpoint override as requestWikiSearch above.
+  const endpoint = import.meta.env.VITE_WIKI_DOCUMENTS_ENDPOINT?.trim() || `${normalizedBaseUrl}/api/wiki/documents`;
+  const response = await fetch(endpoint);
 
   if (!response.ok) {
     throw new Error(`Wiki documents failed with ${response.status}`);
