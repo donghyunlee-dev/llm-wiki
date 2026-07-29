@@ -8,6 +8,7 @@ import {
   requestWikiDocumentByHref,
   requestWikiSearch,
   resolveWikiHref,
+  stripTitleTypePrefix,
   type WikiSidebarDocument,
   type WikiSearchResult,
   type WikiSearchStatus
@@ -360,7 +361,7 @@ function renderInlineMarkdownLinks(
       parts.push(text.slice(lastIndex, match.index));
     }
 
-    const label = match[1] ?? "";
+    const label = stripTitleTypePrefix(match[1] ?? "");
     const href = match[2] ?? "";
     const resolvedHref = resolveWikiHref(baseUrl, href);
 
