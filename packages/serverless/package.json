@@ -7,7 +7,7 @@
     "./wiki-pages": "./src/wikiPagesHandler.ts"
   },
   "scripts": {
-    "build": "esbuild src/entrypoints/wikiPagesEntry.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/wiki-pages.mjs && esbuild src/entrypoints/aiAskEntry.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/ai-ask.mjs && esbuild src/entrypoints/aiSearchEntry.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/ai-search.mjs",
+    "build": "esbuild src/entrypoints/wikiPagesEntry.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/wiki-pages.mjs && esbuild src/entrypoints/aiAskEntry.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/ai-ask.mjs && esbuild src/entrypoints/aiSearchEntry.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/ai-search.mjs && esbuild src/entrypoints/wikiDocumentsEntry.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/wiki-documents.mjs",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json"
   },

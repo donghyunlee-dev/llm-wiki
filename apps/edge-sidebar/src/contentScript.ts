@@ -14,7 +14,7 @@ type LauncherSettings = {
   offsetY: number;
 };
 
-const DEFAULT_BASE_URL = "http://localhost:5173";
+const DEFAULT_BASE_URL = "https://ax-wiki.s-food.ai";
 const LAUNCHER_HOST_ID = "sfood-ai-wiki-launcher";
 const DRAG_THRESHOLD_PX = 4;
 const HOST_SIZE = 130;
