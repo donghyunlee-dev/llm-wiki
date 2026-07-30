@@ -5,6 +5,7 @@ import { ArticlePage } from "./ui/pages/ArticlePage";
 import { GuideIndexGraphPage } from "./ui/pages/GuideIndexGraphPage";
 import { GuidesPage, StartingGuidePage } from "./ui/pages/GuidesPage";
 import { HomePage } from "./ui/pages/HomePage";
+import { LessonIndexPage } from "./ui/pages/LessonIndexPage";
 import { LibraryPage } from "./ui/pages/LibraryPage";
 import { ProjectDesignPage } from "./ui/pages/ProjectDesignPage";
 import { ProjectDetailPage } from "./ui/pages/ProjectDetailPage";
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
           { path: "guides/map", element: <GuideIndexGraphPage /> },
           { path: "library", element: <LibraryPage /> },
           { path: "faq", element: <FaqPage /> },
+          { path: "lesson", element: <LessonIndexPage /> },
           { path: "projects", element: <ProjectsPage /> },
           { path: "projects/:slug", element: <ProjectDetailPage /> },
           { path: "project-design/start", element: <ProjectDesignPage /> },

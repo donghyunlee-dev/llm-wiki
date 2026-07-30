@@ -1877,6 +1877,46 @@ a {
     @apply whitespace-nowrap text-[13px] font-semibold text-accent;
   }
 
+  .lesson-index-shell {
+    @apply mx-auto flex w-full max-w-3xl flex-col gap-8 px-5 py-10;
+  }
+
+  .lesson-index-header {
+    @apply flex flex-col gap-3;
+  }
+
+  .lesson-index-title {
+    @apply text-[22px] font-semibold text-page-fg;
+  }
+
+  .lesson-index-subtitle {
+    @apply text-[14px] leading-6 text-muted-fg;
+  }
+
+  .lesson-index-primary-button {
+    @apply mt-2 inline-flex w-fit items-center rounded-[var(--radius-lg)] bg-accent px-4 py-2 text-[13px] font-semibold text-white no-underline transition hover:opacity-90;
+  }
+
+  .lesson-index-list {
+    @apply flex flex-col gap-2;
+  }
+
+  .lesson-index-list-item {
+    @apply list-none;
+  }
+
+  .lesson-index-list-link {
+    @apply flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-panel-border bg-card-bg px-4 py-3 no-underline transition hover:border-accent/40 hover:bg-card-hover-bg;
+  }
+
+  .lesson-index-list-title {
+    @apply text-[14px] font-medium text-page-fg;
+  }
+
+  .lesson-index-list-status {
+    @apply text-[12px] font-semibold text-muted-fg;
+  }
+
   .home-list-row {
     @apply flex w-full items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 py-1.5 text-left text-[13px] text-page-fg/80 transition hover:bg-page-bg;
   }
