@@ -8,6 +8,7 @@ import { LESSON_COURSE_ID } from "../../data/lessonProgress";
 
 const useWikiDataMock = vi.fn();
 const navigateMock = vi.fn();
+const useParamsMock = vi.fn(() => ({ slug: "ai-first-perspective" }));
 
 vi.mock("../../data/WikiDataProvider", () => ({
   useWikiData: () => useWikiDataMock(),
@@ -17,7 +18,7 @@ vi.mock("react-router-dom", async (importOriginal) => {
   const actual = await importOriginal<typeof import("react-router-dom")>();
   return {
     ...actual,
-    useParams: () => ({ slug: "ai-first-perspective" }),
+    useParams: () => useParamsMock(),
     useNavigate: () => navigateMock,
     useSearchParams: () => [new URLSearchParams()],
   };
@@ -49,10 +50,37 @@ function lessonDocument(): WikiDocument {
   };
 }
 
+function secondLessonDocument(): WikiDocument {
+  return {
+    id: "lesson-2",
+    slug: "context-and-memory",
+    title: "맥락과 기억",
+    summary: "요약",
+    updatedAt: "2026-07-30",
+    metadata: {
+      docType: "lesson",
+      audience: "beginner",
+      status: "published",
+      prerequisites: [],
+      next: [],
+      related: [],
+    },
+    headings: [],
+    contentHtml: `
+      <h2 id="scene-a">세 번째 장면</h2>
+      <p>세 번째 본문</p>
+      <h2 id="scene-b">네 번째 장면</h2>
+      <p>네 번째 본문</p>
+    `,
+  };
+}
+
 describe("LessonReaderPage", () => {
   beforeEach(() => {
     useWikiDataMock.mockReset();
     navigateMock.mockReset();
+    useParamsMock.mockReset();
+    useParamsMock.mockReturnValue({ slug: "ai-first-perspective" });
     window.localStorage.clear();
     useWikiDataMock.mockReturnValue({
       documents: [lessonDocument()],
@@ -134,5 +162,32 @@ describe("LessonReaderPage", () => {
 
     const saved = JSON.parse(window.localStorage.getItem(`lesson-progress:${LESSON_COURSE_ID}`) ?? "{}");
     expect(saved.completedLessonSlugs).toContain("ai-first-perspective");
+  });
+
+  it("resets to the first scene when the route moves to a different lesson", () => {
+    useWikiDataMock.mockReturnValue({
+      documents: [lessonDocument(), secondLessonDocument()],
+      errorMessage: null,
+      isLoading: false,
+    });
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <LessonReaderPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("다음"));
+    expect(screen.getByText("두 번째 장면")).toBeInTheDocument();
+
+    useParamsMock.mockReturnValue({ slug: "context-and-memory" });
+    rerender(
+      <MemoryRouter>
+        <LessonReaderPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("세 번째 장면")).toBeInTheDocument();
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
   });
 });

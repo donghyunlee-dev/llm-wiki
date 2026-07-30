@@ -37,6 +37,11 @@ export function LessonReaderPage() {
   const [scriptVisible, setScriptVisible] = useState(false);
 
   useEffect(() => {
+    setSceneIndex(clampSceneIndex(Number(searchParams.get("scene") ?? 0) || 0, scenes.length));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug]);
+
+  useEffect(() => {
     setScriptVisible(false);
   }, [sceneIndex]);
 
