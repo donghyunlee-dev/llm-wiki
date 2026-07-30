@@ -265,4 +265,51 @@ describe("LessonReaderPage", () => {
     expect(screen.getByText("첫 번째 장면")).toBeInTheDocument();
     expect(screen.getByText("이 레슨").closest(".lesson-reader-progress-item")).toHaveTextContent("1 / 2");
   });
+
+  it("opens the outline drawer, jumps to a different lesson, and closes the drawer", () => {
+    useWikiDataMock.mockReturnValue({
+      documents: [
+        { ...lessonDocument(), metadata: { ...lessonDocument().metadata, next: ["lesson-2"] } },
+        {
+          ...lessonDocument(),
+          id: "lesson-2",
+          slug: "context-and-memory",
+          title: "컨텍스트와 기억의 한계",
+          metadata: { ...lessonDocument().metadata, next: [] },
+          contentHtml: "<h2>다른 레슨 장면</h2><p>본문</p>",
+        },
+      ],
+      errorMessage: null,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <LessonReaderPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("학습 흐름"));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("다른 레슨 장면")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("다른 레슨 장면"));
+
+    expect(navigateMock).toHaveBeenCalledWith("/lesson/context-and-memory?scene=0");
+  });
+
+  it("jumps within the same lesson without navigating", () => {
+    render(
+      <MemoryRouter>
+        <LessonReaderPage />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByText("학습 흐름"));
+    fireEvent.click(screen.getByText("두 번째 장면"));
+
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(screen.getByText("두 번째 장면")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
 });

@@ -6,10 +6,11 @@ import {
   splitLessonContentIntoScenes,
   stripTitleTypePrefix,
 } from "@sfood/wiki-core";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
 import { LESSON_COURSE_ID, markLessonCompleted, markSceneVisited } from "../../data/lessonProgress";
+import { LessonOutlineDrawer } from "./LessonOutlineDrawer";
 import { WikiStatePanel } from "./WikiStatePanel";
 
 function clampSceneIndex(index: number, sceneCount: number): number {
@@ -39,6 +40,8 @@ export function LessonReaderPage() {
     clampSceneIndex(Number(searchParams.get("scene") ?? 0) || 0, scenes.length),
   );
   const [scriptVisible, setScriptVisible] = useState(false);
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const outlineTriggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setSceneIndex(clampSceneIndex(Number(searchParams.get("scene") ?? 0) || 0, scenes.length));
@@ -79,6 +82,17 @@ export function LessonReaderPage() {
     navigate(nextSlug ? `/lesson/${nextSlug}` : "/lesson");
   }
 
+  function handleSelectScene(targetLessonSlug: string, targetSceneIndex: number) {
+    setOutlineOpen(false);
+
+    if (targetLessonSlug === slug) {
+      setSceneIndex(targetSceneIndex);
+      return;
+    }
+
+    navigate(`/lesson/${targetLessonSlug}?scene=${targetSceneIndex}`);
+  }
+
   // Intentionally re-registered every render (no dependency array) so the handler always closes
   // over the current goNext/goPrevious/scenes — the listener add/remove cost is negligible here.
   useEffect(() => {
@@ -86,6 +100,10 @@ export function LessonReaderPage() {
       const target = event.target as HTMLElement | null;
 
       if (target && ["INPUT", "TEXTAREA"].includes(target.tagName)) {
+        return;
+      }
+
+      if (outlineOpen) {
         return;
       }
 
@@ -139,6 +157,14 @@ export function LessonReaderPage() {
             </span>
           ) : null}
         </div>
+        <button
+          type="button"
+          ref={outlineTriggerRef}
+          className="lesson-reader-outline-button"
+          onClick={() => setOutlineOpen(true)}
+        >
+          학습 흐름
+        </button>
       </header>
 
       <div className="lesson-reader-stage">
@@ -182,6 +208,16 @@ export function LessonReaderPage() {
           {isLastScene ? "레슨 완료" : "다음"}
         </button>
       </footer>
+
+      <LessonOutlineDrawer
+        outline={outline}
+        currentLessonSlug={slug}
+        currentSceneIndex={sceneIndex}
+        open={outlineOpen}
+        onClose={() => setOutlineOpen(false)}
+        onSelectScene={handleSelectScene}
+        triggerRef={outlineTriggerRef}
+      />
     </section>
   );
 }
