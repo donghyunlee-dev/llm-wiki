@@ -16,3 +16,4 @@ export * from "./lib/aiOrchestration";
 export * from "./lib/wikiDocumentsService";
 export * from "./lib/lessonDocuments";
 export * from "./lib/lessonScenes";
+export * from "./lib/courseOutline";
