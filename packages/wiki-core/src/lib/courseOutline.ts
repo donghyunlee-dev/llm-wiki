@@ -49,6 +49,12 @@ export function buildCourseOutline(documents: WikiDocument[]): CourseOutline {
   };
 }
 
+/**
+ * Returns null when `lessonSlug` resolves via direct slug lookup elsewhere (e.g.
+ * `getLessonDocumentFrom`) but isn't reachable through `listLessonDocumentsFrom`'s
+ * `next`-chain traversal — a disconnected chain, a broken `next` link, or a cycle.
+ * Callers should hide the overall-progress UI rather than treat this as an error.
+ */
 export function getGlobalScenePosition(
   outline: CourseOutline,
   lessonSlug: string,
