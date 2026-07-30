@@ -11,6 +11,14 @@ const H2_PATTERN = /<h2(?:\s+id="([^"]*)")?[^>]*>([\s\S]*?)<\/h2>/gi;
 const EXPAND_MACRO_PATTERN =
   /<ac:structured-macro[^>]*ac:name="expand"[^>]*>([\s\S]*?)<\/ac:structured-macro>/gi;
 const RICH_TEXT_BODY_PATTERN = /<ac:rich-text-body[^>]*>([\s\S]*?)<\/ac:rich-text-body>/i;
+/**
+ * Content authors sometimes write the hidden narration as a plain Confluence blockquote
+ * labeled "나레이션:" instead of using the Expand macro (observed in real authored lessons).
+ * Only blockquotes containing this exact label are treated as hidden script — a plain
+ * blockquote (e.g. a hook question) is left visible in the scene body.
+ */
+const NARRATION_BLOCKQUOTE_PATTERN =
+  /<blockquote[^>]*>((?:(?!<\/blockquote>)[\s\S])*<strong>나레이션:<\/strong>(?:(?!<\/blockquote>)[\s\S])*)<\/blockquote>/gi;
 
 export function splitLessonContentIntoScenes(contentHtml: string): LessonScene[] {
   const headingMatches = Array.from(contentHtml.matchAll(H2_PATTERN));
@@ -36,6 +44,12 @@ function buildScene(id: string, title: string, rawBody: string): LessonScene {
   const bodyHtml = rawBody
     .replace(EXPAND_MACRO_PATTERN, (_match, inner: string) => {
       scriptHtml = inner.match(RICH_TEXT_BODY_PATTERN)?.[1]?.trim();
+      return "";
+    })
+    .replace(NARRATION_BLOCKQUOTE_PATTERN, (_match, inner: string) => {
+      if (!scriptHtml) {
+        scriptHtml = inner.trim();
+      }
       return "";
     })
     .trim();

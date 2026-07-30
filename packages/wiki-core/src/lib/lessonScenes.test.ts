@@ -51,4 +51,47 @@ describe("splitLessonContentIntoScenes", () => {
     expect(scenes).toHaveLength(1);
     expect(scenes[0].bodyHtml).toContain("본문");
   });
+
+  it("extracts a 나레이션 blockquote as scriptHtml and removes it from bodyHtml", () => {
+    const html = `
+      <h2 id="scene-a">장면</h2>
+      <p>보이는 본문</p>
+      <blockquote><p><strong>나레이션:</strong> 숨겨진 나레이션 대사</p></blockquote>
+    `;
+
+    const scenes = splitLessonContentIntoScenes(html);
+
+    expect(scenes[0].bodyHtml).toContain("보이는 본문");
+    expect(scenes[0].bodyHtml).not.toContain("숨겨진 나레이션 대사");
+    expect(scenes[0].scriptHtml).toContain("숨겨진 나레이션 대사");
+  });
+
+  it("keeps a plain blockquote (no 나레이션 label) visible in bodyHtml", () => {
+    const html = `
+      <h2 id="scene-a">장면</h2>
+      <blockquote><p>도입부 질문입니다</p></blockquote>
+      <p>본문</p>
+    `;
+
+    const scenes = splitLessonContentIntoScenes(html);
+
+    expect(scenes[0].bodyHtml).toContain("도입부 질문입니다");
+    expect(scenes[0].scriptHtml).toBeUndefined();
+  });
+
+  it("keeps a hook blockquote visible when a 나레이션 blockquote follows it in the same scene", () => {
+    const html = `
+      <h2 id="scene-a">장면</h2>
+      <blockquote><p>도입부 질문입니다</p></blockquote>
+      <p>시각 자료 설명</p>
+      <blockquote><p><strong>나레이션:</strong> 숨겨진 나레이션 대사</p></blockquote>
+    `;
+
+    const scenes = splitLessonContentIntoScenes(html);
+
+    expect(scenes[0].bodyHtml).toContain("도입부 질문입니다");
+    expect(scenes[0].bodyHtml).toContain("시각 자료 설명");
+    expect(scenes[0].bodyHtml).not.toContain("숨겨진 나레이션 대사");
+    expect(scenes[0].scriptHtml).toContain("숨겨진 나레이션 대사");
+  });
 });
