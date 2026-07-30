@@ -1853,6 +1853,30 @@ a {
     @apply absolute right-3 top-3 text-[13px] text-subtle-fg;
   }
 
+  .home-lesson-section {
+    @apply px-5 pb-6 pt-0;
+  }
+
+  .home-lesson-card {
+    @apply mx-auto flex w-full max-w-4xl items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-panel-border bg-card-bg p-5 no-underline transition hover:border-accent/40 hover:bg-card-hover-bg;
+  }
+
+  .home-lesson-card-copy {
+    @apply flex flex-col gap-1;
+  }
+
+  .home-lesson-card-title {
+    @apply text-[15px] font-semibold text-page-fg;
+  }
+
+  .home-lesson-card-description {
+    @apply text-[13px] leading-5 text-muted-fg;
+  }
+
+  .home-lesson-card-button {
+    @apply whitespace-nowrap text-[13px] font-semibold text-accent;
+  }
+
   .home-list-row {
     @apply flex w-full items-center gap-2.5 rounded-[var(--radius-md)] px-2.5 py-1.5 text-left text-[13px] text-page-fg/80 transition hover:bg-page-bg;
   }

@@ -1,4 +1,10 @@
-import { HOME_CONTENT, getWikiDocumentHref, stripTitleTypePrefix, type WikiDocument } from "@sfood/wiki-core";
+import {
+  HOME_CONTENT,
+  getWikiDocumentHref,
+  listLessonDocumentsFrom,
+  stripTitleTypePrefix,
+  type WikiDocument,
+} from "@sfood/wiki-core";
 import { startTransition, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
@@ -115,6 +121,26 @@ function RecommendedGuidesSection(props: {
   );
 }
 
+function LessonEntrySection({ hasLessons }: { hasLessons: boolean }) {
+  if (!hasLessons) {
+    return null;
+  }
+
+  return (
+    <section className="home-lesson-section">
+      <Link to="/lesson" className="home-lesson-card">
+        <span className="home-lesson-card-copy">
+          <span className="home-lesson-card-title">AI, 이제 기초부터 이해해 보세요</span>
+          <span className="home-lesson-card-description">
+            실습 전에 알아야 할 개념을 짧은 장면으로 정리했습니다.
+          </span>
+        </span>
+        <span className="home-lesson-card-button">교육 시작하기 →</span>
+      </Link>
+    </section>
+  );
+}
+
 function buildFeaturedGuides(documents: WikiDocument[]): FeaturedGuide[] {
   const startingGuide = findStartingGuideDocument(documents);
   const startingGuideHref = startingGuide
@@ -207,11 +233,13 @@ export function HomePage() {
   const { documents, isLoading } = useWikiData();
 
   const featuredGuides = useMemo(() => buildFeaturedGuides(documents), [documents]);
+  const hasLessons = useMemo(() => listLessonDocumentsFrom(documents).length > 0, [documents]);
 
   return (
     <>
       <SearchHero />
       <RecommendedGuidesSection guides={featuredGuides} isLoading={isLoading} />
+      <LessonEntrySection hasLessons={hasLessons} />
     </>
   );
 }
