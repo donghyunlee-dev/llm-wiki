@@ -14,3 +14,4 @@ export * from "./lib/aiSearchResponse";
 export * from "./lib/searchAnswerState";
 export * from "./lib/aiOrchestration";
 export * from "./lib/wikiDocumentsService";
+export * from "./lib/lessonDocuments";
