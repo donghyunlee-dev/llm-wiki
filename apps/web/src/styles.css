@@ -1897,24 +1897,40 @@ a {
     @apply mt-2 inline-flex w-fit items-center rounded-[var(--radius-lg)] bg-accent px-4 py-2 text-[13px] font-semibold text-white no-underline transition hover:opacity-90;
   }
 
-  .lesson-index-list {
-    @apply flex flex-col gap-2;
+  .lesson-index-stats {
+    @apply text-[13px] text-muted-fg;
   }
 
-  .lesson-index-list-item {
-    @apply list-none;
+  .lesson-index-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
   }
 
-  .lesson-index-list-link {
-    @apply flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-panel-border bg-card-bg px-4 py-3 no-underline transition hover:border-accent/40 hover:bg-card-hover-bg;
+  .lesson-index-card {
+    @apply flex flex-col gap-2 rounded-[var(--radius-lg)] border border-panel-border bg-card-bg p-4 no-underline transition hover:border-accent/40 hover:bg-card-hover-bg;
   }
 
-  .lesson-index-list-title {
-    @apply text-[14px] font-medium text-page-fg;
+  .lesson-index-card-header {
+    @apply flex items-center justify-between gap-2;
   }
 
-  .lesson-index-list-status {
+  .lesson-index-card-order {
+    @apply text-[12px] font-semibold text-accent;
+  }
+
+  .lesson-index-card-status {
     @apply text-[12px] font-semibold text-muted-fg;
+  }
+
+  .lesson-index-card-title {
+    @apply text-[15px] font-semibold text-page-fg;
+  }
+
+  .lesson-index-card-summary {
+    @apply text-[13px] leading-5 text-muted-fg;
+  }
+
+  .lesson-index-card-meta {
+    @apply text-[12px] text-muted-fg;
   }
 
   .lesson-reader-shell {
