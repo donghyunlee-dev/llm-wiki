@@ -301,6 +301,62 @@ const SNAPSHOTS: SnapshotDefinition[] = [
       `,
     },
   },
+  {
+    slug: "ai-first-perspective",
+    page: {
+      id: "96000001",
+      title: "AI를 이해하는 첫 번째 관점",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-07-30",
+      sourceUrl: `${BASE_URL}/96000001`,
+      metadata: {
+        docType: "lesson",
+        audience: "beginner",
+        status: "published",
+        prerequisites: [],
+        next: ["96000002"],
+        related: [],
+      },
+      bodyHtml: `
+        <h1>AI를 이해하는 첫 번째 관점</h1>
+        <h2 id="scene-why-different">AI는 왜 다르게 대답할까</h2>
+        <p>같은 질문도 상황에 따라 다른 답이 나오는 경험을 다뤄봅니다.</p>
+        <ac:structured-macro ac:name="expand"><ac:parameter ac:name="title">대본</ac:parameter><ac:rich-text-body><p>여기서는 학습자에게 "왜 다르게 대답했을까요?"라고 질문을 던지고 잠시 기다립니다.</p></ac:rich-text-body></ac:structured-macro>
+        <h2 id="scene-model-prompt">모델과 프롬프트의 관계</h2>
+        <p>모델은 고정되어 있지만 프롬프트가 답을 바꾼다는 점을 설명합니다.</p>
+      `,
+    },
+  },
+  {
+    slug: "context-and-memory",
+    page: {
+      id: "96000002",
+      title: "컨텍스트와 기억의 한계",
+      spaceId: SPACE_ID,
+      status: "current",
+      version: 1,
+      updatedAt: "2026-07-30",
+      sourceUrl: `${BASE_URL}/96000002`,
+      metadata: {
+        docType: "lesson",
+        audience: "beginner",
+        status: "published",
+        prerequisites: ["96000001"],
+        next: [],
+        related: [],
+      },
+      bodyHtml: `
+        <h1>컨텍스트와 기억의 한계</h1>
+        <h2 id="scene-memory-question">분명 앞에서 말했는데</h2>
+        <p>대화가 길어지면 AI가 앞선 내용을 놓치는 경험을 다뤄봅니다.</p>
+        <ac:structured-macro ac:name="expand"><ac:parameter ac:name="title">대본</ac:parameter><ac:rich-text-body><p>학습자에게 "왜 방금 말한 걸 잊어버렸을까요?"라고 물어봅니다.</p></ac:rich-text-body></ac:structured-macro>
+        <h2 id="scene-context-window">컨텍스트 창이 가득 차면</h2>
+        <p>오래된 정보부터 밀려난다는 점을 설명합니다.</p>
+      `,
+    },
+  },
 ];
 
 export function buildSnapshotWikiDocuments(): WikiDocument[] {
