@@ -15,7 +15,8 @@ function clampSceneIndex(index: number, sceneCount: number): number {
     return 0;
   }
 
-  return Math.min(Math.max(index, 0), sceneCount - 1);
+  const safeIndex = Number.isFinite(index) ? Math.trunc(index) : 0;
+  return Math.min(Math.max(safeIndex, 0), sceneCount - 1);
 }
 
 export function LessonReaderPage() {

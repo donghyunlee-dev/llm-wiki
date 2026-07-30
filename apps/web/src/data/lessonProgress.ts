@@ -22,15 +22,17 @@ export function loadLessonProgress(courseId: string): LessonProgress | null {
 
     if (
       typeof parsed.lastLessonSlug !== "string" ||
-      typeof parsed.lastSceneIndex !== "number" ||
-      !Array.isArray(parsed.completedLessonSlugs)
+      !Number.isInteger(parsed.lastSceneIndex) ||
+      (parsed.lastSceneIndex as number) < 0 ||
+      !Array.isArray(parsed.completedLessonSlugs) ||
+      !parsed.completedLessonSlugs.every((item) => typeof item === "string")
     ) {
       return null;
     }
 
     return {
       lastLessonSlug: parsed.lastLessonSlug,
-      lastSceneIndex: parsed.lastSceneIndex,
+      lastSceneIndex: parsed.lastSceneIndex as number,
       completedLessonSlugs: parsed.completedLessonSlugs,
     };
   } catch {

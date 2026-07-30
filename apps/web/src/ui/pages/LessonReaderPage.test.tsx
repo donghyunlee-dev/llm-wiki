@@ -224,4 +224,17 @@ describe("LessonReaderPage", () => {
     expect(screen.getByText("두 번째 장면")).toBeInTheDocument();
     expect(screen.getByText("2 / 2")).toBeInTheDocument();
   });
+
+  it("falls back to a valid clamped scene when the scene query param is fractional", () => {
+    useSearchParamsMock.mockReturnValue([new URLSearchParams("scene=0.5")]);
+
+    render(
+      <MemoryRouter>
+        <LessonReaderPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("첫 번째 장면")).toBeInTheDocument();
+    expect(screen.getByText("1 / 2")).toBeInTheDocument();
+  });
 });

@@ -44,4 +44,29 @@ describe("lessonProgress", () => {
 
     expect(loadLessonProgress(LESSON_COURSE_ID)).toBeNull();
   });
+
+  it("returns null when lastSceneIndex is fractional or negative", () => {
+    window.localStorage.setItem(
+      `lesson-progress:${LESSON_COURSE_ID}`,
+      JSON.stringify({ lastLessonSlug: "lesson-1", lastSceneIndex: 1.5, completedLessonSlugs: [] }),
+    );
+
+    expect(loadLessonProgress(LESSON_COURSE_ID)).toBeNull();
+
+    window.localStorage.setItem(
+      `lesson-progress:${LESSON_COURSE_ID}`,
+      JSON.stringify({ lastLessonSlug: "lesson-1", lastSceneIndex: -1, completedLessonSlugs: [] }),
+    );
+
+    expect(loadLessonProgress(LESSON_COURSE_ID)).toBeNull();
+  });
+
+  it("returns null when completedLessonSlugs contains a non-string element", () => {
+    window.localStorage.setItem(
+      `lesson-progress:${LESSON_COURSE_ID}`,
+      JSON.stringify({ lastLessonSlug: "lesson-1", lastSceneIndex: 0, completedLessonSlugs: ["lesson-1", 2] }),
+    );
+
+    expect(loadLessonProgress(LESSON_COURSE_ID)).toBeNull();
+  });
 });
