@@ -57,7 +57,7 @@ describe("wikiDataSource", () => {
   it("builds allowed wiki documents from snapshot-shaped remote payloads", () => {
     const documents = buildWikiDocumentsFromPayload(getSnapshotPayload());
 
-    expect(documents).toHaveLength(10);
+    expect(documents).toHaveLength(12);
     expect(documents[0]?.title).toBe("가이드 인덱스");
   });
 
@@ -140,7 +140,7 @@ describe("wikiDataSource", () => {
         Accept: "application/json",
       },
     });
-    expect(documents).toHaveLength(10);
+    expect(documents).toHaveLength(12);
   });
 
   it("filters remote records that are not current and published before normalization", () => {
@@ -266,7 +266,7 @@ describe("wikiDataSource", () => {
     expect(documents[0]?.contentText).toContain("Remote body");
   });
 
-  it("limits remote records to guide, page, faq, library, and nav pages", () => {
+  it("limits remote records to guide, page, faq, library, nav, and lesson pages", () => {
     const pageRecord = buildRemoteRecord({
       slug: "page-example",
       page: {
@@ -304,8 +304,18 @@ describe("wikiDataSource", () => {
       },
     });
 
+    const lessonRecord = buildRemoteRecord({
+      slug: "lesson-basics",
+      page: {
+        ...buildRemoteRecord().page,
+        id: "lesson-1",
+        title: "Lesson Basics",
+        metadata: { ...buildRemoteRecord().page.metadata, docType: "lesson" },
+      },
+    });
+
     const records = parseRemoteWikiPageRecords({
-      pages: [buildRemoteRecord(), pageRecord, libraryRecord, faqRecord, navRecord],
+      pages: [buildRemoteRecord(), pageRecord, libraryRecord, faqRecord, navRecord, lessonRecord],
     });
 
     expect(records.map((record) => record.slug)).toEqual([
@@ -314,6 +324,7 @@ describe("wikiDataSource", () => {
       "library-reference",
       "faq-record",
       "nav-index",
+      "lesson-basics",
     ]);
   });
 

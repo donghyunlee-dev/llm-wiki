@@ -132,7 +132,7 @@ function isAllowedRemotePage(record: RemoteWikiPageRecord) {
   }
 
   const dt = record.page.metadata.docType;
-  return dt === "guide" || dt === "page" || dt === "faq" || dt === "library" || dt === "nav";
+  return dt === "guide" || dt === "page" || dt === "faq" || dt === "library" || dt === "nav" || dt === "lesson";
 }
 
 function isBlockedRemotePage(record: RemoteWikiPageRecord) {
