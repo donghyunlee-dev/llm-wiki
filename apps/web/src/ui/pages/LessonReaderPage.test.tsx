@@ -9,6 +9,7 @@ import { LESSON_COURSE_ID } from "../../data/lessonProgress";
 const useWikiDataMock = vi.fn();
 const navigateMock = vi.fn();
 const useParamsMock = vi.fn(() => ({ slug: "ai-first-perspective" }));
+const useSearchParamsMock = vi.fn(() => [new URLSearchParams()]);
 
 vi.mock("../../data/WikiDataProvider", () => ({
   useWikiData: () => useWikiDataMock(),
@@ -20,7 +21,7 @@ vi.mock("react-router-dom", async (importOriginal) => {
     ...actual,
     useParams: () => useParamsMock(),
     useNavigate: () => navigateMock,
-    useSearchParams: () => [new URLSearchParams()],
+    useSearchParams: () => useSearchParamsMock(),
   };
 });
 
@@ -81,6 +82,8 @@ describe("LessonReaderPage", () => {
     navigateMock.mockReset();
     useParamsMock.mockReset();
     useParamsMock.mockReturnValue({ slug: "ai-first-perspective" });
+    useSearchParamsMock.mockReset();
+    useSearchParamsMock.mockReturnValue([new URLSearchParams()]);
     window.localStorage.clear();
     useWikiDataMock.mockReturnValue({
       documents: [lessonDocument()],
@@ -189,5 +192,36 @@ describe("LessonReaderPage", () => {
 
     expect(screen.getByText("세 번째 장면")).toBeInTheDocument();
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
+  });
+
+  it("applies the scene query param once lesson data finishes loading", () => {
+    useSearchParamsMock.mockReturnValue([new URLSearchParams("scene=1")]);
+    useWikiDataMock.mockReturnValue({
+      documents: [],
+      errorMessage: null,
+      isLoading: true,
+    });
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <LessonReaderPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("불러오는 중")).toBeInTheDocument();
+
+    useWikiDataMock.mockReturnValue({
+      documents: [lessonDocument()],
+      errorMessage: null,
+      isLoading: false,
+    });
+    rerender(
+      <MemoryRouter>
+        <LessonReaderPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("두 번째 장면")).toBeInTheDocument();
+    expect(screen.getByText("2 / 2")).toBeInTheDocument();
   });
 });

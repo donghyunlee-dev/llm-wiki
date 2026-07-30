@@ -39,7 +39,7 @@ export function LessonReaderPage() {
   useEffect(() => {
     setSceneIndex(clampSceneIndex(Number(searchParams.get("scene") ?? 0) || 0, scenes.length));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slug]);
+  }, [slug, scenes.length]);
 
   useEffect(() => {
     setScriptVisible(false);
