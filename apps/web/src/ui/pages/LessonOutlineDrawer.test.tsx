@@ -126,4 +126,26 @@ describe("LessonOutlineDrawer", () => {
 
     expect(document.activeElement).toBe(screen.getByLabelText("학습 흐름 닫기"));
   });
+
+  it("wraps focus from the last focusable element to the first on Tab", () => {
+    renderDrawer();
+
+    const lastFocusable = screen.getByText("장면 C").closest("button") as HTMLElement;
+    lastFocusable.focus();
+
+    fireEvent.keyDown(document, { key: "Tab" });
+
+    expect(document.activeElement).toBe(screen.getByLabelText("학습 흐름 닫기"));
+  });
+
+  it("wraps focus from the first focusable element to the last on Shift+Tab", () => {
+    renderDrawer();
+
+    const firstFocusable = screen.getByLabelText("학습 흐름 닫기");
+    firstFocusable.focus();
+
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+
+    expect(document.activeElement).toBe(screen.getByText("장면 C").closest("button"));
+  });
 });
