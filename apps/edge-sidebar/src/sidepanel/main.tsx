@@ -8,6 +8,7 @@ import {
   requestWikiDocumentByHref,
   requestWikiSearch,
   resolveWikiHref,
+  stripTitleTypePrefix,
   type WikiSidebarDocument,
   type WikiSearchResult,
   type WikiSearchStatus
@@ -205,7 +206,9 @@ function SidebarApp() {
               {activeGuide ? (
                 <>
                   {guideStatus === "loading" ? (
-                    <div className="guide-state">가이드를 불러오는 중입니다.</div>
+                    <div className="guide-state">
+                      <TypingIndicator label="가이드를 불러오는 중입니다." />
+                    </div>
                   ) : null}
                   {guideStatus === "error" ? (
                     <div className="guide-state guide-state-error">
@@ -284,6 +287,19 @@ function UserQuestion({ question }: { question: string }) {
   return <p className="user-question">{question}</p>;
 }
 
+function TypingIndicator({ label }: { label: string }) {
+  return (
+    <p className="typing-indicator" role="status" aria-live="polite">
+      <span className="typing-dots" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+      </span>
+      {label}
+    </p>
+  );
+}
+
 function ConversationItem({
   baseUrl,
   entry,
@@ -298,7 +314,7 @@ function ConversationItem({
   return (
     <article className="conversation-flow">
       <UserQuestion question={entry.question} />
-      {entry.status === "loading" ? <p className="muted">검색 중입니다.</p> : null}
+      {entry.status === "loading" ? <TypingIndicator label="검색 중입니다." /> : null}
       {entry.status === "success" && entry.result ? (
         <>
           <div className="answer-body">{renderAnswerBlocks(entry.result.answer, baseUrl, onOpenGuide)}</div>
@@ -360,7 +376,7 @@ function renderInlineMarkdownLinks(
       parts.push(text.slice(lastIndex, match.index));
     }
 
-    const label = match[1] ?? "";
+    const label = stripTitleTypePrefix(match[1] ?? "");
     const href = match[2] ?? "";
     const resolvedHref = resolveWikiHref(baseUrl, href);
 
