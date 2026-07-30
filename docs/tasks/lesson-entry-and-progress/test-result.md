@@ -4,12 +4,16 @@
 
 - `pnpm -r typecheck` — PASS (edge-sidebar, mcp-server, wiki-core, web, serverless 5개 패키지 모두 통과)
 - `pnpm -r test` — PASS
-  - `packages/wiki-core`: 16 files / 192 tests
+  - `packages/wiki-core`: 16 files / 195 tests (실 콘텐츠 검증 중 발견한 나레이션 blockquote 파싱 회귀 테스트 3건 포함)
   - `apps/web`: 18 files / 86 tests
   - `apps/mcp-server`: 4 files / 42 tests
   - `apps/edge-sidebar`: 2 files / 23 tests
   - `packages/serverless`: 4 files / 21 tests
 - `pnpm --filter @sfood/web build` — PASS (`vite build` 성공, 94 modules transformed)
+
+## 실제 Confluence 콘텐츠(remote 모드)로 재검증
+
+병합 이후, 실제 Confluence에 첫 레슨 페이지(page ID `183238731`)가 작성되어 `remote` 모드로 end-to-end 재검증을 진행했다. 상세 경과와 발견된 이슈(메타데이터 누락, 나레이션 blockquote 미인식, blockquote 경계 정규식 버그)는 `result.md`의 "실제 Confluence 페이지로 재검증" 절 참고. 최종적으로 홈 진입 카드 → `/lesson` 목록 → `/lesson/:slug` 리더(4개 장면, 각 장면 hook/시각 자료는 노출 + "나레이션:" 대본만 토글 뒤에 숨김) 전체 플로우가 실제 데이터로 정상 동작함을 Playwright로 확인했다.
 
 ## Playwright 실사용 검증 (실제 브라우저, `pnpm dev` 기동 후 확인)
 

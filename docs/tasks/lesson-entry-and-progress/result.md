@@ -8,7 +8,7 @@ Wiki 메인 화면에 AI 기초교육(Lesson) 영역으로 들어가는 진입 �
 
 - `docType: "lesson"` 스키마 등록(`confluence-metadata.md`, `CLAUDE.md` Frozen 표, `WikiDocument`/`RawConfluencePage` 타입) — 검색·가이드·페이지·라이브러리·홈 추천 가이드 어디에도 노출되지 않음을 회귀 테스트로 증명.
 - 레슨 문서 간 학습 순서: 신규 필드 없이 기존 `metadata.next` 체인 재사용(`listLessonDocumentsFrom`/`getLessonDocumentFrom`/`getNextLessonSlugFrom`, `packages/wiki-core`).
-- H2 헤딩 기준 장면(Scene) 분리 + Confluence Expand 매크로 → 장면별 숨겨진 "대본"(script) 추출(`splitLessonContentIntoScenes`).
+- H2 헤딩 기준 장면(Scene) 분리 + 장면별 숨겨진 "대본"(script) 추출(`splitLessonContentIntoScenes`) — Confluence Expand 매크로와, 실제 저자 관례로 확인된 `<blockquote><strong>나레이션:</strong>...` 패턴 둘 다 인식.
 - 홈 하단 진입 카드(레슨 문서가 1개 이상 있을 때만 노출), `/lesson` 목록 페이지("이어서 학습하기"/"학습 시작하기"), `/lesson/:slug` 좌우 전환 리더(키보드 방향키·버튼, 장면별 대본 토글, 마지막 장면 완료 시 다음 레슨 자동 이동).
 - `localStorage` 기반 진도 저장(`lesson-progress:{courseId}`) — 완료 레슨 목록, 마지막 레슨/장면 위치.
 - Confluence `remote` 모드 문서 로딩 경로에도 `lesson` docType 허용(향후 실 Confluence 연동 시 즉시 사용 가능하도록).
@@ -25,6 +25,16 @@ Wiki 메인 화면에 AI 기초교육(Lesson) 영역으로 들어가는 진입 �
 `docs/tasks/lesson-entry-and-progress/test-result.md` 참고. `pnpm -r typecheck`/`pnpm -r test`/`pnpm --filter @sfood/web build` 전부 통과. Playwright로 라이트·다크 + 데스크톱(1280)·모바일(390)에서 홈 진입→목록→리더 전체 플로우, 키보드 내비게이션, 대본 토글, 새로고침 후 진도 복구, 검색/가이드/페이지에 레슨 미노출을 직접 확인. Codex 크리티컬 리뷰에서 5건 발견 — 4건(remote 로딩 경로 lesson 누락, 비동기 로딩 레이스, 정수 아닌 scene 인덱스 크래시, 진도 데이터 검증 미흡) 수정 완료, 1건(Expand 매크로 내부 H2 오인식)은 알려진 한계로 남김.
 
 Playwright 실사용 검증 중에도 2건의 실제 문제를 추가로 발견해 수정했다: (1) 레슨 완료 후 다음 레슨 이동 시 장면 인덱스가 초기화되지 않는 버그(React Router가 동일 라우트 컴포넌트를 리마운트하지 않아 발생), (2) 리더 화면의 과도한 빈 공간(레이아웃 어색함).
+
+### 실제 Confluence 페이지로 재검증 (2026-07-30, 병합 이후)
+
+콘텐츠 관리 에이전트가 실제 Confluence에 첫 레슨 페이지(`AI는 왜 지금 업무 현장에 빠르게 들어왔을까`, page ID `183238731`, H2 장면 4개)를 작성한 뒤 `remote` 모드로 실사용 검증을 진행했다.
+
+- 처음에는 페이지에 `wiki.metadata` Content Property가 전혀 없어(`missing_metadata`) 앱 전체(어떤 docType이든 공통 규칙)에서 제외되고 있었다 — 사용자 승인 하에 `docType: "lesson"` 등 필수 필드를 담은 `wiki.metadata`를 직접 추가해 해결(코드 문제 아님, 콘텐츠 메타데이터 누락).
+- 메타데이터 추가 후 홈 진입 카드·`/lesson` 목록·`/lesson/:slug` 리더 전체 플로우가 실제 데이터로 정상 동작함을 확인.
+- **추가 발견 및 수정(실제 콘텐츠 검증에서만 드러난 문제)**: 실제 저자는 대본을 Confluence Expand 매크로가 아니라 `<blockquote><strong>나레이션:</strong> ...</blockquote>` 형태의 평범한 인용구로 작성하는 관례를 쓰고 있었다. 기존 파서는 Expand 매크로만 인식해 대본이 전혀 숨겨지지 않고 본문에 그대로 노출되는 문제가 있었음 — 사용자 승인 하에 `splitLessonContentIntoScenes`가 `나레이션:` 라벨이 붙은 blockquote도 숨겨진 대본으로 인식하도록 확장(일반 blockquote, 예: 도입부 질문은 계속 노출 유지).
+  - 이 수정 과정에서 정규식 경계 버그를 하나 더 발견·수정했다: 최초 구현은 한 장면 안에 일반 blockquote(hook) 다음에 나레이션 blockquote가 오면, 그 사이 blockquote 경계를 넘어 컨텐츠 전체(hook 질문 + 시각 자료 설명 + 대본)를 통째로 숨겨버리는 버그가 있었음 — 이 시나리오를 재현하는 회귀 테스트를 추가하고, `</blockquote>` 경계를 넘지 않도록 정규식을 negative lookahead로 수정해 해결. `packages/wiki-core` 전체 195개 테스트 통과 확인.
+  - 실제 4개 장면 전체(1/4~4/4)를 Playwright로 순회하며 hook 질문/목록/시각 자료 설명은 노출되고, "나레이션:" 대사만 "대본 보기" 토글 뒤에 숨겨짐을 최종 확인.
 
 ## 남은 갭 / 후속 과제
 

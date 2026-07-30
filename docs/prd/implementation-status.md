@@ -16,6 +16,18 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-30 — Lesson 기능, 실제 Confluence 콘텐츠로 재검증 후 대본 파싱 확장 (당일 후속)
+- 브랜치: `develop`(머지 완료 후 바로 이어서 작업, 격리 워크트리 없이 직접 진행 — 작고 독립적인 파서 수정이라 판단).
+- 배경: 사용자가 `pnpm dev`로 5184 포트를 띄워 화면을 직접 보다가 "문서 기준으로 구현이 맞는지" 검토를 요청. 확인 결과 로컬 dev 서버가 `.env.local`의 Confluence 자격증명으로 인해 자동으로 `remote` 모드(기존 vite.config.ts 로직, 이번 세션 이전부터 존재)로 동작해 실제 Confluence 데이터를 쓰고 있었고, 실제 공간에는 아직 `docType: "lesson"` 문서가 없어 홈 진입 카드가 정상적으로 숨겨진 것(버그 아님)임을 확인·설명. 이후 사용자가 실제 Confluence에 레슨 페이지 1개(page ID `183238731`)를 작성했다고 알려와 실 데이터로 재검증 진행.
+- 발견 및 조치:
+  1. 새 페이지에 `wiki.metadata` Content Property가 전혀 없어(`missing_metadata`) 앱에서 완전히 제외되고 있었음 — 사용자 승인 하에 Confluence Content Property API로 `docType: "lesson"` 등 필수 필드를 직접 추가(코드 문제 아님, 콘텐츠 메타데이터 누락).
+  2. 메타데이터 추가 후 홈→목록→리더 전체 플로우가 실제 데이터로 정상 동작 확인.
+  3. **실제 저자가 대본을 Confluence Expand 매크로가 아니라 `<blockquote><strong>나레이션:</strong>...</blockquote>` 형태의 평범한 인용구로 작성하는 관례를 쓰고 있어**, 기존 파서(Expand 매크로만 인식)로는 대본이 전혀 숨겨지지 않고 노출되는 문제를 발견 — 사용자 승인 하에 `packages/wiki-core/src/lib/lessonScenes.ts`의 `splitLessonContentIntoScenes`를 확장해 `나레이션:` 라벨 blockquote도 숨겨진 대본으로 인식하도록 수정(TDD, 회귀 테스트 추가).
+  4. 수정 과정에서 정규식이 `</blockquote>` 경계를 넘어 앞선 hook blockquote까지 통째로 삼켜버리는 버그를 실제 화면 스크린샷으로 발견 — 이 시나리오를 재현하는 회귀 테스트를 추가하고 negative lookahead로 경계를 고정해 해결.
+- 검증: `pnpm -r typecheck`/`pnpm -r test`(wiki-core 195개, 전체 패키지 통과) 통과. Playwright로 실제 레슨 페이지의 4개 장면 전체를 순회하며 hook/목록/시각 자료는 노출, 대본만 토글 뒤에 숨겨짐을 최종 확인.
+- 커밋: `06efa77`("Recognize 나레이션-labeled blockquotes as hidden scene scripts").
+- 태스크 문서 갱신: `docs/tasks/lesson-entry-and-progress/result.md`/`test-result.md`.
+
 ### 2026-07-30 — Lesson(AI 기초교육) 진입점, docType 격리, 학습 진도(localStorage) 신규 구현
 - 브랜치: `develop`에서 신규 분기한 `feature/lesson-entry-and-progress`(격리 워크트리 `.worktrees/feature-lesson-entry-and-progress`에서 작업, Subagent-Driven Development로 태스크별 구현+2단계 리뷰 수행).
 - 배경: 사용자가 홈 화면에 AI 기초교육(Lesson) 진입 경로가 없다는 점, Confluence에 `docType: "lesson"`이 신규 도입될 예정이며 검색/가이드/페이지 노출에 영향이 없어야 한다는 점, 계정 시스템이 없어 학습 진도는 브라우저 저장(이어서 학습하기)이 필요하다는 점을 전달 — 브레인스토밍으로 3가지 구현 범위(A: 세로 리더 재사용, B: 설계문서 전체 1차 Slice, C: 단순화된 좌우 Player)를 제시해 C안으로 확정, 이후 대본(스크립트) 토글 요구사항을 추가로 확인해 설계 문서(`docs/superpowers/specs/2026-07-30-lesson-entry-and-progress-design.md`) 승인 후 계획(`docs/superpowers/plans/2026-07-30-lesson-entry-and-progress.md`) 작성.
