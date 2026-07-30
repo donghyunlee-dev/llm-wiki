@@ -51,6 +51,29 @@ type WikiDocumentLike = {
 
 export const DEFAULT_WIKI_BASE_URL = "https://ax-wiki.s-food.ai";
 
+// Mirrors @sfood/wiki-core's stripTitleTypePrefix (apps/edge-sidebar deliberately has no
+// dependency on wiki-core — see README) — strips a leading "[Type]" bracket for display only,
+// never touching href/matching logic.
+export function stripTitleTypePrefix(title: string): string {
+  return title.replace(/^\[[^\]]+\]\s*/, "");
+}
+
+function stripDuplicateTitleHeading(contentHtml: string, rawTitle: string): string {
+  const match = contentHtml.match(/^\s*<h1[^>]*>([\s\S]*?)<\/h1>/i);
+
+  if (!match) {
+    return contentHtml;
+  }
+
+  const headingText = match[1]?.replace(/<[^>]+>/g, "").trim() ?? "";
+
+  if (headingText !== rawTitle.trim()) {
+    return contentHtml;
+  }
+
+  return contentHtml.slice(match[0].length);
+}
+
 export function normalizeWikiBaseUrl(value: string): string {
   const trimmed = value.trim();
 
@@ -168,20 +191,20 @@ export function findCleanDocumentByHref(value: unknown, baseUrl: string, href: s
     const page = raw as CleanWikiPage;
     const id = typeof page.id === "string" ? page.id : "";
     const slug = typeof page.slug === "string" ? page.slug : "";
-    const contentHtml = typeof page.contentHtml === "string" ? page.contentHtml : "";
-    const title = typeof page.title === "string" ? page.title : "";
+    const rawTitle = typeof page.title === "string" ? page.title : "";
+    const rawContentHtml = typeof page.contentHtml === "string" ? page.contentHtml : "";
 
     const matches = target.id ? id === target.id : slug === target.slug;
-    if (!matches || !title) {
+    if (!matches || !rawTitle) {
       continue;
     }
 
     return {
       id,
       slug,
-      title,
+      title: stripTitleTypePrefix(rawTitle),
       summary: typeof page.summary === "string" ? page.summary : "",
-      contentHtml,
+      contentHtml: stripDuplicateTitleHeading(rawContentHtml, rawTitle),
       relatedDocuments: readCleanRelated(page.related),
     };
   }
@@ -200,7 +223,7 @@ function readCleanRelated(value: unknown): WikiSearchSource[] {
         return null;
       }
       const related = item as { title?: unknown; href?: unknown };
-      const title = typeof related.title === "string" ? related.title.trim() : "";
+      const title = typeof related.title === "string" ? stripTitleTypePrefix(related.title.trim()) : "";
       const href = typeof related.href === "string" ? related.href.trim() : "";
       return title && href ? { title, href } : null;
     })
@@ -219,7 +242,7 @@ function readDocumentSources(value: unknown): WikiSearchSource[] {
       }
 
       const id = readDocumentId(item);
-      const title = item.title.trim();
+      const title = stripTitleTypePrefix(item.title.trim());
       const href = readDocumentHref(item);
 
       return title && href ? { id, title, href } : null;

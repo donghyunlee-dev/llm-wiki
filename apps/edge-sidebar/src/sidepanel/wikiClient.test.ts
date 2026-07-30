@@ -29,7 +29,7 @@ describe("wiki sidebar client helpers", () => {
     );
   });
 
-  it("normalizes answer and unique source titles from the wiki response", () => {
+  it("normalizes answer and unique source titles from the wiki response, stripping [Type] prefixes for display", () => {
     const result = normalizeWikiSearchResponse({
       answer: " Claude Code Worktrees 설명입니다. ",
       confluenceData: [{ pageId: "1", title: "[Guide] Claude Code Worktrees" }],
@@ -43,7 +43,7 @@ describe("wiki sidebar client helpers", () => {
     expect(result).toEqual({
       answer: "Claude Code Worktrees 설명입니다.",
       sources: [
-        { id: "1", title: "[Guide] Claude Code Worktrees", href: "/guides/worktrees" },
+        { id: "1", title: "Claude Code Worktrees", href: "/guides/worktrees" },
         { title: "Claude Code Index", href: "/guides/claude-code-index" }
       ]
     });
@@ -56,7 +56,7 @@ describe("wiki sidebar client helpers", () => {
       recommendedDocuments: [{ id: "1", title: "[Guide] Test", href: "/guides/test-guide" }]
     });
 
-    expect(result.sources).toEqual([{ id: "1", title: "[Guide] Test", href: "/guides/test-guide" }]);
+    expect(result.sources).toEqual([{ id: "1", title: "Test", href: "/guides/test-guide" }]);
   });
 
   it("finds a cleaned document by slug href", () => {
@@ -90,6 +90,44 @@ describe("wiki sidebar client helpers", () => {
 
   it("returns null when no cleaned document matches", () => {
     expect(findCleanDocumentByHref([], "http://localhost:5173", "/guides/missing")).toBeNull();
+  });
+
+  it("strips the [Type] prefix from the title and related titles, and removes a duplicate leading <h1>", () => {
+    const pages = [
+      {
+        id: "42",
+        slug: "worktrees",
+        title: "[Guide] Claude Code Worktrees",
+        summary: "요약",
+        href: "/guides/worktrees",
+        docType: "guide",
+        contentHtml: "<h1>[Guide] Claude Code Worktrees</h1><p>본문</p>",
+        related: [{ title: "[FAQ] 관련 질문", href: "/faq/related" }],
+      },
+    ];
+
+    const found = findCleanDocumentByHref(pages, "http://localhost:5173", "/guides/worktrees");
+    expect(found?.title).toBe("Claude Code Worktrees");
+    expect(found?.contentHtml).toBe("<p>본문</p>");
+    expect(found?.relatedDocuments).toEqual([{ title: "관련 질문", href: "/faq/related" }]);
+  });
+
+  it("keeps a leading <h1> that isn't a duplicate of the page title", () => {
+    const pages = [
+      {
+        id: "42",
+        slug: "worktrees",
+        title: "[Guide] Claude Code Worktrees",
+        summary: "",
+        href: "/guides/worktrees",
+        docType: "guide",
+        contentHtml: "<h1>다른 제목</h1><p>본문</p>",
+        related: [],
+      },
+    ];
+
+    const found = findCleanDocumentByHref(pages, "http://localhost:5173", "/guides/worktrees");
+    expect(found?.contentHtml).toBe("<h1>다른 제목</h1><p>본문</p>");
   });
 
   it("builds href from confluenceData pageId", () => {
