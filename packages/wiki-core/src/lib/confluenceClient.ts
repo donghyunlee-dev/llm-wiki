@@ -540,7 +540,8 @@ function readDocType(value: unknown): RawConfluencePage["metadata"]["docType"] {
     value === "policy" ||
     value === "nav" ||
     value === "ops" ||
-    value === "playbook"
+    value === "playbook" ||
+    value === "lesson"
   ) {
     return value;
   }

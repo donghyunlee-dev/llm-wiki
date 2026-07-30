@@ -247,7 +247,8 @@ function readDocType(value: unknown, index: number): RawConfluencePage["metadata
     value === "ops" ||
     value === "policy" ||
     value === "nav" ||
-    value === "playbook"
+    value === "playbook" ||
+    value === "lesson"
   ) {
     return value;
   }
