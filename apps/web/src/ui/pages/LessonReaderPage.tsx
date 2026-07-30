@@ -6,7 +6,7 @@ import {
   splitLessonContentIntoScenes,
   stripTitleTypePrefix,
 } from "@sfood/wiki-core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
 import { LESSON_COURSE_ID, markLessonCompleted, markSceneVisited } from "../../data/lessonProgress";
@@ -42,6 +42,7 @@ export function LessonReaderPage() {
   const [scriptVisible, setScriptVisible] = useState(false);
   const [outlineOpen, setOutlineOpen] = useState(false);
   const outlineTriggerRef = useRef<HTMLButtonElement>(null);
+  const closeOutline = useCallback(() => setOutlineOpen(false), []);
 
   useEffect(() => {
     setSceneIndex(clampSceneIndex(Number(searchParams.get("scene") ?? 0) || 0, scenes.length));
@@ -214,7 +215,7 @@ export function LessonReaderPage() {
         currentLessonSlug={slug}
         currentSceneIndex={sceneIndex}
         open={outlineOpen}
-        onClose={() => setOutlineOpen(false)}
+        onClose={closeOutline}
         onSelectScene={handleSelectScene}
         triggerRef={outlineTriggerRef}
       />
