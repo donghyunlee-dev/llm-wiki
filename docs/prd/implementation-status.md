@@ -16,6 +16,20 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-30 — Lesson 진행 UI(코스 로드맵/이중 진행률/학습 흐름 드로어) — 레퍼런스 사이트 격차 좁히기
+- 브랜치: `develop`에서 신규 분기한 `feature/lesson-progress-ui`(격리 워크트리, Subagent-Driven Development로 태스크별 구현+2단계 리뷰).
+- 배경: 사용자가 동일 목적으로 이미 완성된 레퍼런스 사이트(`https://ai-work-education.leedh84.chatgpt.site/`, 고정 콘텐츠로 만든 사내 AI 교육 사이트)와 1차 Lesson 구현을 비교해 달라고 요청 — Playwright로 레퍼런스 사이트를 직접 열어 홈/장면/학습 흐름 드로어/진행자 도우미 패널까지 확인한 뒤, 격차를 4개 영역(Scene 시각 컴포넌트/진행 UI/진행자 도우미/모션)으로 분류해 보고. 사용자가 "진행 UI"부터 좁히기로 확정, 콘텐츠는 계속 관리 에이전트가 만드는 중이라는 전제 하에 진행. 브레인스토밍으로 레이아웃 지정 방식(Confluence 본문 관례 패턴 유지), 예상 시간 산정 방식(장면 수 기반 자동 계산), 시각 스타일(기존 SFOOD 토큰 유지, 레이아웃 구조만 참고), 인덱스/드로어 역할 분리를 확정 후 설계 문서(`docs/superpowers/specs/2026-07-30-lesson-progress-ui-design.md`) 승인, 계획(`docs/superpowers/plans/2026-07-30-lesson-progress-ui.md`) 작성.
+- 구현(Task 0-4, 각 태스크마다 spec-compliance + code-quality 2단계 subagent 리뷰):
+  - `packages/wiki-core`: `courseOutline.ts` — `buildCourseOutline`(레슨×장면 트리, 레슨별 예상 소요시간 = 장면수×1.5분), `getGlobalScenePosition`(특정 장면의 코스 전체 내 1-based 위치). 기존 `listLessonDocumentsFrom`/`splitLessonContentIntoScenes` 재사용, 신규 스키마 필드 없음.
+  - `/lesson` 인덱스 → 코스 로드맵 그리드(통계 라인 + 2열 카드: 순번/제목/요약/예상시간/완료 배지).
+  - `/lesson/:slug` 리더 헤더에 "이 레슨"/"전체" 이중 진행률 추가.
+  - `LessonOutlineDrawer` 신규 — 이 코드베이스 최초의 접근성 모달/드로어 컴포넌트(라이브러리 없이 포커스 트랩·ESC/배경 클릭 닫기·body 스크롤 잠금·포커스 복귀 직접 구현), "학습 흐름" 버튼으로 열어 전체 레슨×장면 트리에서 장면 클릭 시 즉시 이동(같은 레슨) 또는 라우팅(다른 레슨).
+- Task 3 구현 중 실제 테스트 실행에서 발견한 문제: 이중 진행률 도입으로 단일 레슨 픽스처에서 "이 레슨"과 "전체" 표시가 같은 숫자를 렌더링해 기존 4개 테스트의 `getByText` 쿼리가 모호해짐 — 사용자 승인 없이 임의로 마크업을 바꾸지 않고 즉시 보고, 승인 받은 뒤 해당 4개 테스트의 쿼리를 `이 레슨` 라벨 기준으로 스코프를 좁히는 방식으로 해결(테스트가 검증하는 동작 자체는 변경 없음).
+- Codex 크리티컬 리뷰(6c)에서 2건 발견, 1건 수정: (1) 포커스 트랩이 "포커스가 이미 첫/마지막 요소에 있을 때"만 감지해, 포커스가 패널 밖으로 벗어나면 Tab이 트랩을 무시할 수 있는 접근성 결함 → `panelRef.current.contains(document.activeElement)` 가드 추가로 즉시 재포획하도록 수정, 회귀 테스트 2건 추가. (2) `next` 체인이 끊긴 레슨은 슬러그 직접 조회(`getLessonDocumentFrom`)로는 리더에 정상 표시되지만 체인 순회 기반 `buildCourseOutline`에서는 조용히 누락되어 코스 개요·이중 진행률·드로어에서 빠질 수 있는 엣지 케이스 → 코드는 이미 크래시 없이 안전하게 처리 중이라 알려진 한계로 문서화(콘텐츠 저작 시 `next` 체인 연결 필요, 근본 해결은 후속 Course Manifest 설계 영역).
+- 검증: `pnpm -r typecheck`(5개 패키지)/`pnpm -r test`(wiki-core 201, web 101, mcp-server 42, edge-sidebar 23, serverless 21 — 전부 통과)/`pnpm --filter @sfood/web build` 통과. Playwright로 코스 로드맵, 이중 진행률, 드로어 열기/장면 이동(같은 레슨·다른 레슨)/ESC·배경 클릭 닫힘/포커스 복귀를 라이트·다크 + 데스크톱(1280)·모바일(390)에서 확인, 레퍼런스 사이트와 구조적 유사도 비교.
+- 제외 범위(설계 문서에 명시, 사용자 승인): Scene 시각 컴포넌트(카드형 비교, 노드 다이어그램), 진행자 도우미 4단 구조, 모션/전환 애니메이션, 홈 화면 진입 카드 변경, 레퍼런스 색상/브랜드 채택 — 전부 후속 세션 범위.
+- 태스크 문서: `docs/tasks/lesson-progress-ui/`(spec/plan/tasks/test-result/result).
+
 ### 2026-07-30 — Lesson 기능, 실제 Confluence 콘텐츠로 재검증 후 대본 파싱 확장 (당일 후속)
 - 브랜치: `develop`(머지 완료 후 바로 이어서 작업, 격리 워크트리 없이 직접 진행 — 작고 독립적인 파서 수정이라 판단).
 - 배경: 사용자가 `pnpm dev`로 5184 포트를 띄워 화면을 직접 보다가 "문서 기준으로 구현이 맞는지" 검토를 요청. 확인 결과 로컬 dev 서버가 `.env.local`의 Confluence 자격증명으로 인해 자동으로 `remote` 모드(기존 vite.config.ts 로직, 이번 세션 이전부터 존재)로 동작해 실제 Confluence 데이터를 쓰고 있었고, 실제 공간에는 아직 `docType: "lesson"` 문서가 없어 홈 진입 카드가 정상적으로 숨겨진 것(버그 아님)임을 확인·설명. 이후 사용자가 실제 Confluence에 레슨 페이지 1개(page ID `183238731`)를 작성했다고 알려와 실 데이터로 재검증 진행.
