@@ -1,4 +1,6 @@
 import {
+  buildCourseOutline,
+  getGlobalScenePosition,
   getLessonDocumentFrom,
   getNextLessonSlugFrom,
   splitLessonContentIntoScenes,
@@ -25,6 +27,7 @@ export function LessonReaderPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { documents, errorMessage, isLoading } = useWikiData();
+  const outline = useMemo(() => buildCourseOutline(documents), [documents]);
 
   const lesson = getLessonDocumentFrom(documents, slug);
   const scenes = useMemo(
@@ -115,6 +118,7 @@ export function LessonReaderPage() {
     );
   }
 
+  const globalPosition = getGlobalScenePosition(outline, slug, sceneIndex);
   const scene = scenes[sceneIndex];
 
   return (
@@ -123,9 +127,18 @@ export function LessonReaderPage() {
         <Link to="/lesson" className="lesson-reader-back-link">
           ← 교육 목록
         </Link>
-        <span className="lesson-reader-position">
-          {sceneIndex + 1} / {scenes.length}
-        </span>
+        <div className="lesson-reader-progress">
+          <span className="lesson-reader-progress-item">
+            <span className="lesson-reader-progress-label">이 레슨</span>
+            {sceneIndex + 1} / {scenes.length}
+          </span>
+          {globalPosition ? (
+            <span className="lesson-reader-progress-item">
+              <span className="lesson-reader-progress-label">전체</span>
+              {globalPosition.globalIndex} / {globalPosition.totalScenes}
+            </span>
+          ) : null}
+        </div>
       </header>
 
       <div className="lesson-reader-stage">

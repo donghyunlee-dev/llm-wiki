@@ -105,7 +105,35 @@ describe("LessonReaderPage", () => {
 
     expect(screen.getByText("첫 번째 장면")).toBeInTheDocument();
     expect(screen.getByText("첫 번째 본문")).toBeInTheDocument();
+    expect(screen.getByText("이 레슨").closest(".lesson-reader-progress-item")).toHaveTextContent("1 / 2");
+  });
+
+  it("shows the overall course progress alongside the in-lesson position", () => {
+    useWikiDataMock.mockReturnValue({
+      documents: [
+        { ...lessonDocument(), metadata: { ...lessonDocument().metadata, next: ["lesson-2"] } },
+        {
+          ...lessonDocument(),
+          id: "lesson-2",
+          slug: "context-and-memory",
+          metadata: { ...lessonDocument().metadata, next: [] },
+          contentHtml: "<h2>장면</h2><p>본문</p>",
+        },
+      ],
+      errorMessage: null,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <LessonReaderPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("이 레슨")).toBeInTheDocument();
     expect(screen.getByText("1 / 2")).toBeInTheDocument();
+    expect(screen.getByText("전체")).toBeInTheDocument();
+    expect(screen.getByText("1 / 3")).toBeInTheDocument();
   });
 
   it("moves to the next scene when the next button is clicked", () => {
@@ -118,7 +146,7 @@ describe("LessonReaderPage", () => {
     fireEvent.click(screen.getByText("다음"));
 
     expect(screen.getByText("두 번째 장면")).toBeInTheDocument();
-    expect(screen.getByText("2 / 2")).toBeInTheDocument();
+    expect(screen.getByText("이 레슨").closest(".lesson-reader-progress-item")).toHaveTextContent("2 / 2");
   });
 
   it("moves to the next scene on ArrowRight and back on ArrowLeft", () => {
@@ -222,7 +250,7 @@ describe("LessonReaderPage", () => {
     );
 
     expect(screen.getByText("두 번째 장면")).toBeInTheDocument();
-    expect(screen.getByText("2 / 2")).toBeInTheDocument();
+    expect(screen.getByText("이 레슨").closest(".lesson-reader-progress-item")).toHaveTextContent("2 / 2");
   });
 
   it("falls back to a valid clamped scene when the scene query param is fractional", () => {
@@ -235,6 +263,6 @@ describe("LessonReaderPage", () => {
     );
 
     expect(screen.getByText("첫 번째 장면")).toBeInTheDocument();
-    expect(screen.getByText("1 / 2")).toBeInTheDocument();
+    expect(screen.getByText("이 레슨").closest(".lesson-reader-progress-item")).toHaveTextContent("1 / 2");
   });
 });

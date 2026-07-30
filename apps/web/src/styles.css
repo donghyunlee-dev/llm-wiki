@@ -1945,8 +1945,16 @@ a {
     @apply text-muted-fg no-underline hover:text-page-fg;
   }
 
-  .lesson-reader-position {
-    @apply font-medium;
+  .lesson-reader-progress {
+    @apply flex items-center gap-4;
+  }
+
+  .lesson-reader-progress-item {
+    @apply flex items-center gap-1.5 font-medium;
+  }
+
+  .lesson-reader-progress-label {
+    @apply text-[11px] font-semibold uppercase tracking-wide text-muted-fg;
   }
 
   .lesson-reader-stage {
