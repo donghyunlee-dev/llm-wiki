@@ -1918,7 +1918,7 @@ a {
   }
 
   .lesson-reader-shell {
-    @apply mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-3xl flex-col justify-between gap-8 px-5 py-8;
+    @apply mx-auto flex min-h-[calc(100vh-64px)] w-full max-w-3xl flex-col justify-center gap-10 px-5 py-8;
   }
 
   .lesson-reader-header {
@@ -1934,7 +1934,7 @@ a {
   }
 
   .lesson-reader-stage {
-    @apply flex flex-1 flex-col gap-4;
+    @apply flex flex-col gap-4;
   }
 
   .lesson-reader-scene-title {
