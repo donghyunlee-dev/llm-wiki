@@ -8,5 +8,5 @@
 - [x] Task 5: 브라우저 진도 저장소(lessonProgress)
 - [x] Task 6: 홈 하단 진입 섹션
 - [x] Task 7: `/lesson` 인덱스 페이지
-- [ ] Task 8: `/lesson/:slug` 리더 페이지
+- [x] Task 8: `/lesson/:slug` 리더 페이지
 - [ ] Task 9: 전체 검증(테스트/타입체크/Playwright/Codex) 및 문서화
