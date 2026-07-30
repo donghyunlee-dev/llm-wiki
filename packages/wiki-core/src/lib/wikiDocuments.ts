@@ -12,7 +12,7 @@ export type WikiDocument = {
   updatedAt: string;
   sourceUrl?: string;
   metadata: {
-    docType: "guide" | "page" | "faq" | "library" | "policy" | "nav" | "ops" | "playbook";
+    docType: "guide" | "page" | "faq" | "library" | "policy" | "nav" | "ops" | "playbook" | "lesson";
     audience: "beginner" | "intermediate" | "advanced";
     status: "published";
     prerequisites: string[];
@@ -200,7 +200,13 @@ function rankSearchDocumentsIn(documents: WikiDocument[], query: string): Ranked
   }
 
   return documents
-    .filter((document) => document.metadata.docType !== "ops" && document.metadata.docType !== "policy" && document.metadata.docType !== "playbook")
+    .filter(
+      (document) =>
+        document.metadata.docType !== "ops" &&
+        document.metadata.docType !== "policy" &&
+        document.metadata.docType !== "playbook" &&
+        document.metadata.docType !== "lesson",
+    )
     .map((document) => ({
       document,
       score: scoreDocumentForSearch(document, profile),

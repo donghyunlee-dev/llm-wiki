@@ -10,6 +10,7 @@ export const DOC_TYPE_LABELS: Record<WikiDocument["metadata"]["docType"], string
   nav: "탐색",
   ops: "운영",
   playbook: "플레이북",
+  lesson: "레슨",
 };
 
 export const AUDIENCE_LABELS: Record<WikiDocument["metadata"]["audience"], string> = {

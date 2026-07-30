@@ -10,7 +10,7 @@ export type RawConfluencePage = {
   bodyHtml: string;
   sourceUrl: string;
   metadata: {
-    docType: "guide" | "page" | "faq" | "library" | "policy" | "nav" | "ops" | "playbook";
+    docType: "guide" | "page" | "faq" | "library" | "policy" | "nav" | "ops" | "playbook" | "lesson";
     audience: "beginner" | "intermediate" | "advanced";
     status: "draft" | "reviewed" | "published";
     prerequisites: string[];

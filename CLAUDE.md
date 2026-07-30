@@ -117,6 +117,8 @@ This applies to all edits — including small fixes, prompt changes, and config 
 **핵심 구분**: 홈과 `/guides`는 `guide` only. 검색 답변 영역(추천/관련/인라인 링크)은 `page` 포함.  
 이 두 영역은 의도적으로 다르며, 어느 쪽도 상대방에 맞춰 바꾸지 않는다.
 
+`lesson` docType은 위 표의 어떤 Surface에도 해당하지 않는 완전히 별도의 비노출 docType이다 — 홈 하단 진입 카드(레슨 문서가 1개 이상 있을 때만 노출되는 카드 자체)와 `/lesson`, `/lesson/:slug` 전용 화면에서만 노출되며, guide/page 노출 규칙과는 무관하다.
+
 이 동작을 수정하는 태스크를 계획할 경우:
 1. 변경 이유와 예상 영향을 사용자에게 명확히 설명한다
 2. 사용자가 명시적으로 승인한 뒤에만 `spec.md`를 작성한다

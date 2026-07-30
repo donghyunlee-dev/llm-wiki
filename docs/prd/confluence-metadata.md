@@ -56,6 +56,7 @@ Confluence 페이지에 부착하는 콘텐츠 속성(content property)이다.
 | `library` | 기본 지침서, 템플릿, 참고 자료 모음 | library |
 | `playbook` | 문제 해결 절차, 운영 시나리오, 내부 실행 절차 — 공개 위키 및 AI 컨텍스트 모두 제외 | (비노출) |
 | `ops` | Wiki 운영, metadata, recompile, update rule 문서 — 공개 위키 및 AI 컨텍스트 모두 제외 | (비노출) |
+| `lesson` | AI 기초교육 등 좌우 전환형 학습 콘텐츠 — 홈 진입 카드와 `/lesson` 전용 화면에서만 노출 | (비노출 — 별도 Lesson 화면 전용) |
 
 ---
 
@@ -91,6 +92,11 @@ Confluence 페이지에 부착하는 콘텐츠 속성(content property)이다.
 - 위키 본문 노출에서 제외된다.
 - 페이지 검색 인덱스 확장 단계(`getIndexFirstSearchWikiDocumentsIn`)에서 하위 페이지 후보를 찾는 용도로만 사용된다.
 - AI 프롬프트의 답변 생성 컨텍스트(`searchResults`)에 포함하지 않는다. AI가 nav 문서를 답변 본문이나 `confluenceData`에 인용하지 않도록 서버에서 제거한다.
+
+### `docType = lesson`
+- 검색 결과, 추천 카드, `guides`/`library`/`faq` 목록에 노출하지 않는다.
+- 홈 하단 진입 카드와 `/lesson`, `/lesson/:slug` 화면에서만 노출한다.
+- AI 프롬프트 컨텍스트에 포함하지 않는다.
 
 ### 온보딩 Q&A 문서
 - 제목 또는 슬러그가 `s*-***` 패턴과 일치하는 페이지는 읽기 모델에서 완전히 제외된다.
