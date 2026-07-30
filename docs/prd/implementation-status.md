@@ -16,6 +16,21 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-07-30 — Lesson(AI 기초교육) 진입점, docType 격리, 학습 진도(localStorage) 신규 구현
+- 브랜치: `develop`에서 신규 분기한 `feature/lesson-entry-and-progress`(격리 워크트리 `.worktrees/feature-lesson-entry-and-progress`에서 작업, Subagent-Driven Development로 태스크별 구현+2단계 리뷰 수행).
+- 배경: 사용자가 홈 화면에 AI 기초교육(Lesson) 진입 경로가 없다는 점, Confluence에 `docType: "lesson"`이 신규 도입될 예정이며 검색/가이드/페이지 노출에 영향이 없어야 한다는 점, 계정 시스템이 없어 학습 진도는 브라우저 저장(이어서 학습하기)이 필요하다는 점을 전달 — 브레인스토밍으로 3가지 구현 범위(A: 세로 리더 재사용, B: 설계문서 전체 1차 Slice, C: 단순화된 좌우 Player)를 제시해 C안으로 확정, 이후 대본(스크립트) 토글 요구사항을 추가로 확인해 설계 문서(`docs/superpowers/specs/2026-07-30-lesson-entry-and-progress-design.md`) 승인 후 계획(`docs/superpowers/plans/2026-07-30-lesson-entry-and-progress.md`) 작성.
+- 구현(Task 0-8, 각 태스크마다 spec-compliance + code-quality 2단계 subagent 리뷰):
+  - `docType: "lesson"`을 `WikiDocument`/`RawConfluencePage` 유니온에 추가 — `getWikiDocumentSection()`의 기존 `null` 기본 분기를 그대로 활용해 검색·가이드·페이지·라이브러리·홈 추천 가이드에서 자동 격리(신규 분기 추가 없음). `docs/prd/confluence-metadata.md`/`CLAUDE.md` Frozen 표에 `lesson` 항목 문서화.
+  - `packages/wiki-core`: `lessonDocuments.ts`(`listLessonDocumentsFrom`/`getLessonDocumentFrom`/`getNextLessonSlugFrom` — 신규 필드 없이 기존 `metadata.next` 체인으로 순서 도출), `lessonScenes.ts`(`splitLessonContentIntoScenes` — H2 헤딩 기준 장면 분리 + Confluence Expand 매크로 → 장면별 숨김 "대본" 추출).
+  - `confluenceSnapshots.ts`에 레슨 픽스처 2건(각 2개 장면, Expand 매크로 대본 포함) 추가 — 실제 Confluence Lesson 콘텐츠는 아직 없어 스냅샷으로 개발.
+  - `apps/web/src/data/lessonProgress.ts` — `localStorage` 기반 진도 저장(`lesson-progress:{courseId}`, 완료 레슨 목록·마지막 위치), 손상된 데이터는 무시하고 폴백.
+  - 홈 하단 진입 카드(`LessonEntrySection`, 레슨 문서 존재 시에만 노출) → `/lesson` 인덱스 페이지(레슨 목록, 이어서 학습하기/학습 시작하기) → `/lesson/:slug` 좌우 전환 리더(키보드 방향키·버튼, 장면별 대본 토글, 마지막 장면 완료 시 다음 레슨 자동 이동 및 진도 기록).
+- Playwright 실사용 검증 중 발견 및 수정한 버그: (1) 레슨 완료 후 다음 레슨 자동 이동 시 React Router가 동일 라우트(`/lesson/:slug`) 컴포넌트를 리마운트하지 않아 장면 인덱스가 초기화되지 않는 문제 — `slug` 변경 시 재계산하는 effect 추가로 수정. (2) 리더 화면의 과도한 빈 공간(레이아웃 어색함) — 콘텐츠+컨트롤을 단일 블록으로 수직 중앙 정렬하도록 CSS 수정.
+- Codex 크리티컬 리뷰(6c)에서 5건 발견, 4건 수정: (1) `wikiDataSource.ts`의 remote 로딩 허용 목록에 `lesson` 누락(실 Confluence 연동 시 전부 유실) → 추가. (2) 비동기 문서 로딩 완료 전 `?scene=` 딥링크 진입 시 파라미터 무시 레이스 → effect 의존성에 `scenes.length` 추가. (3) 정수가 아닌 `?scene=` 값(`0.5` 등)으로 인한 크래시 가능성 → `clampSceneIndex`에 정수/유한값 가드 추가. (4) 진도 데이터의 `lastSceneIndex`/`completedLessonSlugs` 원소 타입 검증 미흡 → 검증 강화. (5) Expand 매크로 내부에 `<h2>`가 있으면 장면 경계로 오인식될 수 있는 정규식 파서의 구조적 한계는 이번 스코프에서 수정하지 않고 알려진 갭으로 문서화(현재 픽스처는 해당 패턴 미사용).
+- 검증: `pnpm -r typecheck`(5개 패키지)/`pnpm -r test`(wiki-core 192, web 86, mcp-server 42, edge-sidebar 23, serverless 21 — 전부 통과)/`pnpm --filter @sfood/web build` 통과. Playwright로 홈→목록→리더 전체 플로우, 키보드 내비게이션, 대본 토글, 새로고침 후 진도 복구, 검색/가이드/페이지 비노출을 라이트·다크 + 데스크톱(1280)·모바일(390)에서 확인.
+- 제외 범위(설계 문서에 명시, 사용자 승인): ADF 기반 Lesson Compiler·`LessonAst`·Content Property 스키마, Motion Preset, 휠/스와이프 탐색, Knowledge Check 등 인터랙티브 컴포넌트, Confluence 실연동, 다중 Course 관리 — 전부 후속 세션 범위.
+- 태스크 문서: `docs/tasks/lesson-entry-and-progress/`(spec/plan/tasks/test-result/result).
+
 ### 2026-07-27 — AWS 배포(S3+CloudFront+Lambda) 워크플로우, AI 질문/검색 로직 wiki-core 추출
 - 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
 - 배경: 사용자가 S3/CloudFront 배포 + GitHub Actions 자동배포를 요청. 3차례 명확화 문답을 거쳐 최종 스코프 확정 — AI 질문/검색은 메인 기능이라 반드시 실사용 가능해야 함(Lambda로 신규 배포), Projects/GitHub 연동은 배제 및 숨김, Lambda는 1회성 신규 생성, OpenAI 키는 기존 값 재사용.
