@@ -153,6 +153,21 @@ describe("HomePage", () => {
           slug: "ai-first-perspective",
           title: "AI를 이해하는 첫 번째 관점",
           metadata: { ...document().metadata, docType: "lesson" },
+          presentation: {
+            schemaVersion: 1,
+            lessonId: "ai-first-perspective",
+            theme: "ai-foundation",
+            scenes: [
+              {
+                sceneId: "scene-1",
+                anchor: "장면",
+                type: "concept",
+                layout: "visual-split",
+                narration: "",
+                blocks: [{ order: 1, kind: "explanation", content: "본문" }],
+              },
+            ],
+          },
         }),
       ],
       errorMessage: null,

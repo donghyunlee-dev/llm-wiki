@@ -107,12 +107,11 @@ export function LessonOutlineDrawer({
         </header>
 
         <nav className="lesson-outline-list">
-          {outline.lessons.map((lesson) => (
+          {outline.lessons.map((lesson, lessonIndex) => (
             <div key={lesson.lessonId}>
-              <p className="lesson-outline-lesson-title">
-                <span>{lesson.title}</span>
-                <span className="lesson-outline-lesson-minutes">약 {lesson.estimatedMinutes}분</span>
-              </p>
+              {lesson.chapter && lesson.chapter !== outline.lessons[lessonIndex - 1]?.chapter ? (
+                <p className="lesson-outline-chapter-header">{lesson.chapter}</p>
+              ) : null}
               <ol className="lesson-outline-scene-list">
                 {lesson.scenes.map((scene, index) => {
                   const isCurrent = lesson.slug === currentLessonSlug && index === currentSceneIndex;

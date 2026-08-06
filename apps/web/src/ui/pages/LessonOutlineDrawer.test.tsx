@@ -59,6 +59,56 @@ function renderDrawer(overrides: Partial<Parameters<typeof LessonOutlineDrawer>[
   return { triggerRef, onClose, onSelectScene };
 }
 
+describe("LessonOutlineDrawer chapter grouping", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  it("shows a chapter header once before the first lesson of that chapter, not repeated for every lesson in it", () => {
+    const outlineWithChapters: CourseOutline = {
+      lessons: [
+        { ...outline.lessons[0], chapter: "챕터 1" },
+        { ...outline.lessons[1], lessonId: "l3", slug: "lesson-3", title: "레슨 3", chapter: "챕터 1" },
+        { ...outline.lessons[1], chapter: "챕터 2" },
+      ],
+      totalScenes: 4,
+      totalEstimatedMinutes: 7,
+    };
+    const triggerRef = createRef<HTMLButtonElement>();
+
+    render(
+      <LessonOutlineDrawer
+        outline={outlineWithChapters}
+        currentLessonSlug="lesson-1"
+        currentSceneIndex={0}
+        open
+        onClose={vi.fn()}
+        onSelectScene={vi.fn()}
+        triggerRef={triggerRef}
+      />,
+    );
+
+    expect(screen.getAllByText("챕터 1")).toHaveLength(1);
+    expect(screen.getByText("챕터 2")).toBeInTheDocument();
+  });
+
+  it("shows no chapter header when the outline has no chapter metadata", () => {
+    render(
+      <LessonOutlineDrawer
+        outline={outline}
+        currentLessonSlug="lesson-1"
+        currentSceneIndex={0}
+        open
+        onClose={vi.fn()}
+        onSelectScene={vi.fn()}
+        triggerRef={createRef<HTMLButtonElement>()}
+      />,
+    );
+
+    expect(document.querySelector(".lesson-outline-chapter-header")).not.toBeInTheDocument();
+  });
+});
+
 describe("LessonOutlineDrawer", () => {
   it("does not render when closed", () => {
     render(
@@ -76,15 +126,21 @@ describe("LessonOutlineDrawer", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("lists every lesson and scene from the outline", () => {
+  it("lists every scene from the outline", () => {
     renderDrawer();
 
-    expect(screen.getByText("레슨 1")).toBeInTheDocument();
-    expect(screen.getByText("레슨 2")).toBeInTheDocument();
     expect(screen.getByText("장면 A")).toBeInTheDocument();
     expect(screen.getByText("장면 B")).toBeInTheDocument();
     expect(screen.getByText("장면 C")).toBeInTheDocument();
-    expect(screen.getByText("약 3분")).toBeInTheDocument();
+  });
+
+  it("does not show the lesson title separately or the estimated minutes", () => {
+    renderDrawer();
+
+    expect(screen.queryByText("레슨 1")).not.toBeInTheDocument();
+    expect(screen.queryByText("레슨 2")).not.toBeInTheDocument();
+    expect(screen.queryByText("약 3분")).not.toBeInTheDocument();
+    expect(screen.queryByText("약 2분")).not.toBeInTheDocument();
   });
 
   it("marks the current scene as current", () => {
