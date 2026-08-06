@@ -96,6 +96,196 @@ describe("fetchConfluencePageRecords", () => {
     ]);
   });
 
+  it("fetches lesson.presentation and flattened course metadata for a lesson docType page", async () => {
+    const lessonMetadata = {
+      ...metadata,
+      docType: "lesson",
+      courseId: "ai-foundation",
+      order: 1,
+      chapter: "AI 이해의 시작",
+      estimatedMinutes: 5,
+      learningObjectives: ["목표 1"],
+      lastReviewedAt: "2026-08-04",
+    };
+    const presentation = {
+      schemaVersion: 1,
+      lessonId: "today-route",
+      theme: "ai-foundation",
+      scenes: [
+        {
+          sceneId: "today-route-main",
+          anchor: "오늘의 흐름",
+          type: "concept",
+          layout: "visual-split",
+          motion: "step-reveal",
+          reveal: "manual",
+          narration: "내레이션",
+          blocks: [
+            { order: 1, kind: "hook", content: "질문" },
+            { order: 2, kind: "visual", visualKind: "step-cards", html: "<div>카드</div>", css: ".card{color:red}" },
+          ],
+          interaction: { kind: "step-reveal", steps: ["카드 공개"] },
+          completionEvidence: "증거",
+          transitionToNext: "다음 안내",
+        },
+      ],
+    };
+
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          results: [
+            {
+              id: "123",
+              status: "current",
+              title: "오늘의 흐름",
+              spaceId: "63111172",
+              version: { number: 1, createdAt: "2026-04-29T01:02:03.000Z" },
+              body: { storage: { value: "<h1>오늘의 흐름</h1>" } },
+              _links: { webui: "/wiki/spaces/LLMWIKI/pages/123" },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ results: [{ id: "prop-1", key: "wiki.metadata", value: lessonMetadata }] }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ results: [{ id: "prop-2", key: "lesson.presentation", value: presentation }] }),
+      );
+
+    const records = await fetchConfluencePageRecords({
+      siteName: "sfoodxproject",
+      userEmail: "user@example.com",
+      apiToken: "token",
+      spaceId: "63111172",
+      fetch: mockFetch,
+    });
+
+    expect(records[0].page.metadata).toEqual({
+      docType: "lesson",
+      audience: "beginner",
+      status: "published",
+      prerequisites: [],
+      next: [],
+      related: [],
+      courseId: "ai-foundation",
+      order: 1,
+      chapter: "AI 이해의 시작",
+      estimatedMinutes: 5,
+      learningObjectives: ["목표 1"],
+      lastReviewedAt: "2026-08-04",
+    });
+    expect(records[0].page.presentation).toEqual(presentation);
+  });
+
+  it("does not fetch lesson.presentation for a non-lesson docType page", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          results: [
+            {
+              id: "123",
+              status: "current",
+              title: "가이드",
+              spaceId: "63111172",
+              body: { storage: { value: "<h1>가이드</h1>" } },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ results: [{ id: "prop-1", key: "wiki.metadata", value: metadata }] }));
+
+    const records = await fetchConfluencePageRecords({
+      siteName: "sfoodxproject",
+      userEmail: "user@example.com",
+      apiToken: "token",
+      spaceId: "63111172",
+      fetch: mockFetch,
+    });
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(records[0].page.presentation).toBeUndefined();
+  });
+
+  it("drops lesson.presentation entirely when schemaVersion does not match", async () => {
+    const lessonMetadata = { ...metadata, docType: "lesson" };
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          results: [
+            {
+              id: "123",
+              status: "current",
+              title: "레슨",
+              spaceId: "63111172",
+              body: { storage: { value: "<h1>레슨</h1>" } },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ results: [{ id: "prop-1", key: "wiki.metadata", value: lessonMetadata }] }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          results: [
+            {
+              id: "prop-2",
+              key: "lesson.presentation",
+              value: { schemaVersion: 2, lessonId: "x", theme: "y", scenes: [] },
+            },
+          ],
+        }),
+      );
+
+    const records = await fetchConfluencePageRecords({
+      siteName: "sfoodxproject",
+      userEmail: "user@example.com",
+      apiToken: "token",
+      spaceId: "63111172",
+      fetch: mockFetch,
+    });
+
+    expect(records[0].page.presentation).toBeUndefined();
+  });
+
+  it("normalizes numeric prerequisites entries to strings", async () => {
+    const lessonMetadata = { ...metadata, docType: "lesson", prerequisites: [183075057] };
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({
+          results: [
+            {
+              id: "123",
+              status: "current",
+              title: "레슨",
+              spaceId: "63111172",
+              body: { storage: { value: "<h1>레슨</h1>" } },
+            },
+          ],
+        }),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({ results: [{ id: "prop-1", key: "wiki.metadata", value: lessonMetadata }] }),
+      )
+      .mockResolvedValueOnce(jsonResponse({ results: [] }));
+
+    const records = await fetchConfluencePageRecords({
+      siteName: "sfoodxproject",
+      userEmail: "user@example.com",
+      apiToken: "token",
+      spaceId: "63111172",
+      fetch: mockFetch,
+    });
+
+    expect(records[0].page.metadata.prerequisites).toEqual(["183075057"]);
+  });
+
   it("uses a follow-up property fetch when the property list returns a numeric id without a value", async () => {
     const mockFetch = vi
       .fn()

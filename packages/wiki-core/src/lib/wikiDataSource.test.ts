@@ -328,6 +328,61 @@ describe("wikiDataSource", () => {
     ]);
   });
 
+  it("carries lesson.presentation and flattened course metadata through the remote JSON round-trip", () => {
+    const presentation = {
+      schemaVersion: 1 as const,
+      lessonId: "today-route",
+      theme: "ai-foundation",
+      scenes: [
+        {
+          sceneId: "today-route-main",
+          anchor: "오늘의 흐름",
+          type: "concept" as const,
+          layout: "visual-split" as const,
+          narration: "내레이션",
+          blocks: [{ order: 1, kind: "hook" as const, content: "질문" }],
+        },
+      ],
+    };
+    const lessonRecord = buildRemoteRecord({
+      slug: "today-route",
+      page: {
+        ...buildRemoteRecord().page,
+        id: "lesson-1",
+        title: "오늘의 흐름",
+        metadata: {
+          ...buildRemoteRecord().page.metadata,
+          docType: "lesson",
+          courseId: "ai-foundation",
+          order: 1,
+          chapter: "AI 이해의 시작",
+          estimatedMinutes: 5,
+          learningObjectives: ["목표 1"],
+          lastReviewedAt: "2026-08-04",
+        },
+        presentation,
+      },
+    });
+
+    const records = parseRemoteWikiPageRecords({ pages: [lessonRecord] });
+
+    expect(records[0].page.presentation).toEqual(presentation);
+    expect(records[0].page.metadata).toEqual({
+      docType: "lesson",
+      audience: "beginner",
+      status: "published",
+      prerequisites: [],
+      next: [],
+      related: [],
+      courseId: "ai-foundation",
+      order: 1,
+      chapter: "AI 이해의 시작",
+      estimatedMinutes: 5,
+      learningObjectives: ["목표 1"],
+      lastReviewedAt: "2026-08-04",
+    });
+  });
+
   it("rejects remote records outside the fixed public wiki space", () => {
     expect(() =>
       parseRemoteWikiPageRecords([

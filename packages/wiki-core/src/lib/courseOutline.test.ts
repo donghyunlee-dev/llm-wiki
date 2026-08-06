@@ -1,6 +1,19 @@
 import { describe, expect, it } from "vitest";
+import type { LessonPresentationScene } from "./lessonSemanticBlocks";
 import type { WikiDocument } from "./wikiDocuments";
 import { buildCourseOutline, getGlobalScenePosition } from "./courseOutline";
+
+function presentationScene(overrides: Partial<LessonPresentationScene> = {}): LessonPresentationScene {
+  return {
+    sceneId: "a",
+    anchor: "장면 A",
+    type: "concept",
+    layout: "visual-split",
+    narration: "",
+    blocks: [{ order: 1, kind: "explanation", content: "본문" }],
+    ...overrides,
+  };
+}
 
 function lessonDocument(overrides: Partial<WikiDocument> = {}): WikiDocument {
   return {
@@ -16,9 +29,17 @@ function lessonDocument(overrides: Partial<WikiDocument> = {}): WikiDocument {
       prerequisites: [],
       next: [],
       related: [],
+      courseId: "ai-foundation",
+      order: 1,
+    },
+    presentation: {
+      schemaVersion: 1,
+      lessonId: "lesson-1",
+      theme: "ai-foundation",
+      scenes: [presentationScene({ sceneId: "a", anchor: "장면 A" })],
     },
     headings: [],
-    contentHtml: "<h2 id=\"a\">장면 A</h2><p>본문</p>",
+    contentHtml: "<h1>레슨 1</h1>",
     ...overrides,
   };
 }
@@ -38,16 +59,29 @@ describe("buildCourseOutline", () => {
         id: "l1",
         slug: "lesson-1",
         summary: "첫 번째 레슨",
-        metadata: { ...lessonDocument().metadata, next: ["l2"] },
-        contentHtml: "<h2 id=\"a\">장면 A</h2><p>본문 A</p><h2 id=\"b\">장면 B</h2><p>본문 B</p>",
+        metadata: { ...lessonDocument().metadata, courseId: "ai-foundation", order: 1 },
+        presentation: {
+          schemaVersion: 1,
+          lessonId: "lesson-1",
+          theme: "ai-foundation",
+          scenes: [
+            presentationScene({ sceneId: "a", anchor: "장면 A" }),
+            presentationScene({ sceneId: "b", anchor: "장면 B" }),
+          ],
+        },
       }),
       lessonDocument({
         id: "l2",
         slug: "lesson-2",
         title: "레슨 2",
         summary: "두 번째 레슨",
-        metadata: { ...lessonDocument().metadata, next: [] },
-        contentHtml: "<h2 id=\"c\">장면 C</h2><p>본문 C</p>",
+        metadata: { ...lessonDocument().metadata, courseId: "ai-foundation", order: 2 },
+        presentation: {
+          schemaVersion: 1,
+          lessonId: "lesson-2",
+          theme: "ai-foundation",
+          scenes: [presentationScene({ sceneId: "c", anchor: "장면 C" })],
+        },
       }),
     ];
 
@@ -69,14 +103,30 @@ describe("buildCourseOutline", () => {
     expect(outline.totalEstimatedMinutes).toBe(5);
   });
 
-  it("rounds estimated minutes up to at least 1", () => {
+  it("prefers metadata.estimatedMinutes over the scene-count heuristic when present", () => {
     const documents = [
-      lessonDocument({ id: "l1", slug: "lesson-1", contentHtml: "<p>H2가 없는 본문</p>" }),
+      lessonDocument({ id: "l1", metadata: { ...lessonDocument().metadata, estimatedMinutes: 7 } }),
     ];
 
-    const outline = buildCourseOutline(documents);
+    expect(buildCourseOutline(documents).lessons[0].estimatedMinutes).toBe(7);
+  });
 
-    expect(outline.lessons[0].estimatedMinutes).toBeGreaterThanOrEqual(1);
+  it("rounds estimated minutes up to at least 1 when falling back to the heuristic", () => {
+    const documents = [lessonDocument({ id: "l1" })];
+
+    expect(buildCourseOutline(documents).lessons[0].estimatedMinutes).toBeGreaterThanOrEqual(1);
+  });
+
+  it("includes the chapter when metadata declares one", () => {
+    const documents = [lessonDocument({ id: "l1", metadata: { ...lessonDocument().metadata, chapter: "AI 이해의 시작" } })];
+
+    expect(buildCourseOutline(documents).lessons[0].chapter).toBe("AI 이해의 시작");
+  });
+
+  it("excludes lessons without lesson.presentation", () => {
+    const documents = [lessonDocument({ id: "l1", presentation: undefined })];
+
+    expect(buildCourseOutline(documents).lessons).toEqual([]);
   });
 });
 
@@ -85,14 +135,27 @@ describe("getGlobalScenePosition", () => {
     lessonDocument({
       id: "l1",
       slug: "lesson-1",
-      metadata: { ...lessonDocument().metadata, next: ["l2"] },
-      contentHtml: "<h2 id=\"a\">장면 A</h2><p>A</p><h2 id=\"b\">장면 B</h2><p>B</p>",
+      metadata: { ...lessonDocument().metadata, courseId: "ai-foundation", order: 1 },
+      presentation: {
+        schemaVersion: 1,
+        lessonId: "lesson-1",
+        theme: "ai-foundation",
+        scenes: [
+          presentationScene({ sceneId: "a", anchor: "장면 A" }),
+          presentationScene({ sceneId: "b", anchor: "장면 B" }),
+        ],
+      },
     }),
     lessonDocument({
       id: "l2",
       slug: "lesson-2",
-      metadata: { ...lessonDocument().metadata, next: [] },
-      contentHtml: "<h2 id=\"c\">장면 C</h2><p>C</p>",
+      metadata: { ...lessonDocument().metadata, courseId: "ai-foundation", order: 2 },
+      presentation: {
+        schemaVersion: 1,
+        lessonId: "lesson-2",
+        theme: "ai-foundation",
+        scenes: [presentationScene({ sceneId: "c", anchor: "장면 C" })],
+      },
     }),
   ];
   const outline = buildCourseOutline(documents);

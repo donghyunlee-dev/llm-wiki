@@ -1,3 +1,4 @@
+import type { LessonPresentationDocument } from "./lessonSemanticBlocks";
 import type { WikiDocument } from "./wikiDocuments";
 
 export type RawConfluencePage = {
@@ -16,7 +17,17 @@ export type RawConfluencePage = {
     prerequisites: string[];
     next: string[];
     related: string[];
+    // lesson docType 전용, 평탄화된 필드(다른 docType은 항상 undefined) — `lesson.course`
+    // Course Manifest Content Property가 아니라 `wiki.metadata` 자체에 평탄화되어 있다.
+    courseId?: string;
+    order?: number;
+    chapter?: string;
+    estimatedMinutes?: number;
+    learningObjectives?: string[];
+    lastReviewedAt?: string;
   };
+  // 별도 Confluence Content Property(`lesson.presentation`)의 값 — `metadata` 밖에 둔다.
+  presentation?: LessonPresentationDocument;
   updatedAt: string;
 };
 
@@ -83,7 +94,20 @@ export function normalizeConfluencePage(
       prerequisites: page.metadata.prerequisites,
       next: page.metadata.next,
       related: page.metadata.related,
+      ...(page.metadata.courseId !== undefined ? { courseId: page.metadata.courseId } : {}),
+      ...(page.metadata.order !== undefined ? { order: page.metadata.order } : {}),
+      ...(page.metadata.chapter !== undefined ? { chapter: page.metadata.chapter } : {}),
+      ...(page.metadata.estimatedMinutes !== undefined
+        ? { estimatedMinutes: page.metadata.estimatedMinutes }
+        : {}),
+      ...(page.metadata.learningObjectives !== undefined
+        ? { learningObjectives: page.metadata.learningObjectives }
+        : {}),
+      ...(page.metadata.lastReviewedAt !== undefined
+        ? { lastReviewedAt: page.metadata.lastReviewedAt }
+        : {}),
     },
+    ...(page.presentation ? { presentation: page.presentation } : {}),
     headings,
     contentHtml,
   };

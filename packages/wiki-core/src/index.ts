@@ -15,5 +15,7 @@ export * from "./lib/searchAnswerState";
 export * from "./lib/aiOrchestration";
 export * from "./lib/wikiDocumentsService";
 export * from "./lib/lessonDocuments";
-export * from "./lib/lessonScenes";
+export * from "./lib/lessonSemanticBlocks";
+export * from "./lib/lessonPresentation";
+export * from "./lib/lessonDiagnostics";
 export * from "./lib/courseOutline";

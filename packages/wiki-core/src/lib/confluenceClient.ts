@@ -1,10 +1,12 @@
 import type { RawConfluencePage } from "./confluenceReadModel";
+import { readLessonPresentationValue, type LessonPresentationDocument } from "./lessonSemanticBlocks";
 import {
   PUBLIC_WIKI_SPACE_ID,
   type RemoteWikiPageRecord,
 } from "./wikiDataSource";
 
 const METADATA_PROPERTY_KEY = "wiki.metadata";
+const LESSON_PRESENTATION_PROPERTY_KEY = "lesson.presentation";
 
 type FetchLike = typeof fetch;
 
@@ -72,6 +74,11 @@ export async function fetchConfluencePageRecords(
           return null;
         }
 
+        const presentation =
+          resolvedMetadata.docType === "lesson"
+            ? await fetchLessonPresentation(siteBaseUrl, page.id, request)
+            : undefined;
+
         return {
           slug: slugifyPageTitle(page.title, page.id),
           page: {
@@ -84,6 +91,7 @@ export async function fetchConfluencePageRecords(
             bodyHtml: page.body?.storage?.value ?? "",
             sourceUrl: resolvePageUrl(siteBaseUrl, page._links?.webui),
             metadata: resolvedMetadata,
+            ...(presentation ? { presentation } : {}),
             updatedAt: normalizeUpdatedAt(page.version?.createdAt),
           },
         } satisfies RemoteWikiPageRecord;
@@ -167,6 +175,49 @@ async function fetchPageMetadata(
   } catch {
     return null;
   }
+}
+
+/**
+ * `wiki.metadata`와는 별개인 Content Property. lesson docType 문서에만 존재하며, 실제 학습
+ * 콘텐츠(Scene/블록/내레이션 등)를 담는다. 다른 docType 문서에는 이 property가 없으므로
+ * lesson docType으로 판명된 문서에만 호출해 API 요청 수를 늘리지 않는다.
+ */
+async function fetchLessonPresentation(
+  siteBaseUrl: string,
+  pageId: string,
+  request: (pathOrUrl: string) => Promise<unknown>,
+): Promise<LessonPresentationDocument | undefined> {
+  const response = await request(
+    `/wiki/api/v2/pages/${encodeURIComponent(pageId)}/properties?key=${encodeURIComponent(LESSON_PRESENTATION_PROPERTY_KEY)}`,
+  );
+  const propertyList = readPropertyListResponse(response);
+  const property = propertyList.results.find((item) => item.key === LESSON_PRESENTATION_PROPERTY_KEY);
+
+  if (!property) {
+    return undefined;
+  }
+
+  if (property.value) {
+    return readLessonPresentationValue(property.value);
+  }
+
+  if (!property.id) {
+    return undefined;
+  }
+
+  const propertyResponse = await request(
+    resolveConfluencePathOrUrl(
+      siteBaseUrl,
+      `/wiki/api/v2/pages/${encodeURIComponent(pageId)}/properties/${encodeURIComponent(property.id)}`,
+    ),
+  );
+  const propertyDetail = readPropertyResponse(propertyResponse);
+
+  if (propertyDetail.key !== LESSON_PRESENTATION_PROPERTY_KEY || !propertyDetail.value) {
+    return undefined;
+  }
+
+  return readLessonPresentationValue(propertyDetail.value);
 }
 
 function createConfluenceRequest(config: ConfluenceClientConfig) {
@@ -429,6 +480,19 @@ function readMetadataValue(value: unknown): RawConfluencePage["metadata"] {
     prerequisites: readStringArray(value.prerequisites),
     next: readStringArray(value.next),
     related: readStringArray(value.related),
+    // lesson docType 전용 평탄화 필드(Course Manifest) — 다른 docType 문서에는 없다.
+    ...(typeof value.courseId === "string" && value.courseId.trim() ? { courseId: value.courseId } : {}),
+    ...(typeof value.order === "number" && Number.isInteger(value.order) ? { order: value.order } : {}),
+    ...(typeof value.chapter === "string" && value.chapter.trim() ? { chapter: value.chapter } : {}),
+    ...(typeof value.estimatedMinutes === "number" && Number.isFinite(value.estimatedMinutes)
+      ? { estimatedMinutes: value.estimatedMinutes }
+      : {}),
+    ...(Array.isArray(value.learningObjectives)
+      ? { learningObjectives: readStringArray(value.learningObjectives) }
+      : {}),
+    ...(typeof value.lastReviewedAt === "string" && value.lastReviewedAt.trim()
+      ? { lastReviewedAt: value.lastReviewedAt }
+      : {}),
   };
 }
 
@@ -574,11 +638,17 @@ function readString(value: unknown, fieldName: string) {
 }
 
 function readStringArray(value: unknown) {
-  if (Array.isArray(value) && value.every((item) => typeof item === "string")) {
-    return value;
+  if (!Array.isArray(value)) {
+    return [];
   }
 
-  return [];
+  // 실측 콘텐츠에서 `prerequisites`가 페이지 ID를 문자열 대신 숫자로 담고 있는 경우가
+  // 확인됨 — 문자열로 정규화한다.
+  if (!value.every((item) => typeof item === "string" || typeof item === "number")) {
+    return [];
+  }
+
+  return value.map((item) => String(item));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

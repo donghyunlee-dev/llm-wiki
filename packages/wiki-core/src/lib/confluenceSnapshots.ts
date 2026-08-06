@@ -316,17 +316,48 @@ const SNAPSHOTS: SnapshotDefinition[] = [
         audience: "beginner",
         status: "published",
         prerequisites: [],
-        next: ["96000002"],
+        next: [],
         related: [],
+        courseId: "ai-foundation",
+        order: 1,
+        chapter: "AI 이해의 시작",
+        estimatedMinutes: 4,
+        learningObjectives: ["같은 질문에도 답이 달라지는 이유를 설명한다"],
+        lastReviewedAt: "2026-07-30",
       },
-      bodyHtml: `
-        <h1>AI를 이해하는 첫 번째 관점</h1>
-        <h2 id="scene-why-different">AI는 왜 다르게 대답할까</h2>
-        <p>같은 질문도 상황에 따라 다른 답이 나오는 경험을 다뤄봅니다.</p>
-        <ac:structured-macro ac:name="expand"><ac:parameter ac:name="title">대본</ac:parameter><ac:rich-text-body><p>여기서는 학습자에게 "왜 다르게 대답했을까요?"라고 질문을 던지고 잠시 기다립니다.</p></ac:rich-text-body></ac:structured-macro>
-        <h2 id="scene-model-prompt">모델과 프롬프트의 관계</h2>
-        <p>모델은 고정되어 있지만 프롬프트가 답을 바꾼다는 점을 설명합니다.</p>
-      `,
+      // `lesson.presentation`이 진짜 콘텐츠라 bodyHtml은 Confluence 편집기에서 사람이 읽기
+      // 위한 미러 텍스트일 뿐이다 — 우리 앱은 이 필드를 파싱하지 않는다.
+      bodyHtml: "<h1>AI를 이해하는 첫 번째 관점</h1><p>같은 질문도 상황에 따라 다른 답이 나옵니다.</p>",
+      presentation: {
+        schemaVersion: 1,
+        lessonId: "ai-first-perspective",
+        theme: "ai-foundation",
+        scenes: [
+          {
+            sceneId: "ai-first-perspective-main",
+            anchor: "AI를 이해하는 첫 번째 관점",
+            type: "concept",
+            layout: "visual-split",
+            motion: "step-reveal",
+            reveal: "manual",
+            narration: "여기서는 학습자에게 왜 다르게 대답했을까요? 라고 질문을 던지고 잠시 기다립니다.",
+            blocks: [
+              { order: 1, kind: "hook", content: "AI는 왜 같은 질문에도 다르게 대답할까요?" },
+              { order: 2, kind: "explanation", content: "모델은 고정되어 있지만 프롬프트가 답을 바꿉니다." },
+              {
+                order: 3,
+                kind: "visual",
+                visualKind: "prompt-vs-model",
+                html: "<div class=\"visual-prompt-vs-model\"><div class=\"visual-prompt-vs-model__card\">모델</div><div class=\"visual-prompt-vs-model__card\">프롬프트</div></div>",
+                css: ".visual-prompt-vs-model{display:flex;gap:12px}.visual-prompt-vs-model__card{padding:12px;border-radius:8px;background:#f5f7fa}",
+              },
+            ],
+            interaction: { kind: "step-reveal", steps: ["모델 카드 공개", "프롬프트 카드 공개"] },
+            completionEvidence: "학습자가 모델과 프롬프트의 관계를 설명한다",
+            transitionToNext: "이제 컨텍스트가 무엇인지 알아보겠습니다.",
+          },
+        ],
+      },
     },
   },
   {
@@ -346,15 +377,47 @@ const SNAPSHOTS: SnapshotDefinition[] = [
         prerequisites: ["96000001"],
         next: [],
         related: [],
+        courseId: "ai-foundation",
+        order: 2,
+        chapter: "Context와 Session",
+        estimatedMinutes: 5,
+        learningObjectives: ["컨텍스트 창이 가득 찼을 때 벌어지는 일을 설명한다"],
+        lastReviewedAt: "2026-07-30",
       },
-      bodyHtml: `
-        <h1>컨텍스트와 기억의 한계</h1>
-        <h2 id="scene-memory-question">분명 앞에서 말했는데</h2>
-        <p>대화가 길어지면 AI가 앞선 내용을 놓치는 경험을 다뤄봅니다.</p>
-        <ac:structured-macro ac:name="expand"><ac:parameter ac:name="title">대본</ac:parameter><ac:rich-text-body><p>학습자에게 "왜 방금 말한 걸 잊어버렸을까요?"라고 물어봅니다.</p></ac:rich-text-body></ac:structured-macro>
-        <h2 id="scene-context-window">컨텍스트 창이 가득 차면</h2>
-        <p>오래된 정보부터 밀려난다는 점을 설명합니다.</p>
-      `,
+      bodyHtml: "<h1>컨텍스트와 기억의 한계</h1><p>대화가 길어지면 AI가 앞선 내용을 놓칩니다.</p>",
+      presentation: {
+        schemaVersion: 1,
+        lessonId: "context-and-memory",
+        theme: "ai-foundation",
+        scenes: [
+          {
+            sceneId: "context-and-memory-main",
+            anchor: "컨텍스트와 기억의 한계",
+            type: "comparison",
+            layout: "side-by-side",
+            motion: "fade",
+            narration: "학습자에게 왜 방금 말한 걸 잊어버렸을까요? 라고 물어봅니다.",
+            blocks: [
+              { order: 1, kind: "hook", content: "분명 앞에서 말했는데, 왜 기억하지 못할까요?" },
+              {
+                order: 2,
+                kind: "explanation",
+                content:
+                  "컨텍스트는 AI가 답을 만들 때 참고하는 지침, 이전 대화, 파일, 새 요청을 모두 합친 것입니다. 더 자세한 설명은 컨텍스트 창 참고 자료에서 확인할 수 있습니다.",
+              },
+              {
+                order: 3,
+                kind: "visual",
+                visualKind: "memory-vs-context-table",
+                html: "<table class=\"visual-memory-table\"><tr><th>구분</th><th>사람의 기억</th><th>AI의 컨텍스트</th></tr><tr><td>저장 방식</td><td>장기 기억으로 축적</td><td>현재 대화 창 안에서만 유지</td></tr><tr><td>한계</td><td>서서히 잊혀짐</td><td>창 용량을 넘으면 즉시 밀려남</td></tr></table>",
+                css: ".visual-memory-table{width:100%;border-collapse:collapse}.visual-memory-table td,.visual-memory-table th{border:1px solid #ddd;padding:8px}",
+              },
+              { order: 4, kind: "example", content: "회의록이 길어지면 앞서 정한 담당자 이름을 AI가 놓칠 수 있습니다." },
+            ],
+            transitionToNext: "이제 확인 질문으로 넘어가겠습니다.",
+          },
+        ],
+      },
     },
   },
 ];
