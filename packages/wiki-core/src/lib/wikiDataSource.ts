@@ -4,6 +4,7 @@ import {
   normalizeConfluencePage,
   type RawConfluencePage,
 } from "./confluenceReadModel";
+import { readLessonPresentationValue } from "./lessonSemanticBlocks";
 import type { WikiDocument } from "./wikiDocuments";
 
 export const PUBLIC_WIKI_SPACE_ID = "63111172";
@@ -132,7 +133,7 @@ function isAllowedRemotePage(record: RemoteWikiPageRecord) {
   }
 
   const dt = record.page.metadata.docType;
-  return dt === "guide" || dt === "page" || dt === "faq" || dt === "library" || dt === "nav";
+  return dt === "guide" || dt === "page" || dt === "faq" || dt === "library" || dt === "nav" || dt === "lesson";
 }
 
 function isBlockedRemotePage(record: RemoteWikiPageRecord) {
@@ -208,6 +209,10 @@ function readRawConfluencePage(page: unknown, index: number): RawConfluencePage 
   }
 
   const metadata = readMetadata(page.metadata, index);
+  // 낙관적으로 읽는다(실패해도 throw하지 않음) — lesson.presentation은 선택 필드이고,
+  // 형식이 잘못돼도 이 페이지 전체 로딩을 막을 이유는 없다(그 레슨만
+  // listLessonDocumentsFrom에서 조용히 제외된다).
+  const presentation = readLessonPresentationValue(page.presentation);
 
   return {
     id: readString(page.id, `records[${index}].page.id`),
@@ -219,6 +224,7 @@ function readRawConfluencePage(page: unknown, index: number): RawConfluencePage 
     bodyHtml: readOptionalString(page.bodyHtml, `records[${index}].page.bodyHtml`),
     sourceUrl: readString(page.sourceUrl, `records[${index}].page.sourceUrl`),
     metadata,
+    ...(presentation ? { presentation } : {}),
     updatedAt: readString(page.updatedAt, `records[${index}].page.updatedAt`),
   };
 }
@@ -235,6 +241,21 @@ function readMetadata(metadata: unknown, index: number): RawConfluencePage["meta
     prerequisites: readStringArray(metadata.prerequisites, `records[${index}].page.metadata.prerequisites`),
     next: readStringArray(metadata.next, `records[${index}].page.metadata.next`),
     related: readStringArray(metadata.related, `records[${index}].page.metadata.related`),
+    // lesson docType 전용 평탄화 필드(Course Manifest) — 선택 필드라 형식이 잘못돼도
+    // throw하지 않고 조용히 생략한다(다른 필드처럼 페이지 전체를 무효화하지 않는다).
+    ...(typeof metadata.courseId === "string" && metadata.courseId.trim() ? { courseId: metadata.courseId } : {}),
+    ...(typeof metadata.order === "number" && Number.isInteger(metadata.order) ? { order: metadata.order } : {}),
+    ...(typeof metadata.chapter === "string" && metadata.chapter.trim() ? { chapter: metadata.chapter } : {}),
+    ...(typeof metadata.estimatedMinutes === "number" && Number.isFinite(metadata.estimatedMinutes)
+      ? { estimatedMinutes: metadata.estimatedMinutes }
+      : {}),
+    ...(Array.isArray(metadata.learningObjectives) &&
+    metadata.learningObjectives.every((item): item is string => typeof item === "string")
+      ? { learningObjectives: metadata.learningObjectives }
+      : {}),
+    ...(typeof metadata.lastReviewedAt === "string" && metadata.lastReviewedAt.trim()
+      ? { lastReviewedAt: metadata.lastReviewedAt }
+      : {}),
   };
 }
 
@@ -247,7 +268,8 @@ function readDocType(value: unknown, index: number): RawConfluencePage["metadata
     value === "ops" ||
     value === "policy" ||
     value === "nav" ||
-    value === "playbook"
+    value === "playbook" ||
+    value === "lesson"
   ) {
     return value;
   }

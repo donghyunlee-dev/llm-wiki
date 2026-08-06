@@ -1,0 +1,40 @@
+import type { SceneLayout, SceneType, SemanticBlock } from "@sfood/wiki-core";
+import type { ReactElement } from "react";
+import { ClosingScene } from "./ClosingScene";
+import { ComparisonScene } from "./ComparisonScene";
+import { ConceptScene } from "./ConceptScene";
+import { ExampleScene } from "./ExampleScene";
+import { HookScene } from "./HookScene";
+import { KnowledgeCheckScene } from "./KnowledgeCheckScene";
+import { MentalModelScene } from "./MentalModelScene";
+import { MisconceptionScene } from "./MisconceptionScene";
+import { ProcessScene } from "./ProcessScene";
+import { ScreenshotScene } from "./ScreenshotScene";
+import { SummaryScene } from "./SummaryScene";
+
+const SCENE_COMPONENTS: Record<SceneType, (props: { layout: SceneLayout; blocks: SemanticBlock[] }) => ReactElement> = {
+  hook: HookScene,
+  "mental-model": MentalModelScene,
+  concept: ConceptScene,
+  process: ProcessScene,
+  comparison: ComparisonScene,
+  example: ExampleScene,
+  screenshot: ScreenshotScene,
+  misconception: MisconceptionScene,
+  "knowledge-check": KnowledgeCheckScene,
+  summary: SummaryScene,
+  closing: ClosingScene,
+};
+
+export function SceneRenderer({
+  type,
+  layout,
+  blocks,
+}: {
+  type: SceneType;
+  layout: SceneLayout;
+  blocks: SemanticBlock[];
+}) {
+  const Component = SCENE_COMPONENTS[type];
+  return <Component layout={layout} blocks={blocks} />;
+}

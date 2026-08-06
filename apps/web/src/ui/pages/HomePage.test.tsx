@@ -129,4 +129,58 @@ describe("HomePage", () => {
     expect(markup).not.toContain("프로젝트 사례");
     expect(markup).not.toContain("자료실");
   });
+
+  it("renders the lesson entry section only when a lesson document exists", () => {
+    useWikiDataMock.mockReturnValue({
+      documents: [document({ id: "guide-1" })],
+      errorMessage: null,
+      isLoading: false,
+    });
+
+    const withoutLesson = renderToStaticMarkup(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    );
+
+    expect(withoutLesson).not.toContain("교육 시작하기");
+
+    useWikiDataMock.mockReturnValue({
+      documents: [
+        document({ id: "guide-1" }),
+        document({
+          id: "lesson-1",
+          slug: "ai-first-perspective",
+          title: "AI를 이해하는 첫 번째 관점",
+          metadata: { ...document().metadata, docType: "lesson" },
+          presentation: {
+            schemaVersion: 1,
+            lessonId: "ai-first-perspective",
+            theme: "ai-foundation",
+            scenes: [
+              {
+                sceneId: "scene-1",
+                anchor: "장면",
+                type: "concept",
+                layout: "visual-split",
+                narration: "",
+                blocks: [{ order: 1, kind: "explanation", content: "본문" }],
+              },
+            ],
+          },
+        }),
+      ],
+      errorMessage: null,
+      isLoading: false,
+    });
+
+    const withLesson = renderToStaticMarkup(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    );
+
+    expect(withLesson).toContain("교육 시작하기");
+    expect(withLesson).toContain('href="/lesson"');
+  });
 });
