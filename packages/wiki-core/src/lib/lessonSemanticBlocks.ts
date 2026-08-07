@@ -50,6 +50,7 @@ export const SCENE_LAYOUTS: ReadonlySet<SceneLayout> = new Set([
 export type SemanticBlock =
   | { kind: "paragraph"; html: string }
   | { kind: "customHtml"; html: string; css?: string }
+  | { kind: "mermaidDiagram"; definition: string }
   | { kind: "hookStatement"; html: string }
   | { kind: "exampleNote"; html: string };
 
@@ -79,6 +80,7 @@ export type LessonPresentationScene = {
 export type LessonPresentationBlock =
   | { order: number; kind: "hook" | "explanation" | "example"; content: string }
   | { order: number; kind: "visual"; visualKind?: string; purpose?: string; html: string; css: string }
+  | { order: number; kind: "visual"; visualKind?: string; purpose?: string; mermaid: string }
   | { order: number; kind: string };
 
 const LESSON_PRESENTATION_SCHEMA_VERSION = 1;
@@ -179,18 +181,32 @@ function readLessonPresentationBlock(value: unknown): LessonPresentationBlock | 
   }
 
   if (value.kind === "visual") {
-    if (typeof value.html !== "string" || typeof value.css !== "string") {
-      return undefined;
-    }
-
-    return {
-      order: value.order,
-      kind: "visual",
-      html: value.html,
-      css: value.css,
+    const visualKindFields = {
       ...(typeof value.visualKind === "string" ? { visualKind: value.visualKind } : {}),
       ...(typeof value.purpose === "string" ? { purpose: value.purpose } : {}),
     };
+
+    const hasHtml = typeof value.html === "string" && typeof value.css === "string";
+    // Mermaid는 문서 간 변환이 쉬운 다이어그램 표기법이라 html/css 대신 이 필드로도 저작할 수
+    // 있다 — 렌더링은 MermaidDiagramBlock(apps/web)이 담당한다.
+    const hasMermaid = typeof value.mermaid === "string";
+
+    // 저작 실수(마이그레이션 중 이전 html/css를 안 지우고 mermaid를 추가하는 등)로 둘 다 있으면
+    // 어느 쪽이 "진짜" 도식인지 알 수 없다 — 하나를 조용히 우선시키는 대신 통째로 버려서
+    // 저작자가 눈치채고 하나만 남기게 한다.
+    if (hasHtml && hasMermaid) {
+      return undefined;
+    }
+
+    if (hasHtml) {
+      return { order: value.order, kind: "visual", html: value.html as string, css: value.css as string, ...visualKindFields };
+    }
+
+    if (hasMermaid) {
+      return { order: value.order, kind: "visual", mermaid: value.mermaid as string, ...visualKindFields };
+    }
+
+    return undefined;
   }
 
   // 알려지지 않은 kind — 컴파일러(lessonPresentation.ts)가 안전하게 무시하도록 그대로 통과.

@@ -3,6 +3,11 @@
 @import "@sfood/ui/tokens/semantic.css";
 @import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
 
+/* Tailwind v4의 자동 콘텐츠 탐색은 node_modules를 건너뛴다 — @sfood/ui 컴포넌트(Stepper 등)가
+   쓰는 클래스(bg-surface, text-brand 등)는 이 앱 소스에는 등장하지 않고 컴파일된
+   dist/index.js 안에만 리터럴 문자열로 존재하므로, 그 파일을 명시적으로 스캔 대상에 추가한다. */
+@source "../node_modules/@sfood/ui/dist/**/*.js";
+
 :root {
   /* 디자인 시스템 기본값('Inter'/'JetBrains Mono')을 앱 차원에서 Pretendard(가변 폰트,
      유니코드 서브셋 단위로 필요한 부분만 내려받음)와 코드/인용구용 모노스페이스로 교체한다. */
@@ -135,6 +140,25 @@
   --chapter-color-3: #6cc4ba;
   --chapter-color-4: #c48fdb;
   --chapter-color-5: #d98fb0;
+
+  /* @sfood/ui/tokens/semantic.css는 라이트 테마만 정의한다(디자인시스템 자체에 다크 토큰이
+     없음). @sfood/ui의 React 컴포넌트가 다크 테마에서도 맞는 색으로 보이도록, 위에서 이미
+     이 파일의 다크 팔레트를 만드는 데 쓴 것과 동일한 @sfood/ui/tokens/base.css 베이스
+     스케일(--gray-*, --brand-*)로 재정의한다 — 새 색상값 없음. */
+  --color-brand: var(--brand-400);
+  --color-brand-hover: var(--brand-300);
+  --color-surface: color-mix(in srgb, var(--gray-900) 88%, white 12%);
+  --color-surface-raised: color-mix(in srgb, var(--gray-900) 80%, white 20%);
+  --color-surface-overlay: color-mix(in srgb, var(--gray-900) 80%, white 20%);
+  --color-surface-subtle: var(--gray-800);
+  --color-foreground: var(--gray-50);
+  --color-secondary: var(--gray-300);
+  --color-muted: var(--gray-400);
+  --color-border: var(--gray-700);
+  --color-border-subtle: color-mix(in srgb, var(--gray-700) 60%, var(--gray-900) 40%);
+  --color-border-strong: var(--gray-500);
+  --color-background: var(--gray-900);
+  --color-on-brand: var(--gray-900);
 }
 
 @theme inline {
@@ -156,6 +180,39 @@
   --font-display: var(--font-display);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
+
+  /* @sfood/ui가 실제로 export하는 React 컴포넌트(Stepper 등)는 @sfood/ui/tailwind.config.js가
+     정의하는 이 이름들(brand/surface/foreground/muted/border 등)로 Tailwind 클래스를 쓴다.
+     @sfood/ui/tokens/semantic.css(위에서 import)가 값은 이미 --color-*로 정의해 두었지만,
+     Tailwind v4는 @theme(inline) 블록 안에 있는 이름만 유틸리티로 인식하므로 여기서 그대로
+     참조만 추가한다 — 새 색상값을 만들지 않는다. */
+  --color-brand: var(--color-brand);
+  --color-brand-hover: var(--color-brand-hover);
+  --color-brand-light: var(--color-brand-light);
+  --color-brand-subtle: var(--color-brand-subtle);
+  --color-on-brand: var(--color-on-brand);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-overlay: var(--color-surface-overlay);
+  --color-surface-subtle: var(--color-surface-subtle);
+  --color-foreground: var(--color-foreground);
+  --color-secondary: var(--color-secondary);
+  --color-muted: var(--color-muted);
+  --color-border: var(--color-border);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-strong: var(--color-border-strong);
+  --color-background: var(--color-background);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-danger: var(--color-danger);
+  --color-info: var(--color-info);
+  --radius-btn: var(--radius-btn);
+  --radius-card: var(--radius-card);
+  --radius-input: var(--radius-input);
+  --radius-badge: var(--radius-badge);
+  --shadow-card: var(--shadow-card);
+  --shadow-raised: var(--shadow-raised);
+  --shadow-overlay: var(--shadow-overlay);
 }
 
 html {
@@ -257,8 +314,8 @@ a {
     @apply flex items-center gap-2.5;
   }
 
-  .site-brand-mark {
-    @apply flex h-7 w-7 items-center justify-center rounded-[var(--radius-md)] bg-accent text-xs font-bold text-white;
+  .site-brand-logo {
+    @apply block h-7 w-auto;
   }
 
   .site-brand-text {
@@ -2080,7 +2137,7 @@ a {
      focus()를 크로미움이 focus-visible로 간주해서 씬마다 빨간 테두리가 항상 켜져 있는 것처럼
      보였다 — 스크린리더 포커스 이동은 focus() 호출 자체로 이미 되므로 시각적 outline은 불필요하다. */
   .lesson-reader-scene-title {
-    @apply rounded-[var(--radius-md)] font-bold leading-tight text-page-fg;
+    @apply rounded-[var(--radius-md)] font-bold leading-tight text-page-fg outline-none;
     font-size: clamp(20px, 2.4vw, 28px);
   }
 
@@ -2183,6 +2240,18 @@ a {
 
   .lesson-block-custom-html-swipe-overlay {
     @apply absolute inset-0;
+  }
+
+  .lesson-block-mermaid {
+    @apply flex w-full justify-center overflow-x-auto;
+  }
+
+  .lesson-block-mermaid svg {
+    @apply h-auto max-w-full;
+  }
+
+  .lesson-block-mermaid-error {
+    @apply text-[13px] text-muted-fg;
   }
 
   /* "교육 설명" + 하단 컨트롤 바를 한 덩어리로 뷰포트 하단에 고정한다 — 둘 다 같은 래퍼 안에
@@ -2301,15 +2370,19 @@ a {
   }
 
   .lesson-outline-list {
-    @apply flex flex-col gap-2.5;
+    /* 레슨마다 씬이 1개뿐인 경우가 대부분이라, 챕터 헤더가 없는 레슨 사이 간격은
+       씬 사이 간격(.lesson-outline-scene-list의 gap-0.5)과 같게 좁혀 사실상 하나로
+       이어지는 목록처럼 보이게 한다 — 예전 gap-2.5는 레슨마다 큰 틈을 만들어 스크롤이
+       불필요하게 길어졌다. */
+    @apply flex flex-col gap-0.5;
   }
 
   .lesson-outline-chapter-header {
-    @apply mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-fg;
+    @apply mb-0.5 mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-fg;
   }
 
   .lesson-outline-scene-list {
-    @apply mt-1 flex flex-col gap-0.5;
+    @apply flex flex-col gap-0.5;
   }
 
   .lesson-outline-scene-button {

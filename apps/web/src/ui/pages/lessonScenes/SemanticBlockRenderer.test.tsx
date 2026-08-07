@@ -1,8 +1,16 @@
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, it } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import type { SemanticBlock } from "@sfood/wiki-core";
+import { ThemeProvider } from "../../theme/ThemeProvider";
 import { SemanticBlockList } from "./SemanticBlockRenderer";
+
+vi.mock("mermaid", () => ({
+  default: {
+    initialize: vi.fn(),
+    render: vi.fn().mockResolvedValue({ svg: "<svg data-testid='mocked-diagram'></svg>" }),
+  },
+}));
 
 afterEach(() => {
   cleanup();
@@ -36,5 +44,16 @@ describe("SemanticBlockList", () => {
 
     const iframe = container.querySelector("iframe");
     expect(iframe?.getAttribute("srcdoc")).toContain("<div>도식</div>");
+  });
+
+  it("renders a mermaidDiagram block", async () => {
+    const blocks: SemanticBlock[] = [{ kind: "mermaidDiagram", definition: "flowchart LR\nA-->B" }];
+    const { container } = render(
+      <ThemeProvider>
+        <SemanticBlockList blocks={blocks} />
+      </ThemeProvider>,
+    );
+
+    await waitFor(() => expect(container.querySelector("svg")).toBeInTheDocument());
   });
 });

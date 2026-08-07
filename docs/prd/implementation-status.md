@@ -16,6 +16,31 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-07 — 학습 흐름(레슨 아웃라인 드로어) 씬 번호/간격 버그 수정
+- 배경: 사용자가 "학습 흐름" 드로어에서 씬 번호가 전부 "1"로 보이고 항목 간 간격이 너무 넓어 스크롤이 길다고 리포트.
+- 원인: `LessonOutlineDrawer.tsx`가 레슨마다 별도 `<ol>`을 만들며 번호를 레슨 내부 순번(`index + 1`)으로 표시하고 있었다. 지금 데이터는 레슨당 씬이 거의 1개뿐이라 사실상 모든 항목이 "1"로 보였다. 레슨 사이 간격(`gap-2.5`)도 씬 사이 간격(`gap-0.5`)보다 훨씬 넓어, 사실상 모든 항목 사이가 넓게 벌어지는 효과를 냈다.
+- 수정: 번호를 코스 전체 누적 순번(리더 하단 "n / 23" 카운터와 동일 기준)으로 변경, 레슨/씬 사이 간격을 통일해 하나로 이어지는 목록처럼 촘촘하게 보이도록 수정. 회귀 테스트 추가.
+
+### 2026-08-07 — 레슨 씬 Mermaid 다이어그램 지원 추가
+- 배경: 콘텐츠팀이 `visual` 블록을 문서 간 변환이 쉬운 Mermaid 표기법으로 저작하고 싶어 했으나, 스키마가 `html`+`css`만 인식해 `mermaid` 필드는 조용히 버려지고 있었다(실측 확인). 상세는 `docs/tasks/lesson-scene-mermaid-diagram/`(spec/plan/tasks/test-result/result) 참고.
+- `visual` 블록이 `mermaid`(다이어그램 정의 텍스트)로도 저작될 수 있게 스키마 확장 + `MermaidDiagramBlock` 컴포넌트로 실제 SVG 렌더링. 새 색상값 없이 이 앱의 기존 디자인 토큰(브랜드 컬러·폰트·라운드 반경)을 Mermaid 테마에 그대로 매핑해 기본 테마(청록/각진 상자)가 아닌 브랜드 톤으로 보이게 함.
+- 다크 테마 토큰이 `color-mix()`를 쓰는데 이를 Mermaid의 색 파서가 이해하지 못해 초기화가 실패하는 문제를 Playwright 검증 중 발견·수정(실제 `<color>` 프로퍼티에 대입해 브라우저가 계산하게 한 뒤 레거시 `rgb()`로 정규화).
+- Codex 크리티컬 리뷰에서 "저작자가 다이어그램 본문의 `%%{init}%%` 지시어로 `themeCSS`를 덮어써 페이지 전역 CSS를 주입할 수 있다"는 보안 이슈를 지적받아 Mermaid `secure` 설정 키 잠금 추가. 렌더 경쟁 상태(전역 `initialize()` 설정을 여러 렌더가 겹쳐 덮어쓰는 문제), `html`/`mermaid` 동시 저작 시 모호성 문제도 함께 수정.
+
+### 2026-08-07 — 레슨 씬 타이틀 포커스 아웃라인 + interaction.steps 렌더링 복구, @sfood/ui 실사용 시작
+- 배경: 씬 타이틀에 브라우저 기본 포커스 아웃라인이 계속 보이는 회귀(이전 수정이 `outline-none` 대체 없이 커스텀 클래스만 제거)와, `lesson.presentation`의 `interaction.steps`(예: 4단계 프로세스 설명)가 `compileScene`에서 조용히 버려져 화면에 전혀 안 보이던 문제를 수정. 상세는 `docs/tasks/lesson-scene-content-rendering/`(spec/plan/tasks/test-result/result) 참고.
+- `@sfood/ui`를 이 저장소에서 처음으로 실제 React 컴포넌트로 사용(`List`+`Badge`) — 그 과정에서 디자인시스템의 git-의존성 dist 빌드 문제를 발견해 별도 저장소에 이슈 등록(#43, 수정 병합 확인)했고, pnpm이 빌드 결과를 최종 링크 위치로 못 옮기는 추가 문제는 root `postinstall` 자가 치유 스크립트(`scripts/ensure-sfood-ui-dist.mjs`)로 우회.
+- `@sfood/ui`의 시맨틱 Tailwind 토큰(brand/surface/foreground/muted/border 등)을 `@theme inline`으로 노출해 이후 다른 `@sfood/ui` 컴포넌트도 하드코딩 없이 바로 쓸 수 있게 함(라이트+다크 모두 대응).
+- Codex 크리티컬 리뷰에서 `Stepper`의 "완료" 의미가 데이터(진행 상태 없는 설명용 단계 목록)와 안 맞는다는 지적을 받아 `List`+`Badge`로 교체, `interaction.kind` 미검증 문제도 화이트리스트 가드로 수정.
+- 사용자 재현 리포트로 추가 회귀 발견: `interaction.steps`가 있는 21개 씬 중 19개는 이미 `visual`(도식) 블록을 갖고 있었는데, 1차 구현이 무조건 리스트를 렌더링해 이 19개 전부에 도식과 중복되는 텍스트 리스트가 나타나는 문제가 있었다. `SceneShell`에 "이미 도식 블록이 있으면 리스트를 억제"하는 가드를 추가해 수정.
+
+### 2026-08-06 — 사이트 헤더에 실제 SFOOD CI 로고 적용
+- 배경: `docs/prd/SFOOD_CI_Normal_Small.png`에 있던 공식 CI 로고로 좌상단 브랜드 마크(기존엔 임의의 빨간 "S" 박스)를 교체. 상세는 `docs/tasks/site-header-ci-logo/`(spec/plan/tasks/test-result/result) 참고.
+- 원본(1000×212)을 헤더 기존 마크 높이(28px)에 맞춰 레티나 대비 2x(264×56)로 리사이즈해 `apps/web/public/sfood-logo.png`로 배포.
+- 다크 테마에서 로고의 "FOOD" 중간톤 회색 글자가 저대비로 흐리게 보이는 문제를 발견 — 빨간 "S"는 원색 유지, 회색 글자만 밝은 회색으로 재도색한 다크 전용 버전(`sfood-logo-dark.png`)을 만들어 `resolvedTheme`에 따라 자동 교체.
+- 로고가 이미 "S FOOD"를 표현하므로 옆 텍스트를 "SFOOD AI WIKI" → "AI WIKI"로 축약(중복 제거).
+- `pnpm test`/`pnpm typecheck` 통과, Playwright로 라이트/다크/모바일(390px) 확인.
+
 ### 2026-08-06 — 스크린샷 분석으로 발견한 3건 수정(포커스 링, 레일 위치, 콘텐츠 중앙 정렬)
 - 배경: 사용자가 실제 화면 스크린샷을 캡처해 분석을 요청, 3가지 문제를 발견/확인함. 상세는 `docs/tasks/lesson-reader-focus-ring-and-rail-centering-fix/`(spec/plan/tasks/test-result/result) 참고.
 - **씬 타이틀에 항상 떠 있던 빨간 테두리**: `.lesson-reader-scene-title`의 `focus-visible:outline*` 클래스가 원인. 씬 전환마다 접근성 목적으로 `sceneTitleRef.current?.focus()`를 호출하는데, 타이틀이 `tabIndex={-1}`이라 실제 키보드 Tab으로는 절대 도달 불가능해 이 프로그램적 focus()가 `focus-visible`을 트리거할 수 있는 유일한 경로였음 — 결과적으로 항상 켜진 것처럼 보였다. 클래스 제거(접근성 동작은 focus() 호출만으로 유지).

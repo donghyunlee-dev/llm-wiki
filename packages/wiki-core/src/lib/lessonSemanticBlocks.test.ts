@@ -69,6 +69,51 @@ describe("readLessonPresentationValue", () => {
     expect(result?.scenes[0].blocks).toEqual([{ order: 1, kind: "future-kind" }]);
   });
 
+  it("accepts a visual block authored with mermaid instead of html/css", () => {
+    const result = readLessonPresentationValue(
+      validPresentation({
+        blocks: [
+          {
+            order: 1,
+            kind: "visual",
+            visualKind: "process",
+            mermaid: "flowchart LR\n  A[이해] --> B[연결]",
+          },
+        ],
+      }),
+    );
+
+    expect(result?.scenes[0].blocks).toEqual([
+      { order: 1, kind: "visual", visualKind: "process", mermaid: "flowchart LR\n  A[이해] --> B[연결]" },
+    ]);
+  });
+
+  it("drops a visual block that has both html/css and mermaid instead of silently preferring one", () => {
+    const result = readLessonPresentationValue(
+      validPresentation({
+        blocks: [
+          {
+            order: 1,
+            kind: "visual",
+            html: "<div>도식</div>",
+            css: ".x{color:red}",
+            mermaid: "flowchart LR\n  A-->B",
+          },
+        ],
+      }),
+    );
+
+    expect(result?.scenes[0].blocks).toEqual([]);
+  });
+
+  it("drops a visual block that has neither html/css nor mermaid", () => {
+    const result = readLessonPresentationValue(
+      validPresentation({ blocks: [{ order: 1, kind: "visual", visualKind: "process" }] }),
+    );
+
+    expect(result?.scenes[0].blocks).toEqual([]);
+  });
+
   it("returns undefined for a non-object input instead of throwing", () => {
     expect(readLessonPresentationValue(null)).toBeUndefined();
     expect(readLessonPresentationValue("not an object")).toBeUndefined();

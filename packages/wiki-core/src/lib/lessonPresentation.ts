@@ -15,6 +15,7 @@ export type LessonScene = {
   type: SceneType;
   layout: SceneLayout;
   motion?: string;
+  interaction?: { kind: string; steps: string[] };
   transitionToNext?: string;
 };
 
@@ -46,6 +47,7 @@ function compileScene(scene: LessonPresentationScene): LessonScene {
     layout: scene.layout,
     ...(scene.narration ? { scriptHtml: buildScriptHtml(scene.narration) } : {}),
     ...(scene.motion ? { motion: scene.motion } : {}),
+    ...(scene.interaction ? { interaction: scene.interaction } : {}),
     ...(scene.transitionToNext ? { transitionToNext: scene.transitionToNext } : {}),
   };
 }
@@ -65,6 +67,10 @@ function compileBlock(block: LessonPresentationBlock): SemanticBlock | null {
 
   if ("html" in block) {
     return { kind: "customHtml", html: block.html, css: block.css };
+  }
+
+  if ("mermaid" in block) {
+    return { kind: "mermaidDiagram", definition: block.mermaid };
   }
 
   // 스키마가 향후 새 kind를 추가할 수 있다 — 크래시 없이 조용히 무시한다(AC7).

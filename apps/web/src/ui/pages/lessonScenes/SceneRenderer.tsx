@@ -12,7 +12,13 @@ import { ProcessScene } from "./ProcessScene";
 import { ScreenshotScene } from "./ScreenshotScene";
 import { SummaryScene } from "./SummaryScene";
 
-const SCENE_COMPONENTS: Record<SceneType, (props: { layout: SceneLayout; blocks: SemanticBlock[] }) => ReactElement> = {
+type SceneComponentProps = {
+  layout: SceneLayout;
+  blocks: SemanticBlock[];
+  interaction?: { kind: string; steps: string[] };
+};
+
+const SCENE_COMPONENTS: Record<SceneType, (props: SceneComponentProps) => ReactElement> = {
   hook: HookScene,
   "mental-model": MentalModelScene,
   concept: ConceptScene,
@@ -30,11 +36,13 @@ export function SceneRenderer({
   type,
   layout,
   blocks,
+  interaction,
 }: {
   type: SceneType;
   layout: SceneLayout;
   blocks: SemanticBlock[];
+  interaction?: { kind: string; steps: string[] };
 }) {
   const Component = SCENE_COMPONENTS[type];
-  return <Component layout={layout} blocks={blocks} />;
+  return <Component layout={layout} blocks={blocks} interaction={interaction} />;
 }

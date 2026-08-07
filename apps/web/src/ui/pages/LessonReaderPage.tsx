@@ -331,6 +331,7 @@ export function LessonReaderPage() {
                 type={currentScene.type}
                 layout={currentScene.layout}
                 blocks={currentScene.blocks}
+                interaction={currentScene.interaction}
               />
             </div>
           </div>

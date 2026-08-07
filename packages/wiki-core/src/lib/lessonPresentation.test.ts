@@ -48,6 +48,15 @@ describe("compileLessonPresentationScenes", () => {
     });
   });
 
+  it("carries interaction.steps through to the compiled scene so they can be rendered", () => {
+    const scenes = compileLessonPresentationScenes(baseDocument);
+
+    expect(scenes[0].interaction).toEqual({
+      kind: "step-reveal",
+      steps: ["이해 카드 공개", "설명 카드 공개"],
+    });
+  });
+
   it("does not carry reveal: manual through to the compiled scene (no click-gating for this schema)", () => {
     const scenes = compileLessonPresentationScenes(baseDocument);
 
@@ -140,6 +149,31 @@ describe("compileLessonPresentationScenes", () => {
     expect(scenes[0].scriptHtml).toBe("<p>A &amp; B &lt;걱정&gt;</p>");
   });
 
+  it("maps a mermaid-authored visual block to a mermaidDiagram semantic block", () => {
+    const document: LessonPresentationDocument = {
+      ...baseDocument,
+      scenes: [
+        {
+          ...baseDocument.scenes[0],
+          blocks: [
+            {
+              order: 1,
+              kind: "visual",
+              visualKind: "process",
+              mermaid: "flowchart LR\n  A[이해] --> B[연결]",
+            },
+          ],
+        },
+      ],
+    };
+
+    const scenes = compileLessonPresentationScenes(document);
+
+    expect(scenes[0].blocks).toEqual([
+      { kind: "mermaidDiagram", definition: "flowchart LR\n  A[이해] --> B[연결]" },
+    ]);
+  });
+
   it("maps an example block to an exampleNote semantic block", () => {
     const document: LessonPresentationDocument = {
       ...baseDocument,
@@ -175,7 +209,7 @@ describe("compileLessonPresentationScenes", () => {
     expect(scenes[0].blocks).toEqual([{ kind: "hookStatement", html: "제목" }]);
   });
 
-  it("omits scriptHtml/motion/transitionToNext when the scene doesn't declare them", () => {
+  it("omits scriptHtml/motion/interaction/transitionToNext when the scene doesn't declare them", () => {
     const document: LessonPresentationDocument = {
       ...baseDocument,
       scenes: [
@@ -194,6 +228,7 @@ describe("compileLessonPresentationScenes", () => {
 
     expect(scenes[0].scriptHtml).toBeUndefined();
     expect(scenes[0].motion).toBeUndefined();
+    expect(scenes[0].interaction).toBeUndefined();
     expect(scenes[0].transitionToNext).toBeUndefined();
   });
 });
