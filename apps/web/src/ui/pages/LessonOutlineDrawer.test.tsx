@@ -143,6 +143,14 @@ describe("LessonOutlineDrawer", () => {
     expect(screen.queryByText("약 2분")).not.toBeInTheDocument();
   });
 
+  it("numbers scenes by their position in the whole course, not restarting at 1 for every lesson", () => {
+    renderDrawer();
+
+    expect(screen.getByText("장면 A").closest("button")?.querySelector(".lesson-outline-scene-index")).toHaveTextContent("1");
+    expect(screen.getByText("장면 B").closest("button")?.querySelector(".lesson-outline-scene-index")).toHaveTextContent("2");
+    expect(screen.getByText("장면 C").closest("button")?.querySelector(".lesson-outline-scene-index")).toHaveTextContent("3");
+  });
+
   it("marks the current scene as current", () => {
     renderDrawer();
 

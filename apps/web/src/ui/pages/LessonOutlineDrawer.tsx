@@ -107,36 +107,45 @@ export function LessonOutlineDrawer({
         </header>
 
         <nav className="lesson-outline-list">
-          {outline.lessons.map((lesson, lessonIndex) => (
-            <div key={lesson.lessonId}>
-              {lesson.chapter && lesson.chapter !== outline.lessons[lessonIndex - 1]?.chapter ? (
-                <p className="lesson-outline-chapter-header">{lesson.chapter}</p>
-              ) : null}
-              <ol className="lesson-outline-scene-list">
-                {lesson.scenes.map((scene, index) => {
-                  const isCurrent = lesson.slug === currentLessonSlug && index === currentSceneIndex;
+          {(() => {
+            // 번호는 레슨 안에서의 순번이 아니라 코스 전체 씬 번호다(리더 하단의 "n / 23"
+            // 카운터와 동일한 기준). 레슨마다 새 <ol>을 시작하면 브라우저가 각 레슨을 별개
+            // 목록으로 취급해 번호가 매 레슨마다 1로 초기화되는데, 지금 데이터는 레슨당
+            // 씬이 대부분 1개라 사실상 전부 "1"로 보이는 문제가 있었다.
+            let globalIndex = 0;
 
-                  return (
-                    <li key={scene.id}>
-                      <button
-                        type="button"
-                        className={
-                          isCurrent
-                            ? "lesson-outline-scene-button lesson-outline-scene-button-current"
-                            : "lesson-outline-scene-button"
-                        }
-                        onClick={() => onSelectScene(lesson.slug, index)}
-                        aria-current={isCurrent ? "true" : undefined}
-                      >
-                        <span className="lesson-outline-scene-index">{index + 1}</span>
-                        <span>{scene.title}</span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          ))}
+            return outline.lessons.map((lesson, lessonIndex) => (
+              <div key={lesson.lessonId}>
+                {lesson.chapter && lesson.chapter !== outline.lessons[lessonIndex - 1]?.chapter ? (
+                  <p className="lesson-outline-chapter-header">{lesson.chapter}</p>
+                ) : null}
+                <ol className="lesson-outline-scene-list" start={globalIndex + 1}>
+                  {lesson.scenes.map((scene, index) => {
+                    const isCurrent = lesson.slug === currentLessonSlug && index === currentSceneIndex;
+                    globalIndex += 1;
+
+                    return (
+                      <li key={scene.id}>
+                        <button
+                          type="button"
+                          className={
+                            isCurrent
+                              ? "lesson-outline-scene-button lesson-outline-scene-button-current"
+                              : "lesson-outline-scene-button"
+                          }
+                          onClick={() => onSelectScene(lesson.slug, index)}
+                          aria-current={isCurrent ? "true" : undefined}
+                        >
+                          <span className="lesson-outline-scene-index">{globalIndex}</span>
+                          <span>{scene.title}</span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            ));
+          })()}
         </nav>
       </div>
     </div>
