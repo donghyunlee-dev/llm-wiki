@@ -8,3 +8,9 @@ coverage
 .idea/
 .playwright-mcp/
 *:Zone.Identifier
+
+# Superpowers brainstorming session artifacts
+.superpowers/
+
+# Local git worktrees for isolated feature work
+.worktrees/

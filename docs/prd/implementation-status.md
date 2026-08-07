@@ -16,6 +16,210 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-07 — 학습 흐름(레슨 아웃라인 드로어) 씬 번호/간격 버그 수정
+- 배경: 사용자가 "학습 흐름" 드로어에서 씬 번호가 전부 "1"로 보이고 항목 간 간격이 너무 넓어 스크롤이 길다고 리포트.
+- 원인: `LessonOutlineDrawer.tsx`가 레슨마다 별도 `<ol>`을 만들며 번호를 레슨 내부 순번(`index + 1`)으로 표시하고 있었다. 지금 데이터는 레슨당 씬이 거의 1개뿐이라 사실상 모든 항목이 "1"로 보였다. 레슨 사이 간격(`gap-2.5`)도 씬 사이 간격(`gap-0.5`)보다 훨씬 넓어, 사실상 모든 항목 사이가 넓게 벌어지는 효과를 냈다.
+- 수정: 번호를 코스 전체 누적 순번(리더 하단 "n / 23" 카운터와 동일 기준)으로 변경, 레슨/씬 사이 간격을 통일해 하나로 이어지는 목록처럼 촘촘하게 보이도록 수정. 회귀 테스트 추가.
+
+### 2026-08-07 — 레슨 씬 Mermaid 다이어그램 지원 추가
+- 배경: 콘텐츠팀이 `visual` 블록을 문서 간 변환이 쉬운 Mermaid 표기법으로 저작하고 싶어 했으나, 스키마가 `html`+`css`만 인식해 `mermaid` 필드는 조용히 버려지고 있었다(실측 확인). 상세는 `docs/tasks/lesson-scene-mermaid-diagram/`(spec/plan/tasks/test-result/result) 참고.
+- `visual` 블록이 `mermaid`(다이어그램 정의 텍스트)로도 저작될 수 있게 스키마 확장 + `MermaidDiagramBlock` 컴포넌트로 실제 SVG 렌더링. 새 색상값 없이 이 앱의 기존 디자인 토큰(브랜드 컬러·폰트·라운드 반경)을 Mermaid 테마에 그대로 매핑해 기본 테마(청록/각진 상자)가 아닌 브랜드 톤으로 보이게 함.
+- 다크 테마 토큰이 `color-mix()`를 쓰는데 이를 Mermaid의 색 파서가 이해하지 못해 초기화가 실패하는 문제를 Playwright 검증 중 발견·수정(실제 `<color>` 프로퍼티에 대입해 브라우저가 계산하게 한 뒤 레거시 `rgb()`로 정규화).
+- Codex 크리티컬 리뷰에서 "저작자가 다이어그램 본문의 `%%{init}%%` 지시어로 `themeCSS`를 덮어써 페이지 전역 CSS를 주입할 수 있다"는 보안 이슈를 지적받아 Mermaid `secure` 설정 키 잠금 추가. 렌더 경쟁 상태(전역 `initialize()` 설정을 여러 렌더가 겹쳐 덮어쓰는 문제), `html`/`mermaid` 동시 저작 시 모호성 문제도 함께 수정.
+
+### 2026-08-07 — 레슨 씬 타이틀 포커스 아웃라인 + interaction.steps 렌더링 복구, @sfood/ui 실사용 시작
+- 배경: 씬 타이틀에 브라우저 기본 포커스 아웃라인이 계속 보이는 회귀(이전 수정이 `outline-none` 대체 없이 커스텀 클래스만 제거)와, `lesson.presentation`의 `interaction.steps`(예: 4단계 프로세스 설명)가 `compileScene`에서 조용히 버려져 화면에 전혀 안 보이던 문제를 수정. 상세는 `docs/tasks/lesson-scene-content-rendering/`(spec/plan/tasks/test-result/result) 참고.
+- `@sfood/ui`를 이 저장소에서 처음으로 실제 React 컴포넌트로 사용(`List`+`Badge`) — 그 과정에서 디자인시스템의 git-의존성 dist 빌드 문제를 발견해 별도 저장소에 이슈 등록(#43, 수정 병합 확인)했고, pnpm이 빌드 결과를 최종 링크 위치로 못 옮기는 추가 문제는 root `postinstall` 자가 치유 스크립트(`scripts/ensure-sfood-ui-dist.mjs`)로 우회.
+- `@sfood/ui`의 시맨틱 Tailwind 토큰(brand/surface/foreground/muted/border 등)을 `@theme inline`으로 노출해 이후 다른 `@sfood/ui` 컴포넌트도 하드코딩 없이 바로 쓸 수 있게 함(라이트+다크 모두 대응).
+- Codex 크리티컬 리뷰에서 `Stepper`의 "완료" 의미가 데이터(진행 상태 없는 설명용 단계 목록)와 안 맞는다는 지적을 받아 `List`+`Badge`로 교체, `interaction.kind` 미검증 문제도 화이트리스트 가드로 수정.
+- 사용자 재현 리포트로 추가 회귀 발견: `interaction.steps`가 있는 21개 씬 중 19개는 이미 `visual`(도식) 블록을 갖고 있었는데, 1차 구현이 무조건 리스트를 렌더링해 이 19개 전부에 도식과 중복되는 텍스트 리스트가 나타나는 문제가 있었다. `SceneShell`에 "이미 도식 블록이 있으면 리스트를 억제"하는 가드를 추가해 수정.
+
+### 2026-08-06 — 사이트 헤더에 실제 SFOOD CI 로고 적용
+- 배경: `docs/prd/SFOOD_CI_Normal_Small.png`에 있던 공식 CI 로고로 좌상단 브랜드 마크(기존엔 임의의 빨간 "S" 박스)를 교체. 상세는 `docs/tasks/site-header-ci-logo/`(spec/plan/tasks/test-result/result) 참고.
+- 원본(1000×212)을 헤더 기존 마크 높이(28px)에 맞춰 레티나 대비 2x(264×56)로 리사이즈해 `apps/web/public/sfood-logo.png`로 배포.
+- 다크 테마에서 로고의 "FOOD" 중간톤 회색 글자가 저대비로 흐리게 보이는 문제를 발견 — 빨간 "S"는 원색 유지, 회색 글자만 밝은 회색으로 재도색한 다크 전용 버전(`sfood-logo-dark.png`)을 만들어 `resolvedTheme`에 따라 자동 교체.
+- 로고가 이미 "S FOOD"를 표현하므로 옆 텍스트를 "SFOOD AI WIKI" → "AI WIKI"로 축약(중복 제거).
+- `pnpm test`/`pnpm typecheck` 통과, Playwright로 라이트/다크/모바일(390px) 확인.
+
+### 2026-08-06 — 스크린샷 분석으로 발견한 3건 수정(포커스 링, 레일 위치, 콘텐츠 중앙 정렬)
+- 배경: 사용자가 실제 화면 스크린샷을 캡처해 분석을 요청, 3가지 문제를 발견/확인함. 상세는 `docs/tasks/lesson-reader-focus-ring-and-rail-centering-fix/`(spec/plan/tasks/test-result/result) 참고.
+- **씬 타이틀에 항상 떠 있던 빨간 테두리**: `.lesson-reader-scene-title`의 `focus-visible:outline*` 클래스가 원인. 씬 전환마다 접근성 목적으로 `sceneTitleRef.current?.focus()`를 호출하는데, 타이틀이 `tabIndex={-1}`이라 실제 키보드 Tab으로는 절대 도달 불가능해 이 프로그램적 focus()가 `focus-visible`을 트리거할 수 있는 유일한 경로였음 — 결과적으로 항상 켜진 것처럼 보였다. 클래스 제거(접근성 동작은 focus() 호출만으로 유지).
+- **"다음 페이지" 사이드 레일 위치**: 원래 "우측 하단 고정"으로 정했는데 구현이 상단(`sticky top-24`, `items-start`)으로 되어 타이틀 옆에 떠 있었음 — 우측 하단 고정으로 수정.
+- **콘텐츠 중앙 정렬 밀림**: 사이드 레일을 그리드로 콘텐츠와 한 블록으로 묶어 함께 중앙 정렬했더니 콘텐츠 자체의 중심이 왼쪽으로 밀리는 부작용이 있었음 — 레일을 `position: fixed`로 완전히 독립시켜 콘텐츠는 원래처럼 순수하게 정중앙 유지, 레일은 `left: calc(50% + 콘텐츠 절반폭 + 여백)`으로 콘텐츠 중심 기준 계산.
+- **수정 중 발견한 추가 버그**: 레일을 콘텐츠 하단에 `position: absolute`로 배치했더니, 씬이 짧으면 콘텐츠 끝이 하단 dock(전체 폭, fixed, z-30) 영역과 겹쳐 레일이 완전히 가려지는 문제가 실측(Playwright `getBoundingClientRect`)으로 드러남 — 레일을 `position: fixed`로 바꾸고 `bottom`을 dock 실측 높이(`--lesson-reader-dock-height`)에 여백을 더해 계산해 항상 dock보다 위에 뜨도록 수정. 노출 breakpoint도 `xl`(1280px)에서 `2xl`(1536px)로 상향(콘텐츠 폭을 줄이지 않고 정중앙을 지키려면 레일이 들어갈 여백이 실제로 남는 지점부터 켜야 함).
+- `pnpm test`/`pnpm typecheck` 전체 통과, Playwright 실측(좌우 여백 동일, 레일-dock 겹침 없음, outline 없음)으로 확인.
+
+### 2026-08-06 — "다음 페이지" 사이드 레일 이동 + ResizeObserver 미작동 버그 근본 수정
+- 배경: 사용자가 "콘텐츠가 가운데만 표시되고 좌우 여백이 남는데 다음 메시지를 우측으로 빼도 되지 않을까?"라고 제안, 이어서 "작은 노트북 모니터에서도 사이드 공간이 충분하다"고 확인하며 "교육 설명 높이가 작은 모니터에서 콘텐츠를 가린다"는 문제도 함께 요청. 그 직전에는 "교육 설명 숨기기가 안 되는데 테스트에서 왜 안 걸렸냐"는 리포트가 있었음. 상세는 `docs/tasks/lesson-reader-side-rail-and-dock-height-fix/`(spec/plan/tasks/test-result/result) 참고.
+- **"숨기기가 안 된다" 리포트는 systematic-debugging으로 조사했으나 재현 실패** — Playwright 실제 클릭/컴포넌트 테스트 모두 정상 동작. jsdom 컴포넌트 테스트는 요소를 참조로 직접 클릭해 실제 화면 히트테스트를 하지 않으므로, "다른 요소가 시각적으로 위에 겹쳐 클릭을 가로채는" 클래스의 버그는 원천적으로 검증할 수 없다는 점을 사용자에게 설명(이전 세션의 `position: fixed` 독립 배너가 그 시점엔 숨기기 버튼과 겹칠 수 있었던 잔상으로 추정).
+- **"다음 페이지" 안내를 `xl`(1280px) 이상에서 우측 사이드 레일로 이동** — `.lesson-reader-content`/`.lesson-reader-side-rail`을 그리드로 묶어 여백을 실제로 활용, `xl` 미만에서는 기존 하단 dock 배치 유지(반응형 이중 렌더 + CSS로 전환).
+- **"교육 설명" 패널 높이를 `clamp(96px,22vh,260px)`로 조정** — 작은 노트북 모니터에서 더 적극적으로 줄어들게 함.
+- **조사 중 훨씬 심각한 별도 버그를 발견해 근본 수정**: `ResizeObserver`(dock 실제 높이를 측정해 본문 여백에 반영하는 로직, 직전 세션에서 추가)가 `useEffect(fn, [])`로 등록돼 있어 로딩 스피너 렌더 시점(ref가 아직 null)에 한 번 실행되고 다시는 재시도되지 않았음 — 실제 콘텐츠가 마운트된 뒤에도 dock 높이를 영원히 측정 못 해 CSS 폴백(8rem)에 머물러 있었다. 이 때문에 짧은 씬+작은 화면(1366×768) 조합에서는 문서 전체 높이가 뷰포트와 정확히 같아져(`scrollHeight === innerHeight`) 스크롤 자체가 사라지고, dock에 가려진 콘텐츠(카드 그리드 등)를 영구히 볼 방법이 없는 상태였다. `useEffect` deps를 제거해 매 렌더 재등록하도록 수정(이 파일의 keydown 이펙트와 동일한 기존 패턴) — Playwright 실측으로 CSS 변수가 실제 dock 높이와 일치하고, 스크롤하면 항상 완전히 드러남을 재확인.
+- 1차 가설(`flex-1`, `.lesson-reader-shell`의 `min-height`)은 틀렸음을 실측으로 확인 후 배제 — `min-height` 제거는 부수적으로도 더 올바른 설계라 유지.
+- `pnpm test`/`pnpm typecheck` 전체 통과, Playwright로 1366×768/1440×900과 xl 경계 확인.
+
+### 2026-08-06 — 레슨 리더 키보드 네비게이션 제한 + "교육 설명" 하단 고정/자체 스크롤
+- 배경: 사용자가 (1) 키보드 아래 계열 키(Space/PageDown/PageUp)가 씬을 넘겨버려 긴 "교육 설명"을 스크롤로 읽을 수 없는 문제, (2) "교육 설명"이 길어지면 페이지 전체가 늘어나니 하단 컨트롤 바 위에 고정하고 그 안에서만 스크롤되게 해달라는 것, (3) "숨기기"를 아이콘으로 바꾸고 접으면 컨트롤 바에 붙게 해달라는 요청. 상세는 `docs/tasks/lesson-reader-keyboard-and-script-dock/`(spec/plan/tasks/test-result/result) 참고.
+- 전역 키보드 핸들러에서 Space/PageDown/PageUp을 통한 씬 이동을 제거, ArrowLeft/ArrowRight(+기존 Home/End)만 남김.
+- "교육 설명" 패널과 하단 컨트롤 바를 하나의 dock으로 묶어 화면에 고정, 패널 본문에 `max-h-[26vh] overflow-y-auto`를 줘서 텍스트가 길어도 패널 안에서만 스크롤됨. "숨기기/보기" 텍스트 버튼을 회전하는 셰브론 아이콘으로 교체, 접으면 슬림 헤더만 컨트롤 바에 붙어 남음.
+- **아키텍처 시행착오와 수정**: 처음엔 dock을 `position: sticky`로 구현했으나, Codex 비판 리뷰로 "다음 페이지 안내 배너가 펼쳐진 패널과 겹칠 수 있다"는 지적을 받아 조사한 결과, `sticky`는 dock을 문서 흐름에 남겨 문서 전체 길이를 늘리고 콘텐츠가 짧은 씬에서는 항상 "문서 길이 - 뷰포트 높이"만큼 실제 콘텐츠 뒤쪽과 겹치는 더 근본적인 문제가 있음을 발견 — `position: fixed`로 전환하고, dock 높이가 씬마다 달라지는 문제는 `ResizeObserver`로 실측해 `--lesson-reader-dock-height` CSS 변수에 반영, 본문 하단 여백이 그 값을 정확히 따라가게 재작업(vh 기반 추정치는 표/카드 그리드가 있는 씬에서 부정확했음).
+- 씬 콘텐츠가 유난히 길면 스크롤 전 화면에서 dock과 살짝 겹칠 수 있지만, 스크롤하면 항상 완전히 드러나고 "교육 설명" 자체는 페이지 스크롤과 무관하게 항상 읽을 수 있음을 Playwright 실측으로 확인 — 허용 가능한 트레이드오프로 판단, Open Gap 없음.
+- `pnpm test`/`pnpm typecheck` 전체 통과, Playwright로 짧은/긴 씬과 라이트/다크 테마 확인.
+
+### 2026-08-05 — `/lesson` UI/UX 진단 리포트 작성 + 오픈 전 필수 개선(히어로 일러스트, 챕터 색상)
+- 배경: 사용자가 "메인/리스트 화면이 최고의 교육 콘텐츠 서비스 수준인지 평가하고, 이대로는 오픈 못한다"는 전제로 실제 교육 서비스와 비교 분석을 요청.
+- Playwright로 인프런(코스 목록/상세), Duolingo(마이크로러닝 UX), SFOOD 참고 레퍼런스 사이트를 실제 접속해 캡처하고 우리 `/lesson` 화면과 비교한 UI/UX 진단 리포트를 아티팩트로 작성 — 결론: "오픈 비권장, 콘텐츠 구조는 탄탄하지만 이미지·색상·신뢰 신호가 전무해 관리자 목록처럼 보임".
+- 오픈 전 필수 3건 중 사용자 확인 후 2건 진행(신뢰 신호는 실제 데이터 없어 보류): (1) 참고 레퍼런스 일러스트는 제3자 산출물이라 재사용 불가 + 이미지 생성 도구 없음 → `rect`/`circle`/`line` 기본 도형만으로 직접 그린 SVG 일러스트(`LessonHeroIllustration.tsx`)를 히어로에 추가, 2열 레이아웃으로 재구성. (2) 목록 23개 레슨이 전부 같은 색으로 반복되던 문제 → 챕터별 5색 팔레트(브랜드 레드와 겹치지 않게 신규 정의)를 헤더/순번/좌측 강조선에 일관 적용.
+- Codex 비판 리뷰에서 1건 확인 및 수정: 장식용 히어로 SVG에 `role="img"`+`aria-label`을 준 것이 스크린리더에 불필요한 안내를 추가하는 문제 → `aria-hidden="true"`로 변경. 챕터 색 순환/undefined 처리/다크 대비/CSS 타입 안전성은 문제 없음으로 확인.
+- 상세는 `docs/tasks/lesson-main-screen-visual-polish/`(spec/plan/tasks/test-result/result) 참고. `pnpm test`/`pnpm typecheck` 통과, Playwright로 라이트/다크/모바일 확인.
+
+### 2026-08-05 — "이전" 버튼 레슨 경계 이동 버그 수정 + Pretendard 폰트 적용
+- 배경: 사용자가 "이전으로 가는 건 왜 안돼?"라고 지적. 상세는 `docs/tasks/lesson-nav-fix-and-pretendard-font/`(spec/plan/tasks/test-result/result) 참고.
+- **원인**: 레슨당 씬이 1개인 현재 콘텐츠 구조에서 "다음"은 레슨 경계를 넘어가도록 이미 구현돼 있었지만 "이전"은 그렇지 않아, 사실상 항상 비활성처럼 동작했음(비대칭 버그).
+- `packages/wiki-core/src/lib/lessonDocuments.ts`에 `getNextLessonSlugFrom`과 대칭인 `getPreviousLessonSlugFrom` 추가, `LessonReaderPage.tsx`의 `goPrevious()`가 첫 씬에서 이전 레슨의 마지막 씬으로 이동하도록 수정, "이전" 버튼은 정말 첫 번째 레슨의 첫 씬일 때만 비활성화.
+- 사용자가 Pretendard를 기본 폰트로 요청(본문: Pretendard/맑은 고딕/Malgun Gothic/Arial/sans-serif, 코드·인용구: Consolas/Menlo/Monaco/맑은 고딕 모노스페이스). woff2가 설치돼 있지 않음을 확인한 뒤 `pretendard` npm 패키지(가변 폰트 + 유니코드 서브셋 지연 로딩)를 설치, 앱 레벨 `--font-sans`/`--font-mono` 토큰을 오버라이드(디자인 시스템 패키지 자체는 변경하지 않음).
+- Codex 비판 리뷰에서 2건 확인 및 수정: (1) 레슨 경계 이동 시 진입 애니메이션 방향(`backward`)을 설정하지 않던 문제, (2) `pretendard` 설치 중 `@sfood/ui`(git `#main` 의존성)가 무관하게 최신 커밋으로 재해석된 lockfile drift를 원상 복구. 메타데이터가 불완전한(unordered) 레슨이 섞일 때 이전/다음 탐색이 코스 경계를 넘어갈 수 있는 기존 특성(실 콘텐츠엔 영향 없음)은 Open Gap으로 문서화.
+- `pnpm test`/`pnpm typecheck`/`pnpm build` 전체 통과, Playwright로 레슨 경계 이동과 폰트 로드 확인.
+
+### 2026-08-05 — `/lesson` 메인 화면 재디자인 + "이어서 학습하기" 삭제
+- 배경: 사용자가 "`/lesson`이 교육 콘텐츠의 메인 화면인데 디자인 없이 단조롭다"는 피드백과 "완료는 삭제했는데 이어서 학습하기는 왜 남아있냐"는 지적을 남김. 상세는 `docs/tasks/lesson-index-main-screen-redesign/`(spec/plan/tasks/test-result/result) 참고.
+- AskUserQuestion으로 확인 후 "이어서 학습하기"(진행 상태 기반 재진입) 기능과 그 기반이던 `lessonProgress.ts`(localStorage 저장/조회) 모듈 전체를 삭제 — `LessonReaderPage.tsx`의 `markSceneVisited` 호출, `lessonAnalytics.ts`의 `progress_recovered` 이벤트 타입도 함께 제거. 시작 버튼은 항상 `lessons[0]`으로 연결.
+- `/lesson` 화면을 "메인 화면"다운 구조로 재구성: 다른 페이지와 스타일을 맞출 필요는 없다는 사용자 지시에 따라, 기존 디자인 토큰(`--radius-xl`/`--accent-soft`/`--card-bg`/`--panel-border-soft` 등)만 재사용해 히어로(eyebrow 뱃지+헤드라인+통계 chip+CTA) + 챕터별 그룹 헤더 + 구분선 기반 "블로그 리스트" 스타일로 전환(기존 카드 박스 스타일 제거).
+- Codex 비판 리뷰: 진행 상태 참조 완전 삭제 확인, `outline.lessons[index]`/`lessons[index]` 인덱스 정합성(둘 다 `listLessonDocumentsFrom` 기반) 확인, 챕터 헤더 렌더링 조건의 `undefined` 챕터 처리 확인, CSS 죽은 클래스 없음 확인 — 결함 없음.
+- `pnpm test`/`pnpm typecheck` 전체 통과, Playwright로 라이트/다크 테마 확인.
+
+### 2026-08-05 — 레슨 목록/리더 콘텐츠 전면 정리 (10건 사용자 피드백)
+- 배경: 사용자가 로컬 서비스를 직접 확인한 뒤 두서없이 남긴 10개 UI 피드백을 정리·확인받아 진행. 상세는 `docs/tasks/lesson-reader-content-refinement/`(spec/plan/tasks/test-result/result) 참고.
+- `/lesson` 목록을 가로형 1열 리스트로 재배치, 카드 설명을 `lesson.presentation` 첫 씬 텍스트(hook/paragraph)에서 뽑아 100자로 제한(원문 `bodyHtml` 기반 요약의 제목 중복 버그 해결 겸함), "약 N분" 시간 표시 제거.
+- **"완료" 관련 기능 전체 삭제**(사용자 명시: "체크 및 표시는 다 삭제하는 걸로 하자") — `lessonProgress.ts`의 `completedLessonSlugs`/`markLessonCompleted`, 목록 카드 "완료" 뱃지, 레슨 리더 마지막 씬의 "레슨 완료" 버튼 라벨을 전부 제거하고 항상 "다음"으로 고정("이어서 학습하기"용 `lastLessonSlug`/`lastSceneId`는 유지).
+- "대본" 섹션을 "교육 설명"으로 개명, 기본 노출(이전엔 기본 숨김)로 전환하고 탭 제목 + 우측 "숨기기/보기" 버튼으로 재구성.
+- narration(교육 설명 원문)이 문장 구분 없이 한 덩어리였던 것을 문장 단위 여러 `<p>`로 분리하는 로직을 `lessonPresentation.ts`에 추가.
+- `transitionToNext` 안내를 본문 강조 배너에서 화면 우측 하단 고정 카드로 이동, 진행률 카운터를 상단바에서 하단 풋터(이전/다음 버튼 사이)로 이동, 씬 타이틀 폰트 축소 및 전체 세로 간격 확대, "학습 흐름" 드로어 리스트 간격 축소.
+- Codex 비판 리뷰에서 **3건 확인 및 즉시 수정**: (1) narration 문장 분리 정규식이 소수점/공백 없는 구두점에서 텍스트를 유실하던 버그 → 문자 단위 스캔 방식으로 교체, (2) 목록 카드 설명이 첫 씬에 텍스트 블록이 없으면(customHtml만 있는 경우) 빈 값이 되던 문제 → `lesson.summary` 폴백 추가, (3) 우측 하단 고정 배너가 하단 바보다 z-index가 낮아 safe-area/줄바꿈 시 가려질 수 있던 문제 → z-index 상향 및 safe-area 고려 `bottom` 계산으로 수정.
+- `pnpm test`/`pnpm typecheck` 전체 통과, Playwright로 라이트/다크 테마 모두 실제 화면 확인.
+
+### 2026-08-05 — 레슨 리더 UI 정리 (카운터 단일화 / 이전 버튼 대비 / 학습 흐름 중복 제거)
+- 배경: 참고 사이트(sfood-ai-education.leedh84.chatgpt.site) vs 실 앱 Playwright 비교 분석 리포트를 본 사용자가 3건 피드백. 상세는 `docs/tasks/lesson-reader-ui-cleanup/`(spec/plan/tasks/test-result/result) 참고.
+- 상단 "이 레슨 X/Y · 전체 X/Y" 이중 카운터 → `globalPosition` 있으면 "전체 X/Y" 하나만, 없으면 "이 레슨 X/Y" 하나만 표시(참고 사이트의 단일 카운터 스타일에 맞춤, 레이블 없이 숫자만).
+- `.lesson-reader-nav-button`("이전" 버튼)이 배경(`bg-card-bg`)과 부모(`bg-panel-bg`)가 같은 색이라 안 보이던 문제 — `bg-card-hover-bg`로 배경 대비 확보.
+- "학습 흐름" 드로어에서 레슨 제목 줄("제목 + 약 N분")과 그 아래 씬 목록 제목이 중복 표시되던 것(레슨:씬 1:1 구조라 완전히 같은 텍스트가 두 번 나옴) — 레슨 제목 줄 제거, 챕터 헤더 아래 씬 버튼(제목만)만 남김. 다중 씬 레슨이 생기면 레슨 경계 표시가 없어지는 트레이드오프는 사용자 확인 후 허용.
+- Codex 비판 리뷰 반영: 레이블 제거는 참고 사이트 스타일에 맞춘 의도된 결정으로 유지, 테스트에는 레슨 제목/시간 표시 "부재" 검증과 카운터 단일 개수 검증을 추가.
+- `pnpm test`/`pnpm typecheck` 통과, Playwright로 라이트/다크 테마 모두 실제 화면 확인.
+
+### 2026-08-05 — 레슨 콘텐츠 스키마 전면 마이그레이션 (`lesson.presentation` Content Property + `wiki.metadata` 평탄화)
+- 배경: 사용자가 "문서는 18개인데 보이는 건 왜 7개일까?"라고 질문 → 실 Confluence 데이터를 REST API로 직접 조회해 조사한 결과, 콘텐츠 관리 에이전트가 저작 방식을 완전히 바꿨음을 발견. `wiki.metadata`가 중첩 `course:{courseId,order}`/`next` 체인에서 평탄화된 `courseId`/`order`/`chapter`/`estimatedMinutes`/`learningObjectives`/`lastReviewedAt` 필드로 바뀌었고, 진짜 학습 콘텐츠(Scene/블록/내레이션/모션/인터랙션/전환 문구)는 `bodyHtml`이 아니라 완전히 별도인 `lesson.presentation` Content Property(JSON)에 있었음. 사용자가 제공한 참고 사이트(sfood-ai-education.leedh84.chatgpt.site)가 정확히 이 스키마를 렌더링하는 것으로 확인.
+- 사용자 확인 후(정식 spec.md/plan.md 작성 → 승인) 레슨 읽기·렌더링 파이프라인 전체를 재작성 — 상세 내역은 `docs/tasks/lesson-presentation-schema-migration/`(spec/plan/tasks/test-result/result) 참고. 핵심 변경:
+  - 코스 순서는 `courseId`+`order`로만 결정(레거시 `next` 체인 폴백 완전 제거, 사용자 확인).
+  - 기존 H2 헤딩 기반 `bodyHtml` 파서(`lessonScenes.ts`)를 완전히 삭제 — 실 콘텐츠 23개 전부 새 스키마 사용 확인됨. 대체: 신규 `lessonPresentation.ts` 컴파일러.
+  - `lesson.presentation`의 `blocks[]`(hook/explanation/example/visual)를 새 `SemanticBlock` variant(`hookStatement`/`exampleNote`/`customHtml`+`css`)로 매핑, `transitionToNext`를 Scene 하단 배너로 노출.
+  - 참고 사이트 실측 결과 `reveal: "manual"`이 있어도 클릭 게이팅 없이 Scene 진입 즉시 전체가 보임을 확인 — Task #25의 Reveal 클릭 게이팅 상태 기계를 신규 스키마에 연결하지 않기로 결정(spec.md를 이 발견에 맞춰 구현 중 수정), 관련 코드 제거.
+  - 학습 흐름 드로어에 `chapter` 그룹 헤더 추가.
+- **Codex 비판 리뷰에서 Critical 버그 1건 발견·수정**: `wikiDataSource.ts`(브라우저가 `/api/wiki-pages` JSON을 다시 검증하는 별도 계층)가 `presentation`과 평탄화된 `wiki.metadata` 필드를 전혀 읽지 않고 있었음 — `confluenceClient.ts`(서버 측 원본 Confluence 파싱)만 고치고 이 두 번째 재검증 계층을 놓쳐서, 스냅샷 모드에서는 정상 동작하지만 실제 앱 사용(remote 모드) 시 모든 레슨이 조용히 사라지는 상태였음. 파싱 로직(`readLessonPresentationValue` 등)을 `lessonSemanticBlocks.ts`로 옮겨 두 파일이 공유하도록 재작성해 같은 종류의 재발을 구조적으로 방지. Medium 3건도 함께 수정: `CustomHtmlDiagramBlock`의 `css` prop이 `</style` 시퀀스로 sandbox iframe의 style 태그를 조기 종료시킬 수 있는 문제(零폭 문자로 방어), 블록이 `order` 필드가 아니라 배열 순서로 렌더링되는 문제(정렬 추가), `wiki.metadata.order`가 소수를 허용하는 문제(`Number.isInteger` 검증 추가).
+- 검증: `pnpm typecheck`/`pnpm test` 전체 통과(wiki-core 255, apps/web 180, mcp-server 42, edge-sidebar 23, serverless 21 — 회귀 없음). Playwright로 snapshot 모드(신규 스키마 픽스처)와 **remote 모드(실 Confluence 23개 레슨)** 양쪽 확인 — remote 모드에서 "23개 레슨 · 23개 장면 · 약 115분" 정상 노출, 레슨 1 상세 화면이 참고 사이트의 동일 레슨과 텍스트·구조 거의 동일하게 렌더링됨을 라이트/다크 + 데스크톱/모바일에서 확인.
+- Open Gaps: `ContextWindowVisual`/`HotspotVisual`(Task #25/#28)이 새 스키마에서는 트리거 경로가 없어 죽은 코드가 됨(삭제 여부 미결정) — `motion`/`interaction`은 캡처만 하고 진입 애니메이션으로 렌더링하지 않음(iframe 경계 문제로 후속 설계 필요) — Knowledge Check 블록 kind는 새 스키마 실측 데이터에 없어 매핑 경로가 없음.
+- 후속 조치(같은 날): 사용자가 "출처 패널이 무엇인지" 재질문 → 실 23개 레슨 데이터 + 참고 사이트를 재확인한 결과 링크(`<a>`, `http(s)://`)가 어디에도 없음을 확인, 이 기능이 실 콘텐츠나 참고 사이트가 애초에 쓰지 않던 기능이었음을 설명 후 사용자 확인을 받아 Reference Panel(Task #26, `ReferencePanel.tsx`/`.test.tsx` + `LessonReaderPage.tsx`의 `handleSceneContentClick`/관련 상태/CSS) 전체 삭제. `pnpm typecheck`/`pnpm test` 재확인(apps/web 173개로 감소, 그 외 회귀 없음).
+- 후속 조치(같은 날, 2차): 사용자가 "안 쓰는 것, 죽은 것 다 삭제해줘. 클린한 코드를 유지해야 해"라고 요청 → 전면 죽은 코드 감사 수행. `ContextWindowVisual`/`HotspotVisual`(Task #25/#28) 컴포넌트+테스트+CSS 삭제, `SceneVisual`/`HotspotPoint` 타입 삭제. 감사 과정에서 더 큰 죽은 코드를 추가로 발견: `lessonScenes.ts`(H2 파서, 이미 삭제됨)의 유일한 호출자가 없어져 `lessonSemanticBlocks.ts`의 `compileSceneBlocks`/`inferSceneTypeAndLayout`(정규식 기반 HTML→SemanticBlock 컴파일러 전체, ~320줄)가 완전히 도달 불가능한 상태였음 — 삭제. 이로 인해 다시는 생성될 수 없는 `SemanticBlock` variant(`bullets`/`steps`/`comparison`/`callout`/`image`/`knowledgeCheck`/`unsupported`) 및 관련 렌더 컴포넌트(`ImageBlock`/`KnowledgeCheckBlock`)/CSS/진단 코드(`missing_image_alt`/`unsupported_block_rendered`)/관측 이벤트(`asset_load_failure`)까지 연쇄적으로 삭제. `KnowledgeCheckScene.tsx` 등 Scene 타입 컴포넌트는 `SceneType` enum이 여전히 허용하는 값의 라우팅 타깃이라 삭제하지 않음(구분 기준을 result.md에 명시). `pnpm typecheck`/`pnpm test` 전체 재확인(wiki-core 224개, apps/web 158개로 감소, 그 외 회귀 없음), snapshot 모드 Playwright로 콘솔 에러 없이 정상 렌더링 재확인.
+
+### 2026-07-31 — Lesson Reader 레이아웃을 온라인 강의 플레이어 스타일로 재구성
+- 배경: 앞선 잔여 갭 12건 완료 보고 후, 사용자가 "설계에 교육 시스템의 UI/UX에 대한 내용이 없었나?"라고 재확인 — 설계서 재조사 결과 "시각 시스템"(의미 색상 토큰) 섹션은 발견했으나, 사용자가 "디자인 토큰은 SFOOD 디자인 시스템 기준, 설계서 토큰은 생성하지 말라"고 명확히 선을 긋고, 대신 "화면이 화면 가운데에 작은 규모로 떠 있어 교육 시스템 느낌이 전혀 없다"며 레이아웃/폰트 크기/배치만 온라인 강의 플레이어(Coursera/Udemy/Khan Academy 등) 벤치마킹으로 재구성해 달라고 요청.
+- 진단: `LessonReaderPage`가 전역 `SiteHeader` 아래에 레슨 전용 헤더를 또 얹고, 콘텐츠는 `max-w-3xl`(768px) 블록을 화면 안에서 `justify-center`로 수직 중앙 정렬 — 화면 가운데 작은 카드가 떠 있는 느낌. 하단 컨트롤도 콘텐츠 블록 안의 인라인 버튼 2개뿐, 화면 폭을 가로지르는 바가 아니었음.
+- 구현(레이아웃/타이포그래피만, 색상 토큰 불변):
+  - 3단 구조로 재구성 — `.lesson-reader-topbar`(전체 폭 sticky 상단 바, 안에 뒤로가기/이중 진행률/학습 흐름 버튼 + 얇은 진행률 바 신규 추가) / `.lesson-reader-content`(상단 정렬, 폭 확대 `max-w-4xl`~`lg:max-w-5xl`) / `.lesson-reader-bottombar`(전체 폭 sticky 하단 바, 이전/다음 버튼).
+  - 진행률 바(`.lesson-reader-progress-track`/`-fill`) 신규 — 과정 전체 위치가 있으면 그 기준, 없으면 레슨 내 위치로 폭 계산.
+  - Scene 제목 크기를 본문과 거의 같던 `clamp(19px, 4vw, 26px)`에서 `clamp(26px, 3.4vw, 40px)` + `font-bold`로 확대해 제목/본문 위계를 뚜렷하게 분리(가독성 목적으로 설계서의 `clamp(36px, 3.2vw, 64px)`보다는 보수적으로 조정).
+  - 본문 텍스트를 15px→17px/leading-8로, 하단 버튼을 좀 더 큰 터치 타깃(px-5 py-2.5, 14px)으로 확대.
+- Reference Panel/Reveal 상태 기계 등 기존 인터랙션 로직은 무수정, 클래스명(`lesson-reader-progress-item` 등 테스트가 의존하는 것)도 유지 — 회귀 없이 구조만 재배치.
+- 검증: `pnpm typecheck`/`pnpm test` 전체 통과(wiki-core 250/apps-web 181, 회귀 없음). Playwright로 데스크톱(1440x900)/모바일(390x844) + 라이트·다크에서 상단 바/진행률 바/하단 고정 바/제목·본문 크기/비교 표 오버플로우 여부까지 확인.
+- Open: `/lesson` 인덱스 페이지(코스 로드맵 카드형)는 이번 스코프에서 다루지 않음 — 사용자가 지목한 화면은 `/lesson/:slug` 리더였음.
+
+### 2026-07-31 — Lesson Player 설계서 재검토 후 잔여 갭 12건(#17~#28) 전체 구현
+- 배경: 사용자가 "남은 개발 작업이 없어? docs 설계 문서 읽고 다시 검토 해줘"라고 요청 — `docs/prd/lesson-player-design.md` 전체를 실제 코드와 다시 대조해 15개 항목 갭 감사를 제시. 이후 우선순위 확인을 위해 다시 질문하자 사용자가 "내가 개발을 다 진행하고 알림을 주라고 했는데 왜 자꾸 멈추는 거지?"라며 전체를 중단 없이 계속 진행하고 완료 시에만 보고하라는 지시를 명확히 함 — 이후 모든 하위 작업을 태스크 도구(Task/TaskUpdate)로만 추적하고 사용자 재확인 없이 연속 실행(spec.md/plan.md 등 정식 태스크 문서화는 시간상 생략, 이 항목에 그 사실을 명시).
+- 완료된 12개 항목, 각각 구현 + 유닛/통합 테스트 + Codex(read-only sandbox) 비판 리뷰 + Playwright 실브라우저 검증(임시 snapshot 모드 dev 서버, 작업 후 정리) 순서로 처리:
+  1. **진단 시스템**(`lessonDiagnostics.ts` 신규) — `validateLesson()`이 중복 sceneId/빈 Scene/이미지 alt 누락/Scene 15개 초과 등을 Error/Warning/Info로 분류, 콘솔 로그 + `?diagnostics=1` 시 화면 패널 노출.
+  2. **반응형 레이아웃** — 태블릿/모바일 브레이크포인트, `clamp()` 기반 제목 폰트, `env(safe-area-inset-bottom)`.
+  3. **포커스 접근성** — Scene 전환마다 `<h1>` 제목으로 포커스 이동, `sr-only aria-live="polite"` 위치 안내.
+  4. **Knowledge Check 정답 로직** — 콘텐츠 저작 관례로 평문 "정답" 접두어(모든 태그 제거 후 판정) + 첫 번째 ` — ` 구분자로 이유 분리, 이유를 정답 여부보다 먼저 표시, 정답이 없어도 다음 이동 허용.
+  5. **키보드 단축키 확장** — Space/Shift+Space/PageUp/PageDown/Home/End/M, 입력 필드·버튼 포커스 시 가로채지 않음.
+  6. **터치 스와이프**(`useLessonSwipeNavigation.ts` 신규) — 48px 최소 수평/60px 최대 수직 편차, `iframe`/`data-lesson-swipe-ignore` 제외.
+  7. **이미지 alt 필수화 + fallback** — `SemanticBlock`의 image variant에 `altMissing` 추가, 로드 실패 시 alt 텍스트 카드로 대체.
+  8. **휠 임계치 분리** — 첫 이벤트의 `deltaY` 크기로 마우스(80)/트랙패드(120) 휴리스틱 분리.
+  9. **Reveal 상태 기계** — `presentation.scenes[].reveal: "manual"` 옵트인 필드 신규(타입 체인 전체: `lessonScenes.ts`/`wikiDocuments.ts`/`confluenceClient.ts`), NEXT/PREVIOUS 정책에 따라 Scene 안에서 블록을 단계적으로 공개.
+  10. **Reference Panel**(`ReferencePanel.tsx` 신규) — 본문 내 링크 클릭 시 레슨을 벗어나지 않고 슬라이드 패널에서 미리 보여줌(포커스 트랩은 기존 `LessonOutlineDrawer` 패턴 재사용), 열려 있는 동안 휠/스와이프/키보드 탐색 중지.
+  11. **관측성 이벤트**(`lessonAnalytics.ts` 신규) — 설계서의 8개 이벤트명(`lesson_load_success/failure`, `scene_view`, `scene_navigation_blocked`, `unsupported_block_rendered`, `content_overflow_detected`, `asset_load_failure`, `progress_recovered`)을 `console.debug` 기반으로 기록.
+  12. **Screenshot Hotspot**(`HotspotVisual.tsx` 신규) — `SceneVisual`에 `hotspots` variant 추가(이미지 + 포인트 배열), 마커 클릭/키보드(Tab+Enter)로 확대(같은 zoom-layer에 이미지+마커를 묶어 확대해도 정렬 유지)+설명 교체, 우하단 미니맵으로 원본 윤곽 유지.
+- Codex 크리티컬 리뷰에서 발견해 수정한 주요 이슈: (1) Knowledge Check 정답 마커가 `<strong>정답</strong>` 정확 일치만 인식해 `<b>`/중첩 span에서 실패 → 태그 제거 후 평문 판정으로 수정, 두 번째 em-dash를 포함한 이유 텍스트가 잘리는 버그도 `parts.slice(1).join(" — ")`로 수정. (2) `CustomHtmlDiagramBlock`의 sandbox iframe이 모바일 스와이프의 "죽은 영역"이 되는 문제 → 투명 오버레이 div로 터치를 가로채도록 수정. (3) Reference Panel 링크가 `javascript:` 등 위험 프로토콜을 그대로 열 수 있는 위험 → `http(s):`/`mailto:` 화이트리스트 검증 추가, 포커스 복귀 로직 누락도 수정. (4) Hotspot 포인트 좌표(x/y)가 범위 검증 없이 통과되고 일부만 잘못돼도 조용히 필터링되어 번호가 저작 라벨과 어긋나는 문제 → 0~100 범위 검증 + 하나라도 잘못되면 전체 visual을 버리도록 수정. (5) Hotspot 확대 시 마커가 이미지와 함께 이동하지 않아 어긋나는 문제 → 이미지+마커를 단일 `zoom-layer`로 묶어 함께 변환하도록 수정. (6) Hotspot 이미지에 로드 실패 fallback이 없던 문제 → 기존 `ImageBlock`과 동일한 패턴으로 추가.
+- 알려진 한계로 남기고 수정하지 않은 것(설계서 자체도 "권장 초기값"이라고 명시하거나, 실질적 대안이 없는 항목): 마우스 휠 임계치 휴리스틱은 OS의 "부드러운 스크롤" 마우스 설정과 완전히 구분할 수 없음. Scene 전환 포커스 이동에 비동기 로딩/딥링크 레이스가 겹치는 극히 드문 경우 포커스가 두 번 옮겨질 수 있음. Hotspot 미니맵은 `aria-hidden`이라 스크린리더 사용자는 시각적 위치 정보(사분면 등)를 별도로 듣지 못함(레이블/설명 텍스트는 동일하게 제공됨).
+- 검증: `pnpm -r typecheck`(6개 패키지) 통과, `pnpm -r test` 전체 통과(wiki-core 250, apps/web 181, mcp-server 42, edge-sidebar 23, serverless 21 — 회귀 없음). Playwright로 Reveal/Reference Panel/Screenshot Hotspot 각각 임시 snapshot 모드 dev 서버(포트 5199)에서 실브라우저 확인 후 정리(스크린샷/서버 종료).
+- `confluenceSnapshots.ts`에 데모/회귀 픽스처 3건 추가(영구 유지, 모두 opt-in 필드라 기존 콘텐츠 회귀 없음): "컨텍스트와 기억의 한계" 레슨의 컨텍스트 창 Scene에 `reveal: "manual"`, 본문에 안전한 외부 링크(Reference Panel 데모), 신규 Scene "화면에서 확인하기"(Screenshot Hotspot 데모, 실제 이미지 에셋이 없어 SVG data URI 목업 사용).
+- 문서화 부채: 이번 라운드(#17~#28)는 사용자의 "계속 진행" 지시에 따라 `docs/tasks/{scope}/spec.md`~`result.md` 정식 태스크 워크스페이스 없이 Task 도구 추적만으로 진행 — 필요 시 후속 세션에서 사후 문서화 가능.
+- Open Gaps(설계서 대비 의도적 미착수, 이번 라운드에서 다루지 않음): ADF 기반 `LessonAst` 컴파일러/Course Manifest 정식 스키마, Backend API/캐시 계층, 여러 Course 간 전환 정책.
+
+### 2026-07-31 — Lesson Player 설계서 구현 계속: Slice 2~4(나머지 Scene Type, HTML 도식 컴포넌트, Motion, Context Window)
+- 배경: Slice 1 완료 후 사용자가 "컨텐츠 관련된 내용 빼고 다 진행해줘"라고 요청하며, 콘텐츠팀이 도식·도형을 HTML+CSS로 제공하기로 했다는 새 정보를 전달. 우선순위(Scene Type → Motion → Interactive → Backend API)를 확인 질문으로 확정한 뒤 순서대로 진행. Backend API는 Slice 1에서 이미 의도적으로 제외한 범위라 최종적으로 진행하지 않기로 재확인(사용자 확정).
+- **Slice 2 — 나머지 Scene Type + HTML 도식 공통 컴포넌트** (`docs/tasks/lesson-player-slice-2/`): 설계서의 11개 Scene Type·8개 Layout 전부 지원. 콘텐츠팀이 Confluence "HTML" 매크로로 제공할 도식을 위해 `CustomHtmlDiagramBlock`(sandbox iframe, `allow-scripts` 없음) 신규 구현. Codex 리뷰로 CSP 누락(원격 네트워크 요청 유출 가능), 표 셀 안에 중첩된 HTML 매크로가 조용히 사라지는 문제, misconception/comparison 추론 순서 버그를 발견해 수정 — 스크립트/이벤트 핸들러 삽입 페이로드로 실제 브라우저에서 sandbox 방어를 직접 검증.
+- **Slice 3 — Motion(순수 CSS 전환 애니메이션)** (`docs/tasks/lesson-player-slice-3/`): 장면 이동 방향별 진입 애니메이션, `prefers-reduced-motion` 대응, 전환 잠금(빠른 연속 입력 방지). 새 라이브러리 없이 CSS만으로 구현(사용자 확정). Codex 리뷰로 이미 첫/마지막 장면인데 Home/End를 눌러 불필요한 잠금이 걸리는 엣지 케이스 발견·수정.
+- **Slice 4 — Interactive 컴포넌트: Context Window** (`docs/tasks/lesson-player-slice-4/`): `wiki.metadata.presentation.scenes[].visual` 필드 신규 추가, AI 컨텍스트 창 한계를 설명하는 고정 개념도(콘텐츠 무관) 구현. Codex 리뷰로 잘못된 `emphasis` 값이 조용히 통과하는 검증 누락과, overflow 강조가 opacity 상속으로 hover 툴팁 대비를 떨어뜨리는 접근성 문제를 발견·수정. Screenshot Hotspot과 Backend API는 사용자 확정으로 이번 범위에서 제외.
+- 각 Slice마다 Codex(read-only sandbox) 비판적 리뷰 → 발견된 이슈 수정 → 회귀 테스트 추가 → Playwright 실브라우저 재검증(임시 snapshot 모드 dev 서버, 작업 후 정리) 순서를 반복.
+- 검증: `pnpm typecheck`/`pnpm test` 전체 통과(wiki-core 231, apps/web 134, 나머지 워크스페이스 회귀 없음).
+- `docs/prd/confluence-metadata.md`에 `presentation.scenes[].visual` 필드와 HTML 매크로 도식 작성 규약을 반영.
+- Open Gaps: 실 콘텐츠에 `wiki.metadata.course`/`presentation`/HTML 매크로 도식이 아직 없어 `/lesson` 인덱스는 여전히 레슨 1개만 노출 — 콘텐츠팀 작업 대기 중. Motion의 Reveal(단계별 점진 공개), Screenshot Hotspot 인터랙션, Backend API/캐시 계층은 이번 범위에서 의도적으로 제외.
+
+### 2026-07-31 — Lesson Player 재설계 착수: 렌더링 버그 근본 수정 + Slice 1(Compiler/Scene 도메인 모델/Course Manifest 스텁)
+- 배경: 사용자가 "레슨 페이지 내용이 제대로 안 보이고 mermaid 그래프도 깨져 보인다"고 보고 — SFOOD 디자인 스킬로 조사한 결과, 레슨 리더가 원본 Confluence storage HTML을 매크로 정리 없이 `dangerouslySetInnerHTML`로 그대로 렌더링하고 있었음(가이드/페이지가 쓰는 `ArticleContentRenderer` 파이프라인을 타지 않음)을 확인. 이후 사용자가 매우 상세한 "AI 기초교육 Lesson Player 개발 설계 계획서"를 전달, `docs/prd/lesson-player-design.md`로 저장. 설계서의 "권장 첫 번째 구현 Slice"(레슨 1개, H2 Scene 5개, Compiler, 좌우 Player, 키보드·휠, 진도 복구)만 먼저 구현하기로 결정(단계적 적용).
+- 태스크 문서: `docs/tasks/lesson-player-slice-1/`(spec/plan/tasks/test-result/result).
+- 설계서 대비 의도적 축소(사용자 승인): `lesson.course`/`lesson.presentation`을 별도 Confluence Content Property로 만들지 않고 기존 `wiki.metadata`의 선택적 하위 필드로 접어 넣음(레슨 페이지당 API 호출 횟수를 그대로 유지하기 위함).
+- 구현:
+  - `lessonSemanticBlocks.ts`(신규, Lesson Compiler) — Confluence 매크로(코드, 콜아웃, Mermaid Forge 다이어그램 확장 등)를 사람이 읽을 수 있는 `SemanticBlock[]`(paragraph/bullets/steps/comparison/callout/image/knowledgeCheck/unsupported)로 변환. Mermaid/원문 코드 블록은 실제 다이어그램 대신 "미리보기 미지원" 안내형 `unsupported` 블록으로 안전 대체(원본 매크로 메타데이터 노출 버그의 근본 수정).
+  - Scene 도메인 모델: 5개 Scene Type × 4개 Layout, `wiki.metadata.presentation.scenes[]` 명시 우선 + 규칙 기반 추론 폴백.
+  - `lessonDocuments.ts` — `wiki.metadata.course`(courseId+order)가 있으면 그 순서로, 없으면 기존 `next` 체인 그대로 정렬(레거시 콘텐츠 100% 회귀 없음).
+  - `apps/web/src/ui/pages/lessonScenes/` 신규 — `SceneRenderer` + 5개 Scene 컴포넌트, 원본 HTML 직접 주입 제거.
+  - `useLessonWheelNavigation` 신규 — 세로 휠 스크롤을 좌우 장면 이동으로 해석(임계치 누적 + 잠금).
+  - `lessonProgress.ts` — 저장 키를 `lastSceneIndex`(number) → `lastSceneId`(anchor 문자열)로 전환, 장면 이동 시 URL `?scene=` 파라미터도 동기화해 새로고침 후 위치 복구.
+- Codex 크리티컬 리뷰에서 6건 발견, 전부 수정: (1) 정규식 기반 블록 분리기가 미인식 태그(예: iframe)를 조용히 삭제 → catch-all로 `unsupported` 보존. (2) Mermaid 확장 감지가 속성 없는 태그만 매칭 → 속성 허용하도록 완화. (3) H2 `id` 속성이 첫 속성이 아니면 유실 → 위치 무관 추출로 수정. (4) `courseId`를 레슨 일부에만 태깅하면 기존 `next` 체인이 예기치 않게 역전 → course/legacy 그룹 간 `next` 교차 참조 시 전체를 레거시 방식으로 폴백하는 가드 추가. (5) Knowledge Check 선택 상태가 다음 장면으로 누수 → Scene을 `${slug}:${scene.id}` 키로 리마운트. (6) 같은 레슨 내 이동 시 URL이 갱신되지 않아 새로고침하면 옛 위치로 복귀 → URL 동기화 추가(단, 레슨 로드 전에는 건드리지 않도록 가드해 딥링크 덮어쓰기 회귀를 자체 발견·수정).
+- 검증: `pnpm typecheck`/`pnpm test` 전체 통과(wiki-core 220, apps/web 112, 나머지 워크스페이스 회귀 없음). Playwright로 실제 Mermaid 포함 운영 레슨 페이지를 라이트/다크 테마에서 확인 — 매크로 메타데이터 노출 버그 해소, 딥링크(`?scene=N`)·새로고침 위치 복구 확인.
+- Open Gaps: 실 콘텐츠 18개 레슨에는 아직 `wiki.metadata.course`가 없어 `/lesson` 인덱스는 여전히 1개만 노출(콘텐츠팀의 메타데이터 입력 필요). Mermaid는 실제 다이어그램을 그리지 않고 안내 카드로만 대체(후속 Slice 후보). 여러 courseId 간 레슨 전환 경계 미처리(과정이 하나뿐인 현재는 문제 없음). Knowledge Check 정답 판정 미구현.
+
+### 2026-07-30 — Lesson 진행 UI(코스 로드맵/이중 진행률/학습 흐름 드로어) — 레퍼런스 사이트 격차 좁히기
+- 브랜치: `develop`에서 신규 분기한 `feature/lesson-progress-ui`(격리 워크트리, Subagent-Driven Development로 태스크별 구현+2단계 리뷰).
+- 배경: 사용자가 동일 목적으로 이미 완성된 레퍼런스 사이트(`https://ai-work-education.leedh84.chatgpt.site/`, 고정 콘텐츠로 만든 사내 AI 교육 사이트)와 1차 Lesson 구현을 비교해 달라고 요청 — Playwright로 레퍼런스 사이트를 직접 열어 홈/장면/학습 흐름 드로어/진행자 도우미 패널까지 확인한 뒤, 격차를 4개 영역(Scene 시각 컴포넌트/진행 UI/진행자 도우미/모션)으로 분류해 보고. 사용자가 "진행 UI"부터 좁히기로 확정, 콘텐츠는 계속 관리 에이전트가 만드는 중이라는 전제 하에 진행. 브레인스토밍으로 레이아웃 지정 방식(Confluence 본문 관례 패턴 유지), 예상 시간 산정 방식(장면 수 기반 자동 계산), 시각 스타일(기존 SFOOD 토큰 유지, 레이아웃 구조만 참고), 인덱스/드로어 역할 분리를 확정 후 설계 문서(`docs/superpowers/specs/2026-07-30-lesson-progress-ui-design.md`) 승인, 계획(`docs/superpowers/plans/2026-07-30-lesson-progress-ui.md`) 작성.
+- 구현(Task 0-4, 각 태스크마다 spec-compliance + code-quality 2단계 subagent 리뷰):
+  - `packages/wiki-core`: `courseOutline.ts` — `buildCourseOutline`(레슨×장면 트리, 레슨별 예상 소요시간 = 장면수×1.5분), `getGlobalScenePosition`(특정 장면의 코스 전체 내 1-based 위치). 기존 `listLessonDocumentsFrom`/`splitLessonContentIntoScenes` 재사용, 신규 스키마 필드 없음.
+  - `/lesson` 인덱스 → 코스 로드맵 그리드(통계 라인 + 2열 카드: 순번/제목/요약/예상시간/완료 배지).
+  - `/lesson/:slug` 리더 헤더에 "이 레슨"/"전체" 이중 진행률 추가.
+  - `LessonOutlineDrawer` 신규 — 이 코드베이스 최초의 접근성 모달/드로어 컴포넌트(라이브러리 없이 포커스 트랩·ESC/배경 클릭 닫기·body 스크롤 잠금·포커스 복귀 직접 구현), "학습 흐름" 버튼으로 열어 전체 레슨×장면 트리에서 장면 클릭 시 즉시 이동(같은 레슨) 또는 라우팅(다른 레슨).
+- Task 3 구현 중 실제 테스트 실행에서 발견한 문제: 이중 진행률 도입으로 단일 레슨 픽스처에서 "이 레슨"과 "전체" 표시가 같은 숫자를 렌더링해 기존 4개 테스트의 `getByText` 쿼리가 모호해짐 — 사용자 승인 없이 임의로 마크업을 바꾸지 않고 즉시 보고, 승인 받은 뒤 해당 4개 테스트의 쿼리를 `이 레슨` 라벨 기준으로 스코프를 좁히는 방식으로 해결(테스트가 검증하는 동작 자체는 변경 없음).
+- Codex 크리티컬 리뷰(6c)에서 2건 발견, 1건 수정: (1) 포커스 트랩이 "포커스가 이미 첫/마지막 요소에 있을 때"만 감지해, 포커스가 패널 밖으로 벗어나면 Tab이 트랩을 무시할 수 있는 접근성 결함 → `panelRef.current.contains(document.activeElement)` 가드 추가로 즉시 재포획하도록 수정, 회귀 테스트 2건 추가. (2) `next` 체인이 끊긴 레슨은 슬러그 직접 조회(`getLessonDocumentFrom`)로는 리더에 정상 표시되지만 체인 순회 기반 `buildCourseOutline`에서는 조용히 누락되어 코스 개요·이중 진행률·드로어에서 빠질 수 있는 엣지 케이스 → 코드는 이미 크래시 없이 안전하게 처리 중이라 알려진 한계로 문서화(콘텐츠 저작 시 `next` 체인 연결 필요, 근본 해결은 후속 Course Manifest 설계 영역).
+- 검증: `pnpm -r typecheck`(5개 패키지)/`pnpm -r test`(wiki-core 201, web 101, mcp-server 42, edge-sidebar 23, serverless 21 — 전부 통과)/`pnpm --filter @sfood/web build` 통과. Playwright로 코스 로드맵, 이중 진행률, 드로어 열기/장면 이동(같은 레슨·다른 레슨)/ESC·배경 클릭 닫힘/포커스 복귀를 라이트·다크 + 데스크톱(1280)·모바일(390)에서 확인, 레퍼런스 사이트와 구조적 유사도 비교.
+- 제외 범위(설계 문서에 명시, 사용자 승인): Scene 시각 컴포넌트(카드형 비교, 노드 다이어그램), 진행자 도우미 4단 구조, 모션/전환 애니메이션, 홈 화면 진입 카드 변경, 레퍼런스 색상/브랜드 채택 — 전부 후속 세션 범위.
+- 태스크 문서: `docs/tasks/lesson-progress-ui/`(spec/plan/tasks/test-result/result).
+
+### 2026-07-30 — Lesson 기능, 실제 Confluence 콘텐츠로 재검증 후 대본 파싱 확장 (당일 후속)
+- 브랜치: `develop`(머지 완료 후 바로 이어서 작업, 격리 워크트리 없이 직접 진행 — 작고 독립적인 파서 수정이라 판단).
+- 배경: 사용자가 `pnpm dev`로 5184 포트를 띄워 화면을 직접 보다가 "문서 기준으로 구현이 맞는지" 검토를 요청. 확인 결과 로컬 dev 서버가 `.env.local`의 Confluence 자격증명으로 인해 자동으로 `remote` 모드(기존 vite.config.ts 로직, 이번 세션 이전부터 존재)로 동작해 실제 Confluence 데이터를 쓰고 있었고, 실제 공간에는 아직 `docType: "lesson"` 문서가 없어 홈 진입 카드가 정상적으로 숨겨진 것(버그 아님)임을 확인·설명. 이후 사용자가 실제 Confluence에 레슨 페이지 1개(page ID `183238731`)를 작성했다고 알려와 실 데이터로 재검증 진행.
+- 발견 및 조치:
+  1. 새 페이지에 `wiki.metadata` Content Property가 전혀 없어(`missing_metadata`) 앱에서 완전히 제외되고 있었음 — 사용자 승인 하에 Confluence Content Property API로 `docType: "lesson"` 등 필수 필드를 직접 추가(코드 문제 아님, 콘텐츠 메타데이터 누락).
+  2. 메타데이터 추가 후 홈→목록→리더 전체 플로우가 실제 데이터로 정상 동작 확인.
+  3. **실제 저자가 대본을 Confluence Expand 매크로가 아니라 `<blockquote><strong>나레이션:</strong>...</blockquote>` 형태의 평범한 인용구로 작성하는 관례를 쓰고 있어**, 기존 파서(Expand 매크로만 인식)로는 대본이 전혀 숨겨지지 않고 노출되는 문제를 발견 — 사용자 승인 하에 `packages/wiki-core/src/lib/lessonScenes.ts`의 `splitLessonContentIntoScenes`를 확장해 `나레이션:` 라벨 blockquote도 숨겨진 대본으로 인식하도록 수정(TDD, 회귀 테스트 추가).
+  4. 수정 과정에서 정규식이 `</blockquote>` 경계를 넘어 앞선 hook blockquote까지 통째로 삼켜버리는 버그를 실제 화면 스크린샷으로 발견 — 이 시나리오를 재현하는 회귀 테스트를 추가하고 negative lookahead로 경계를 고정해 해결.
+- 검증: `pnpm -r typecheck`/`pnpm -r test`(wiki-core 195개, 전체 패키지 통과) 통과. Playwright로 실제 레슨 페이지의 4개 장면 전체를 순회하며 hook/목록/시각 자료는 노출, 대본만 토글 뒤에 숨겨짐을 최종 확인.
+- 커밋: `06efa77`("Recognize 나레이션-labeled blockquotes as hidden scene scripts").
+- 태스크 문서 갱신: `docs/tasks/lesson-entry-and-progress/result.md`/`test-result.md`.
+
+### 2026-07-30 — Lesson(AI 기초교육) 진입점, docType 격리, 학습 진도(localStorage) 신규 구현
+- 브랜치: `develop`에서 신규 분기한 `feature/lesson-entry-and-progress`(격리 워크트리 `.worktrees/feature-lesson-entry-and-progress`에서 작업, Subagent-Driven Development로 태스크별 구현+2단계 리뷰 수행).
+- 배경: 사용자가 홈 화면에 AI 기초교육(Lesson) 진입 경로가 없다는 점, Confluence에 `docType: "lesson"`이 신규 도입될 예정이며 검색/가이드/페이지 노출에 영향이 없어야 한다는 점, 계정 시스템이 없어 학습 진도는 브라우저 저장(이어서 학습하기)이 필요하다는 점을 전달 — 브레인스토밍으로 3가지 구현 범위(A: 세로 리더 재사용, B: 설계문서 전체 1차 Slice, C: 단순화된 좌우 Player)를 제시해 C안으로 확정, 이후 대본(스크립트) 토글 요구사항을 추가로 확인해 설계 문서(`docs/superpowers/specs/2026-07-30-lesson-entry-and-progress-design.md`) 승인 후 계획(`docs/superpowers/plans/2026-07-30-lesson-entry-and-progress.md`) 작성.
+- 구현(Task 0-8, 각 태스크마다 spec-compliance + code-quality 2단계 subagent 리뷰):
+  - `docType: "lesson"`을 `WikiDocument`/`RawConfluencePage` 유니온에 추가 — `getWikiDocumentSection()`의 기존 `null` 기본 분기를 그대로 활용해 검색·가이드·페이지·라이브러리·홈 추천 가이드에서 자동 격리(신규 분기 추가 없음). `docs/prd/confluence-metadata.md`/`CLAUDE.md` Frozen 표에 `lesson` 항목 문서화.
+  - `packages/wiki-core`: `lessonDocuments.ts`(`listLessonDocumentsFrom`/`getLessonDocumentFrom`/`getNextLessonSlugFrom` — 신규 필드 없이 기존 `metadata.next` 체인으로 순서 도출), `lessonScenes.ts`(`splitLessonContentIntoScenes` — H2 헤딩 기준 장면 분리 + Confluence Expand 매크로 → 장면별 숨김 "대본" 추출).
+  - `confluenceSnapshots.ts`에 레슨 픽스처 2건(각 2개 장면, Expand 매크로 대본 포함) 추가 — 실제 Confluence Lesson 콘텐츠는 아직 없어 스냅샷으로 개발.
+  - `apps/web/src/data/lessonProgress.ts` — `localStorage` 기반 진도 저장(`lesson-progress:{courseId}`, 완료 레슨 목록·마지막 위치), 손상된 데이터는 무시하고 폴백.
+  - 홈 하단 진입 카드(`LessonEntrySection`, 레슨 문서 존재 시에만 노출) → `/lesson` 인덱스 페이지(레슨 목록, 이어서 학습하기/학습 시작하기) → `/lesson/:slug` 좌우 전환 리더(키보드 방향키·버튼, 장면별 대본 토글, 마지막 장면 완료 시 다음 레슨 자동 이동 및 진도 기록).
+- Playwright 실사용 검증 중 발견 및 수정한 버그: (1) 레슨 완료 후 다음 레슨 자동 이동 시 React Router가 동일 라우트(`/lesson/:slug`) 컴포넌트를 리마운트하지 않아 장면 인덱스가 초기화되지 않는 문제 — `slug` 변경 시 재계산하는 effect 추가로 수정. (2) 리더 화면의 과도한 빈 공간(레이아웃 어색함) — 콘텐츠+컨트롤을 단일 블록으로 수직 중앙 정렬하도록 CSS 수정.
+- Codex 크리티컬 리뷰(6c)에서 5건 발견, 4건 수정: (1) `wikiDataSource.ts`의 remote 로딩 허용 목록에 `lesson` 누락(실 Confluence 연동 시 전부 유실) → 추가. (2) 비동기 문서 로딩 완료 전 `?scene=` 딥링크 진입 시 파라미터 무시 레이스 → effect 의존성에 `scenes.length` 추가. (3) 정수가 아닌 `?scene=` 값(`0.5` 등)으로 인한 크래시 가능성 → `clampSceneIndex`에 정수/유한값 가드 추가. (4) 진도 데이터의 `lastSceneIndex`/`completedLessonSlugs` 원소 타입 검증 미흡 → 검증 강화. (5) Expand 매크로 내부에 `<h2>`가 있으면 장면 경계로 오인식될 수 있는 정규식 파서의 구조적 한계는 이번 스코프에서 수정하지 않고 알려진 갭으로 문서화(현재 픽스처는 해당 패턴 미사용).
+- 검증: `pnpm -r typecheck`(5개 패키지)/`pnpm -r test`(wiki-core 192, web 86, mcp-server 42, edge-sidebar 23, serverless 21 — 전부 통과)/`pnpm --filter @sfood/web build` 통과. Playwright로 홈→목록→리더 전체 플로우, 키보드 내비게이션, 대본 토글, 새로고침 후 진도 복구, 검색/가이드/페이지 비노출을 라이트·다크 + 데스크톱(1280)·모바일(390)에서 확인.
+- 제외 범위(설계 문서에 명시, 사용자 승인): ADF 기반 Lesson Compiler·`LessonAst`·Content Property 스키마, Motion Preset, 휠/스와이프 탐색, Knowledge Check 등 인터랙티브 컴포넌트, Confluence 실연동, 다중 Course 관리 — 전부 후속 세션 범위.
+- 태스크 문서: `docs/tasks/lesson-entry-and-progress/`(spec/plan/tasks/test-result/result).
+
 ### 2026-07-27 — AWS 배포(S3+CloudFront+Lambda) 워크플로우, AI 질문/검색 로직 wiki-core 추출
 - 브랜치: `feature/sfood-design-system-tone`(동일 브랜치에서 계속).
 - 배경: 사용자가 S3/CloudFront 배포 + GitHub Actions 자동배포를 요청. 3차례 명확화 문답을 거쳐 최종 스코프 확정 — AI 질문/검색은 메인 기능이라 반드시 실사용 가능해야 함(Lambda로 신규 배포), Projects/GitHub 연동은 배제 및 숨김, Lambda는 1회성 신규 생성, OpenAI 키는 기존 값 재사용.

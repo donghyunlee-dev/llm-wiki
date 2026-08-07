@@ -1,5 +1,6 @@
 import { buildSnapshotWikiDocuments } from "./confluenceSnapshots";
 import { classifyQuestionIntent, extractQuestionSubjects } from "./intentClassifier";
+import type { LessonPresentationDocument } from "./lessonSemanticBlocks";
 
 export type WikiSection = "guides" | "faq" | "library";
 
@@ -12,13 +13,22 @@ export type WikiDocument = {
   updatedAt: string;
   sourceUrl?: string;
   metadata: {
-    docType: "guide" | "page" | "faq" | "library" | "policy" | "nav" | "ops" | "playbook";
+    docType: "guide" | "page" | "faq" | "library" | "policy" | "nav" | "ops" | "playbook" | "lesson";
     audience: "beginner" | "intermediate" | "advanced";
     status: "published";
     prerequisites: string[];
     next: string[];
     related: string[];
+    // lesson docType 전용, 평탄화된 필드(Course Manifest) — 다른 docType은 항상 undefined.
+    courseId?: string;
+    order?: number;
+    chapter?: string;
+    estimatedMinutes?: number;
+    learningObjectives?: string[];
+    lastReviewedAt?: string;
   };
+  // 별도 Confluence Content Property(`lesson.presentation`)의 값 — lesson docType 전용.
+  presentation?: LessonPresentationDocument;
   headings: Array<{
     id: string;
     level: number;
@@ -200,7 +210,13 @@ function rankSearchDocumentsIn(documents: WikiDocument[], query: string): Ranked
   }
 
   return documents
-    .filter((document) => document.metadata.docType !== "ops" && document.metadata.docType !== "policy" && document.metadata.docType !== "playbook")
+    .filter(
+      (document) =>
+        document.metadata.docType !== "ops" &&
+        document.metadata.docType !== "policy" &&
+        document.metadata.docType !== "playbook" &&
+        document.metadata.docType !== "lesson",
+    )
     .map((document) => ({
       document,
       score: scoreDocumentForSearch(document, profile),

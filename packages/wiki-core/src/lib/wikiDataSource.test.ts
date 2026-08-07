@@ -57,7 +57,7 @@ describe("wikiDataSource", () => {
   it("builds allowed wiki documents from snapshot-shaped remote payloads", () => {
     const documents = buildWikiDocumentsFromPayload(getSnapshotPayload());
 
-    expect(documents).toHaveLength(10);
+    expect(documents).toHaveLength(12);
     expect(documents[0]?.title).toBe("가이드 인덱스");
   });
 
@@ -140,7 +140,7 @@ describe("wikiDataSource", () => {
         Accept: "application/json",
       },
     });
-    expect(documents).toHaveLength(10);
+    expect(documents).toHaveLength(12);
   });
 
   it("filters remote records that are not current and published before normalization", () => {
@@ -266,7 +266,7 @@ describe("wikiDataSource", () => {
     expect(documents[0]?.contentText).toContain("Remote body");
   });
 
-  it("limits remote records to guide, page, faq, library, and nav pages", () => {
+  it("limits remote records to guide, page, faq, library, nav, and lesson pages", () => {
     const pageRecord = buildRemoteRecord({
       slug: "page-example",
       page: {
@@ -304,8 +304,18 @@ describe("wikiDataSource", () => {
       },
     });
 
+    const lessonRecord = buildRemoteRecord({
+      slug: "lesson-basics",
+      page: {
+        ...buildRemoteRecord().page,
+        id: "lesson-1",
+        title: "Lesson Basics",
+        metadata: { ...buildRemoteRecord().page.metadata, docType: "lesson" },
+      },
+    });
+
     const records = parseRemoteWikiPageRecords({
-      pages: [buildRemoteRecord(), pageRecord, libraryRecord, faqRecord, navRecord],
+      pages: [buildRemoteRecord(), pageRecord, libraryRecord, faqRecord, navRecord, lessonRecord],
     });
 
     expect(records.map((record) => record.slug)).toEqual([
@@ -314,7 +324,63 @@ describe("wikiDataSource", () => {
       "library-reference",
       "faq-record",
       "nav-index",
+      "lesson-basics",
     ]);
+  });
+
+  it("carries lesson.presentation and flattened course metadata through the remote JSON round-trip", () => {
+    const presentation = {
+      schemaVersion: 1 as const,
+      lessonId: "today-route",
+      theme: "ai-foundation",
+      scenes: [
+        {
+          sceneId: "today-route-main",
+          anchor: "오늘의 흐름",
+          type: "concept" as const,
+          layout: "visual-split" as const,
+          narration: "내레이션",
+          blocks: [{ order: 1, kind: "hook" as const, content: "질문" }],
+        },
+      ],
+    };
+    const lessonRecord = buildRemoteRecord({
+      slug: "today-route",
+      page: {
+        ...buildRemoteRecord().page,
+        id: "lesson-1",
+        title: "오늘의 흐름",
+        metadata: {
+          ...buildRemoteRecord().page.metadata,
+          docType: "lesson",
+          courseId: "ai-foundation",
+          order: 1,
+          chapter: "AI 이해의 시작",
+          estimatedMinutes: 5,
+          learningObjectives: ["목표 1"],
+          lastReviewedAt: "2026-08-04",
+        },
+        presentation,
+      },
+    });
+
+    const records = parseRemoteWikiPageRecords({ pages: [lessonRecord] });
+
+    expect(records[0].page.presentation).toEqual(presentation);
+    expect(records[0].page.metadata).toEqual({
+      docType: "lesson",
+      audience: "beginner",
+      status: "published",
+      prerequisites: [],
+      next: [],
+      related: [],
+      courseId: "ai-foundation",
+      order: 1,
+      chapter: "AI 이해의 시작",
+      estimatedMinutes: 5,
+      learningObjectives: ["목표 1"],
+      lastReviewedAt: "2026-08-04",
+    });
   });
 
   it("rejects remote records outside the fixed public wiki space", () => {

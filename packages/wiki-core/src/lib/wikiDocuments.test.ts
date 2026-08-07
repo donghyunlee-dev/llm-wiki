@@ -5,6 +5,9 @@ import {
   getIndexFirstSearchWikiDocumentsIn,
   getTopSearchWikiDocumentsIn,
   getParentWikiDocumentFrom,
+  getWikiDocumentHref,
+  getWikiDocumentSection,
+  listWikiDocumentsBySectionFrom,
   searchWikiDocumentsIn,
   stripTitleTypePrefix,
   validateWikiGraphReferencesFrom,
@@ -460,5 +463,53 @@ describe("wiki document graph helpers", () => {
       "child",
       "reverse",
     ]);
+  });
+});
+
+describe("lesson docType isolation", () => {
+  function lessonDocument(overrides: Partial<WikiDocument> = {}): WikiDocument {
+    return {
+      id: "lesson-1",
+      slug: "ai-first-perspective",
+      title: "AI를 이해하는 첫 번째 관점",
+      summary: "요약",
+      updatedAt: "2026-07-30",
+      metadata: {
+        docType: "lesson",
+        audience: "beginner",
+        status: "published",
+        prerequisites: [],
+        next: [],
+        related: [],
+      },
+      headings: [],
+      contentHtml: "<h1>제목</h1><h2>장면 1</h2><p>본문</p>",
+      ...overrides,
+    };
+  }
+
+  it("getWikiDocumentSection returns null for lesson documents", () => {
+    expect(getWikiDocumentSection(lessonDocument())).toBeNull();
+  });
+
+  it("getWikiDocumentHref returns null for lesson documents", () => {
+    expect(getWikiDocumentHref(lessonDocument())).toBeNull();
+  });
+
+  it("excludes lesson documents from search results", () => {
+    const results = searchWikiDocumentsIn(
+      [lessonDocument({ title: "AI 기초교육 첫 장면", contentHtml: "<p>AI 기초교육 첫 장면 내용</p>" })],
+      "AI 기초교육",
+    );
+
+    expect(results.guides).toHaveLength(0);
+    expect(results.faq).toHaveLength(0);
+    expect(results.library).toHaveLength(0);
+  });
+
+  it("excludes lesson documents from guides section listing", () => {
+    const documents = [lessonDocument(), lessonDocument({ id: "lesson-2", slug: "context-and-memory" })];
+
+    expect(listWikiDocumentsBySectionFrom(documents, "guides")).toHaveLength(0);
   });
 });

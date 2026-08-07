@@ -1,8 +1,18 @@
 @import "tailwindcss";
 @import "@sfood/ui/tokens/base.css";
 @import "@sfood/ui/tokens/semantic.css";
+@import "pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css";
+
+/* Tailwind v4의 자동 콘텐츠 탐색은 node_modules를 건너뛴다 — @sfood/ui 컴포넌트(Stepper 등)가
+   쓰는 클래스(bg-surface, text-brand 등)는 이 앱 소스에는 등장하지 않고 컴파일된
+   dist/index.js 안에만 리터럴 문자열로 존재하므로, 그 파일을 명시적으로 스캔 대상에 추가한다. */
+@source "../node_modules/@sfood/ui/dist/**/*.js";
 
 :root {
+  /* 디자인 시스템 기본값('Inter'/'JetBrains Mono')을 앱 차원에서 Pretendard(가변 폰트,
+     유니코드 서브셋 단위로 필요한 부분만 내려받음)와 코드/인용구용 모노스페이스로 교체한다. */
+  --font-sans: "Pretendard Variable", "맑은 고딕", "Malgun Gothic", Arial, sans-serif;
+  --font-mono: Consolas, Menlo, Monaco, "맑은 고딕", monospace;
   --page-bg: var(--color-background);
   --page-fg: var(--color-foreground);
   --panel-bg: var(--color-surface);
@@ -65,6 +75,19 @@
   --article-toc-width: 240px;
   --article-toc-gap: 2rem;
   --article-content-width: 760px;
+  /* Lesson Player motion tokens (docs/prd/lesson-player-design.md "모션 토큰 권장값") */
+  --lesson-motion-duration-fast: 0.22s;
+  --lesson-motion-duration-normal: 0.36s;
+  --lesson-motion-distance-scene: 48px;
+  --lesson-motion-easing-enter: cubic-bezier(0.22, 1, 0.36, 1);
+  --lesson-motion-easing-exit: cubic-bezier(0.4, 0, 1, 1);
+  /* /lesson 목록의 챕터 구분색 — 브랜드 accent(레드)와 겹치지 않는 별도 팔레트.
+     23개 레슨이 전부 같은 색으로 반복되어 보이는 문제를 완화하기 위해 챕터 단위로 순환 적용한다. */
+  --chapter-color-1: #3f5f9e;
+  --chapter-color-2: #b8873a;
+  --chapter-color-3: #2f7d75;
+  --chapter-color-4: #7a4a8f;
+  --chapter-color-5: #a24a72;
 }
 
 :root[data-theme="dark"] {
@@ -112,6 +135,30 @@
   --guide-graph-edge-related: rgba(167, 139, 250, 0.52);
   --guide-graph-edge-orphan: rgba(245, 158, 11, 0.52);
   --guide-graph-edge-missing: rgba(251, 113, 133, 0.52);
+  --chapter-color-1: #8fa8e0;
+  --chapter-color-2: #e0b46a;
+  --chapter-color-3: #6cc4ba;
+  --chapter-color-4: #c48fdb;
+  --chapter-color-5: #d98fb0;
+
+  /* @sfood/ui/tokens/semantic.css는 라이트 테마만 정의한다(디자인시스템 자체에 다크 토큰이
+     없음). @sfood/ui의 React 컴포넌트가 다크 테마에서도 맞는 색으로 보이도록, 위에서 이미
+     이 파일의 다크 팔레트를 만드는 데 쓴 것과 동일한 @sfood/ui/tokens/base.css 베이스
+     스케일(--gray-*, --brand-*)로 재정의한다 — 새 색상값 없음. */
+  --color-brand: var(--brand-400);
+  --color-brand-hover: var(--brand-300);
+  --color-surface: color-mix(in srgb, var(--gray-900) 88%, white 12%);
+  --color-surface-raised: color-mix(in srgb, var(--gray-900) 80%, white 20%);
+  --color-surface-overlay: color-mix(in srgb, var(--gray-900) 80%, white 20%);
+  --color-surface-subtle: var(--gray-800);
+  --color-foreground: var(--gray-50);
+  --color-secondary: var(--gray-300);
+  --color-muted: var(--gray-400);
+  --color-border: var(--gray-700);
+  --color-border-subtle: color-mix(in srgb, var(--gray-700) 60%, var(--gray-900) 40%);
+  --color-border-strong: var(--gray-500);
+  --color-background: var(--gray-900);
+  --color-on-brand: var(--gray-900);
 }
 
 @theme inline {
@@ -133,6 +180,39 @@
   --font-display: var(--font-display);
   --font-body: var(--font-body);
   --font-mono: var(--font-mono);
+
+  /* @sfood/ui가 실제로 export하는 React 컴포넌트(Stepper 등)는 @sfood/ui/tailwind.config.js가
+     정의하는 이 이름들(brand/surface/foreground/muted/border 등)로 Tailwind 클래스를 쓴다.
+     @sfood/ui/tokens/semantic.css(위에서 import)가 값은 이미 --color-*로 정의해 두었지만,
+     Tailwind v4는 @theme(inline) 블록 안에 있는 이름만 유틸리티로 인식하므로 여기서 그대로
+     참조만 추가한다 — 새 색상값을 만들지 않는다. */
+  --color-brand: var(--color-brand);
+  --color-brand-hover: var(--color-brand-hover);
+  --color-brand-light: var(--color-brand-light);
+  --color-brand-subtle: var(--color-brand-subtle);
+  --color-on-brand: var(--color-on-brand);
+  --color-surface: var(--color-surface);
+  --color-surface-raised: var(--color-surface-raised);
+  --color-surface-overlay: var(--color-surface-overlay);
+  --color-surface-subtle: var(--color-surface-subtle);
+  --color-foreground: var(--color-foreground);
+  --color-secondary: var(--color-secondary);
+  --color-muted: var(--color-muted);
+  --color-border: var(--color-border);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-border-strong: var(--color-border-strong);
+  --color-background: var(--color-background);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-danger: var(--color-danger);
+  --color-info: var(--color-info);
+  --radius-btn: var(--radius-btn);
+  --radius-card: var(--radius-card);
+  --radius-input: var(--radius-input);
+  --radius-badge: var(--radius-badge);
+  --shadow-card: var(--shadow-card);
+  --shadow-raised: var(--shadow-raised);
+  --shadow-overlay: var(--shadow-overlay);
 }
 
 html {
@@ -234,8 +314,8 @@ a {
     @apply flex items-center gap-2.5;
   }
 
-  .site-brand-mark {
-    @apply flex h-7 w-7 items-center justify-center rounded-[var(--radius-md)] bg-accent text-xs font-bold text-white;
+  .site-brand-logo {
+    @apply block h-7 w-auto;
   }
 
   .site-brand-text {
@@ -1431,6 +1511,7 @@ a {
   .article-ask-structured-answer blockquote,
   .chat-structured-answer blockquote {
     @apply border-l-2 border-panel-border-soft pl-3 italic text-[14px] leading-6 text-muted-fg;
+    font-family: var(--code-font-family);
   }
 
   .article-ask-code-frame,
@@ -1657,6 +1738,7 @@ a {
 
   .chat-structured-answer blockquote {
     @apply border-l-2 border-panel-border-soft pl-3 italic text-[14px] leading-6 text-muted-fg;
+    font-family: var(--code-font-family);
   }
 
   .chat-structured-answer pre {
@@ -1851,6 +1933,468 @@ a {
 
   .home-guide-card-arrow {
     @apply absolute right-3 top-3 text-[13px] text-subtle-fg;
+  }
+
+  .home-lesson-section {
+    @apply px-5 pb-6 pt-0;
+  }
+
+  .home-lesson-card {
+    @apply mx-auto flex w-full max-w-4xl items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-panel-border bg-card-bg p-5 no-underline transition hover:border-accent/40 hover:bg-card-hover-bg;
+  }
+
+  .home-lesson-card-copy {
+    @apply flex flex-col gap-1;
+  }
+
+  .home-lesson-card-title {
+    @apply text-[15px] font-semibold text-page-fg;
+  }
+
+  .home-lesson-card-description {
+    @apply text-[13px] leading-5 text-muted-fg;
+  }
+
+  .home-lesson-card-button {
+    @apply whitespace-nowrap text-[13px] font-semibold text-accent;
+  }
+
+  .lesson-index-shell {
+    @apply mx-auto flex w-full max-w-3xl flex-col gap-8 px-5 py-10;
+  }
+
+  .lesson-index-hero {
+    @apply flex flex-col-reverse items-center gap-6 rounded-[var(--radius-xl)] border border-panel-border bg-card-bg p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8;
+  }
+
+  .lesson-index-hero-copy {
+    @apply flex w-full flex-col items-start gap-4 sm:max-w-[360px];
+  }
+
+  .lesson-index-hero-visual {
+    @apply w-full max-w-[220px] shrink-0 sm:max-w-[260px];
+  }
+
+  .lesson-hero-illustration {
+    @apply block w-full;
+  }
+
+  .lesson-hero-illustration-backdrop {
+    fill: var(--accent-soft);
+  }
+
+  .lesson-hero-illustration-card {
+    fill: var(--panel-bg);
+    stroke: var(--panel-border);
+    stroke-width: 1.5;
+  }
+
+  .lesson-hero-illustration-line {
+    stroke: var(--panel-border-soft);
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+
+  .lesson-hero-illustration-network line {
+    stroke: var(--accent);
+    stroke-width: 2;
+    opacity: 0.55;
+  }
+
+  .lesson-hero-illustration-network circle {
+    fill: var(--accent);
+  }
+
+  .lesson-index-eyebrow {
+    @apply inline-flex w-fit items-center rounded-full bg-accent-soft px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent;
+  }
+
+  .lesson-index-title {
+    @apply text-[24px] font-bold leading-tight text-page-fg sm:text-[28px];
+  }
+
+  .lesson-index-stats {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .lesson-index-stat {
+    @apply rounded-full border border-panel-border-soft bg-page-bg px-3 py-1 text-[12px] font-medium text-muted-fg;
+  }
+
+  .lesson-index-primary-button {
+    @apply mt-1 inline-flex w-fit items-center rounded-[var(--radius-lg)] bg-accent px-5 py-2.5 text-[14px] font-semibold text-white no-underline transition hover:opacity-90;
+  }
+
+  .lesson-index-list {
+    @apply flex flex-col;
+  }
+
+  .lesson-index-chapter-header {
+    @apply mb-1 mt-7 text-[12px] font-semibold uppercase tracking-wide first:mt-2;
+    color: var(--chapter-accent, var(--muted-fg));
+  }
+
+  .lesson-index-row {
+    @apply flex items-center gap-4 border-b border-l-2 border-panel-border-soft px-3 py-3 no-underline transition hover:bg-card-hover-bg;
+    border-left-color: var(--chapter-accent, transparent);
+  }
+
+  .lesson-index-row-order {
+    @apply shrink-0 text-[13px] font-semibold;
+    color: var(--chapter-accent, var(--accent));
+  }
+
+  .lesson-index-row-body {
+    @apply flex min-w-0 flex-1 items-baseline gap-3;
+  }
+
+  .lesson-index-row-title {
+    @apply shrink-0 text-[15px] font-semibold text-page-fg;
+  }
+
+  .lesson-index-row-summary {
+    @apply truncate text-[13px] leading-5 text-muted-fg;
+  }
+
+  /* 교육 시스템(온라인 강의 플레이어) 벤치마킹 레이아웃 —
+     상단 코스 바 / 상단 정렬된 콘텐츠 영역 / 화면 폭 전체를 가로지르는 하단 고정 컨트롤 바
+     3단 구조. 콘텐츠를 화면 중앙에 작은 카드로 띄우던 이전 레이아웃(수직 justify-center,
+     max-w-3xl)을 대체한다. */
+  /* min-height를 두지 않는다 — 예전엔 하단 바를 sticky로 문서 흐름 안에 두고 짧은 씬에서도
+     화면 하단에 붙여두려고 뷰포트 높이만큼 최소 높이를 줬었다. 지금은 dock이 position: fixed라
+     문서 흐름과 무관하게 항상 뷰포트 하단에 붙으므로 더 필요 없다 — 오히려 min-height가 있으면
+     콘텐츠가 짧은 씬에서 문서 전체 높이가 정확히 뷰포트 높이로 고정돼 스크롤이 전혀 안 생기고,
+     그 상태에서 dock이 실제 콘텐츠 뒷부분을 가려도 스크롤로 확인할 방법이 없어지는 문제가 있었다. */
+  .lesson-reader-shell {
+    @apply flex w-full flex-col;
+  }
+
+  .lesson-reader-topbar {
+    @apply w-full border-b border-panel-border bg-panel-bg;
+  }
+
+  .lesson-reader-header {
+    @apply mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-3 text-[13px] text-muted-fg sm:px-6;
+  }
+
+  .lesson-reader-back-link {
+    @apply text-muted-fg no-underline hover:text-page-fg;
+  }
+
+  .lesson-reader-progress {
+    @apply flex items-center gap-4;
+  }
+
+  .lesson-reader-progress-item {
+    @apply flex items-center gap-1.5 font-medium;
+  }
+
+  .lesson-reader-progress-track {
+    @apply h-1 w-full bg-panel-border-soft;
+  }
+
+  .lesson-reader-progress-fill {
+    @apply h-full bg-accent transition-[width] duration-300 ease-out;
+  }
+
+  /* 본문(.lesson-reader-content)의 중앙 정렬은 그대로 유지한다 — 그리드로 레일과 한 블록을
+     묶어서 "콘텐츠+레일 전체"를 중앙 정렬했더니, 콘텐츠 자체의 중심이 원래보다 왼쪽으로
+     밀리는 문제가 있었다. 레일은 fixed로 완전히 분리해서 콘텐츠 폭/중앙 위치에 전혀
+     영향을 주지 않게 한다. */
+  .lesson-reader-body-grid {
+    @apply mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 pt-8 sm:px-6 sm:pt-10 lg:max-w-5xl;
+  }
+
+  /* 화면이 넉넉히 넓을 때(2xl, 1536px 이상)만 보인다 — 콘텐츠는 lg:max-w-5xl(64rem)로 고정
+     중앙 정렬돼 있으므로, 레일이 겹치지 않고 들어갈 여백(편측 (뷰포트-1024)/2)이 실제로
+     충분히 남는 지점부터 켠다. "다음 페이지" 안내이므로 원래 요청대로 우측 하단에 고정한다.
+     콘텐츠 흐름을 따라가는 절대 위치(bottom-of-content)로 처음 만들었다가, 씬이 짧으면 그
+     지점이 바로 아래 .lesson-reader-bottom-dock(fixed, 전체 폭, z-30)과 겹쳐서 dock에 완전히
+     가려지는 문제가 있었다 — dock 실측 높이(--lesson-reader-dock-height)만큼 뷰포트 하단에서
+     띄운 fixed로 바꿔 dock 위에 항상 뜨게 한다. */
+  .lesson-reader-side-rail {
+    @apply hidden 2xl:fixed 2xl:block 2xl:w-[220px];
+    left: calc(50% + 32rem + 1.5rem);
+    bottom: calc(var(--lesson-reader-dock-height, 8rem) + 1.5rem);
+  }
+
+  /* 하단 .lesson-reader-bottom-dock(교육 설명 + 컨트롤 바)은 position: fixed라 문서 흐름에서
+     빠진다. dock 높이는 "교육 설명" 펼침 여부/본문 길이/다음 페이지 안내 유무에 따라 계속
+     달라지므로, ResizeObserver로 실측한 값을 `--lesson-reader-dock-height`에 채워 넣고 그 값을
+     그대로 하단 여백으로 쓴다 — vh 기반 추정치로는 표/다이어그램이 긴 씬에서 항상 겹쳤다.
+     JS 측정 전(SSR/초기 렌더)에는 접힌 dock 높이 정도의 안전한 기본값으로 폴백한다. */
+  .lesson-reader-content {
+    @apply flex min-w-0 flex-col gap-6;
+    padding-bottom: calc(var(--lesson-reader-dock-height, 8rem) + 1.5rem);
+  }
+
+  .lesson-reader-stage {
+    @apply flex flex-col gap-7 sm:gap-8;
+  }
+
+  /* focus-visible outline을 쓰지 않는다 — tabIndex={-1}이라 실제 키보드 Tab으로는 도달할 수
+     없고, 씬 전환 시 접근성 목적의 sceneTitleRef.current?.focus() 호출로만 포커스된다. 이 프로그램적
+     focus()를 크로미움이 focus-visible로 간주해서 씬마다 빨간 테두리가 항상 켜져 있는 것처럼
+     보였다 — 스크린리더 포커스 이동은 focus() 호출 자체로 이미 되므로 시각적 outline은 불필요하다. */
+  .lesson-reader-scene-title {
+    @apply rounded-[var(--radius-md)] font-bold leading-tight text-page-fg outline-none;
+    font-size: clamp(20px, 2.4vw, 28px);
+  }
+
+  .lesson-reader-scene-body {
+    @apply text-[17px] leading-8 text-page-fg;
+  }
+
+  @keyframes lesson-scene-enter-forward {
+    from {
+      opacity: 0;
+      transform: translateX(var(--lesson-motion-distance-scene));
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes lesson-scene-enter-backward {
+    from {
+      opacity: 0;
+      transform: translateX(calc(-1 * var(--lesson-motion-distance-scene)));
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes lesson-scene-enter-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .lesson-scene {
+    @apply flex flex-col gap-4;
+    animation: lesson-scene-enter-forward var(--lesson-motion-duration-normal) var(--lesson-motion-easing-enter) both;
+  }
+
+  [data-direction="backward"] .lesson-scene {
+    animation-name: lesson-scene-enter-backward;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lesson-scene {
+      animation-name: lesson-scene-enter-fade;
+      animation-duration: var(--lesson-motion-duration-fast);
+    }
+  }
+
+  .lesson-scene-layout-focus {
+    @apply items-center text-center;
+  }
+
+  .lesson-scene-layout-visual-split,
+  .lesson-scene-layout-horizontal-flow {
+    @apply gap-5;
+  }
+
+  .lesson-scene-layout-timeline {
+    @apply gap-3;
+  }
+
+  .lesson-scene-layout-grid {
+    @apply grid grid-cols-1 gap-3 sm:grid-cols-2;
+  }
+
+  .lesson-scene-layout-full-visual,
+  .lesson-scene-layout-screenshot-hotspot {
+    @apply items-center gap-3 text-center;
+  }
+
+  .lesson-scene-hook {
+    @apply gap-3;
+  }
+
+  .lesson-block-paragraph {
+    @apply text-[15px] leading-7 text-page-fg;
+  }
+
+  .lesson-block-hook-statement {
+    @apply text-[19px] font-semibold leading-8 text-page-fg;
+  }
+
+  .lesson-block-example-note {
+    @apply rounded-[var(--radius-lg)] border border-panel-border bg-card-bg px-4 py-3 text-[14px] leading-6 text-muted-fg;
+  }
+
+  .lesson-block-custom-html-wrapper {
+    @apply relative w-full;
+  }
+
+  .lesson-block-custom-html {
+    @apply w-full rounded-[var(--radius-md)] border-0;
+  }
+
+  .lesson-block-custom-html-swipe-overlay {
+    @apply absolute inset-0;
+  }
+
+  .lesson-block-mermaid {
+    @apply flex w-full justify-center overflow-x-auto;
+  }
+
+  .lesson-block-mermaid svg {
+    @apply h-auto max-w-full;
+  }
+
+  .lesson-block-mermaid-error {
+    @apply text-[13px] text-muted-fg;
+  }
+
+  /* "교육 설명" + 하단 컨트롤 바를 한 덩어리로 뷰포트 하단에 고정한다 — 둘 다 같은 래퍼 안에
+     쌓이므로 바 높이를 따로 계산할 필요 없이 항상 정확히 맞붙는다. fixed를 쓰는 이유는
+     `.lesson-reader-content`의 pb 주석 참고. */
+  .lesson-reader-bottom-dock {
+    @apply fixed inset-x-0 bottom-0 z-30 w-full;
+  }
+
+  .lesson-reader-script {
+    @apply w-full border-t border-panel-border bg-panel-bg;
+  }
+
+  .lesson-reader-script-inner {
+    @apply mx-auto flex w-full max-w-4xl flex-col px-4 sm:px-6 lg:max-w-5xl;
+  }
+
+  .lesson-reader-script-header {
+    @apply flex items-center justify-between gap-2 py-2.5;
+  }
+
+  .lesson-reader-script-tab {
+    @apply text-[13px] font-semibold text-page-fg;
+  }
+
+  .lesson-reader-script-toggle {
+    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
+  }
+
+  /* 본문이 길어지면 페이지 전체가 아니라 이 영역 안에서만 스크롤되게 한다 — 하단에 고정된
+     패널이라 화면 대부분을 가릴 수 없으니 높이를 뷰포트의 일부로 제한한다. 순수 vh 비율만
+     쓰면 화면이 낮은(작은 노트북) 모니터에서는 그 비율이 절대 높이로는 여전히 커서 씬 콘텐츠를
+     가렸다 — clamp로 최소/최대 높이를 함께 못박아 낮은 화면에서는 더 적극적으로 줄어들게 한다. */
+  .lesson-reader-script-body {
+    @apply max-h-[clamp(96px,22vh,260px)] overflow-y-auto border-t border-panel-border-soft pb-3 pt-2.5 text-[14px] leading-7 text-muted-fg [&_p]:mb-3 [&_p:last-child]:mb-0;
+  }
+
+  /* "교육 설명" 패널과 같은 dock 안, 정상적인 문서 흐름으로 쌓는다 — 이전에는 고정 bottom 값을
+     썼는데, 패널이 펼쳐지면 높이가 달라져 패널 내용과 겹치는 문제가 있었다. 2xl 이상에서는 같은
+     안내가 사이드 레일(.lesson-reader-side-rail)에 이미 보이므로 여기서는 숨긴다. */
+  .lesson-reader-transition-banner-row {
+    @apply mx-auto flex w-full max-w-4xl justify-end px-4 pt-2 sm:px-6 lg:max-w-5xl 2xl:hidden;
+  }
+
+  .lesson-reader-transition-banner {
+    @apply w-fit max-w-xs rounded-[var(--radius-lg)] border border-panel-border bg-panel-bg px-3.5 py-2.5 text-[12px] leading-5 text-muted-fg shadow-lg;
+  }
+
+  .lesson-reader-bottombar {
+    @apply w-full border-t border-panel-border bg-panel-bg;
+  }
+
+  .lesson-reader-controls {
+    @apply mx-auto flex w-full max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6;
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .lesson-reader-diagnostics {
+    @apply rounded-[var(--radius-lg)] border border-dashed border-panel-border-soft bg-card-bg px-4 py-3 text-[12px] text-muted-fg;
+  }
+
+  .lesson-reader-diagnostics-title {
+    @apply mb-1.5 font-semibold text-page-fg;
+  }
+
+  .lesson-reader-diagnostics-item {
+    @apply flex items-start gap-1.5 py-0.5;
+  }
+
+  .lesson-reader-diagnostics-level {
+    @apply shrink-0 rounded-[var(--radius-badge,999px)] px-1.5 py-0.5 text-[10px] font-semibold uppercase;
+  }
+
+  .lesson-reader-diagnostics-item--error .lesson-reader-diagnostics-level {
+    @apply bg-red-100 text-red-700;
+  }
+
+  .lesson-reader-diagnostics-item--warning .lesson-reader-diagnostics-level {
+    @apply bg-amber-100 text-amber-700;
+  }
+
+  .lesson-reader-diagnostics-item--info .lesson-reader-diagnostics-level {
+    @apply bg-card-hover-bg text-muted-fg;
+  }
+
+  .lesson-reader-nav-button {
+    @apply rounded-[var(--radius-lg)] border border-panel-border bg-card-hover-bg px-5 py-2.5 text-[14px] font-semibold text-page-fg transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .lesson-reader-nav-button-primary {
+    @apply border-transparent bg-accent text-white hover:opacity-90;
+  }
+
+  .lesson-reader-outline-button {
+    @apply rounded-[var(--radius-lg)] border border-panel-border bg-card-bg px-3 py-1.5 text-[12px] font-semibold text-muted-fg transition hover:border-accent/40 hover:text-page-fg;
+  }
+
+  .lesson-outline-backdrop {
+    @apply fixed inset-0 z-40 bg-black/40;
+  }
+
+  .lesson-outline-panel {
+    @apply fixed inset-y-0 right-0 z-50 flex w-full max-w-sm flex-col gap-3 overflow-y-auto border-l border-panel-border bg-page-bg p-4;
+  }
+
+  .lesson-outline-panel-header {
+    @apply flex items-center justify-between;
+  }
+
+  .lesson-outline-panel-title {
+    @apply text-[15px] font-semibold text-page-fg;
+  }
+
+  .lesson-outline-close-button {
+    @apply rounded-[var(--radius-lg)] border border-panel-border bg-card-bg px-2 py-1 text-[13px] text-muted-fg hover:text-page-fg;
+  }
+
+  .lesson-outline-list {
+    /* 레슨마다 씬이 1개뿐인 경우가 대부분이라, 챕터 헤더가 없는 레슨 사이 간격은
+       씬 사이 간격(.lesson-outline-scene-list의 gap-0.5)과 같게 좁혀 사실상 하나로
+       이어지는 목록처럼 보이게 한다 — 예전 gap-2.5는 레슨마다 큰 틈을 만들어 스크롤이
+       불필요하게 길어졌다. */
+    @apply flex flex-col gap-0.5;
+  }
+
+  .lesson-outline-chapter-header {
+    @apply mb-0.5 mt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-fg;
+  }
+
+  .lesson-outline-scene-list {
+    @apply flex flex-col gap-0.5;
+  }
+
+  .lesson-outline-scene-button {
+    @apply flex w-full items-center gap-2 rounded-[var(--radius-lg)] px-2 py-1 text-left text-[13px] text-muted-fg transition hover:bg-card-hover-bg hover:text-page-fg;
+  }
+
+  .lesson-outline-scene-button-current {
+    @apply bg-card-hover-bg font-semibold text-page-fg;
+  }
+
+  .lesson-outline-scene-index {
+    @apply text-[11px] font-semibold text-accent;
   }
 
   .home-list-row {
