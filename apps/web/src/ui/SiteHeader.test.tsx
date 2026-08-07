@@ -5,7 +5,7 @@ import { SiteHeader } from "./SiteHeader";
 import { ThemeProvider } from "./theme/ThemeProvider";
 
 describe("SiteHeader", () => {
-  it("renders the brand name in the header", () => {
+  it("renders the SFOOD CI logo and the product name in the header", () => {
     const markup = renderToStaticMarkup(
       <MemoryRouter>
         <ThemeProvider>
@@ -14,6 +14,7 @@ describe("SiteHeader", () => {
       </MemoryRouter>,
     );
 
-    expect(markup).toContain("SFOOD AI WIKI");
+    expect(markup).toContain('alt="SFOOD"');
+    expect(markup).toContain("AI WIKI");
   });
 });

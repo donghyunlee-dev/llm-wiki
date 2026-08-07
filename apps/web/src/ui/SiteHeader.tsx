@@ -43,11 +43,16 @@ function ThemeToggle() {
 }
 
 export function SiteHeader() {
+  const { resolvedTheme } = useTheme();
+  // 다크 배경에서는 CI 로고의 "FOOD" 글자(중간톤 회색)가 흐리게 보여, 텍스트만 밝은 회색으로
+  // 다시 칠한 다크 전용 버전을 준비해 테마에 맞춰 교체한다(빨간 "S"는 원본 그대로 유지).
+  const logoSrc = resolvedTheme === "dark" ? "/sfood-logo-dark.png" : "/sfood-logo.png";
+
   return (
     <header className="site-header">
       <Link className="site-brand" to="/">
-        <span className="site-brand-mark">S</span>
-        <span className="site-brand-text">SFOOD AI WIKI</span>
+        <img className="site-brand-logo" src={logoSrc} alt="SFOOD" />
+        <span className="site-brand-text">AI WIKI</span>
       </Link>
       <ThemeToggle />
     </header>
