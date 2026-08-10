@@ -19,3 +19,6 @@
 
 ## Next Steps
 - 없음.
+
+## 후속 업데이트 (2026-08-11)
+공식 다크모드 CI 파일(`docs/prd/SFOOD_CI_Darkmode_Small.png`, 사용자가 직접 업로드)이 제공되어, 임시로 재도색했던 `apps/web/public/sfood-logo-dark.png`를 이 공식 자산으로 교체했다. 원본 크기가 라이트 버전과 동일(1000×212)해 같은 방식(높이 56px)으로 리사이즈만 하면 됐고, 코드 변경은 없었다. 라이트/다크 양쪽 Playwright로 재확인.
