@@ -85,7 +85,6 @@ function SearchHero() {
 
 function RecommendedGuidesSection(props: {
   guides: FeaturedGuide[];
-  isLoading: boolean;
 }) {
   const pinnedGuide = props.guides.find((guide) => guide.isPinned);
   const guideCards = props.guides.filter((guide) => !guide.isPinned);
@@ -101,9 +100,7 @@ function RecommendedGuidesSection(props: {
         </div>
 
         <div className="home-guides-cards">
-          {props.isLoading ? (
-            <p className="home-muted py-2 text-xs">불러오는 중...</p>
-          ) : props.guides.length === 0 ? (
+          {props.guides.length === 0 ? (
             <p className="home-muted py-2 text-xs">등록된 가이드가 없습니다.</p>
           ) : (
             <>
@@ -294,8 +291,12 @@ export function HomePage() {
 
         <div className="home-scroll-column">
           <SearchHero />
-          <RecommendedGuidesSection guides={featuredGuides} isLoading={isLoading} />
-          <LessonEntrySection hasLessons={hasLessons} />
+          {isLoading ? null : (
+            <>
+              <RecommendedGuidesSection guides={featuredGuides} />
+              <LessonEntrySection hasLessons={hasLessons} />
+            </>
+          )}
         </div>
       </div>
 

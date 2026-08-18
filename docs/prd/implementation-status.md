@@ -16,6 +16,12 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-18 — 홈 화면 위키 데이터 로딩 중 풋터가 뒤늦게 나타나던 문제 수정
+- 배경: 사용자가 "추천 가이드를 불러오기 전에는 풋터가 안 보이다가 로딩이 끝나면 갑자기 나타나서 화면이 같이 움직인다"고 리포트.
+- 원인: `LessonEntrySection`의 노출 여부(`hasLessons`)가 `useWikiData()`의 `documents`에서 계산되는데, 초기 로딩 중에는 `documents`가 빈 배열이라 `hasLessons`가 항상 `false` — 풋터가 아예 렌더되지 않다가 데이터 로딩이 끝나야 나타남. 동시에 "추천 가이드" 섹션도 로딩 중엔 플레이스홀더 텍스트만 보이다 실제 카드로 바뀌며 높이가 커짐 — 두 변화가 같은 순간에 겹쳐 화면이 한꺼번에 밀리는 것처럼 보였음.
+- `HomePage.tsx`에서 위키 데이터가 `isLoading`인 동안은 "추천 가이드"·레슨 풋터 섹션 자체를 렌더하지 않고, 로딩이 끝나면 두 섹션이 함께 나타나도록 수정 — 로딩 중 플레이스홀더 텍스트("불러오는 중...")도 제거(더 이상 도달 불가능한 분기였음).
+- TDD로 진행: `HomePage.test.tsx`에 "로딩 중엔 추천 가이드/풋터 모두 미노출" 회귀 테스트 추가, RED 확인 후 구현. `pnpm test`(web 33 files/205 tests) 전체 통과.
+
 ### 2026-08-18 — 대화 목록 삭제 버튼을 아이콘으로 변경 (홈·검색 공통)
 - 배경: 사용자가 "최근 대화"의 "삭제" 텍스트를 아이콘으로 바꾸고 검색 결과 화면과 공통 적용해달라고 요청.
 - 홈과 `/search`가 같은 `ConversationSidebar` 컴포넌트를 공유하므로, 그 컴포넌트 한 곳만 수정하면 양쪽에 자동 반영됨 — 텍스트 "삭제"를 휴지통 SVG 아이콘으로 교체, `aria-label`/`title="대화 삭제"`는 유지해 접근성 유지.

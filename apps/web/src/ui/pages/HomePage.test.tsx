@@ -183,4 +183,23 @@ describe("HomePage", () => {
     expect(withLesson).toContain("교육 시작하기");
     expect(withLesson).toContain('href="/lesson"');
   });
+
+  it("does not render the guides section or lesson footer while wiki data is still loading", () => {
+    useWikiDataMock.mockReturnValue({
+      documents: [],
+      errorMessage: null,
+      isLoading: true,
+    });
+
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    );
+
+    expect(markup).toContain("궁금한 것을 검색해보세요");
+    expect(markup).not.toContain("추천 가이드");
+    expect(markup).not.toContain("불러오는 중");
+    expect(markup).not.toContain("교육 시작하기");
+  });
 });
