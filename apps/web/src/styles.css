@@ -295,7 +295,7 @@ a {
 
 @layer components {
   .site-layout {
-    @apply flex min-h-screen flex-col bg-panel-bg text-page-fg;
+    @apply flex min-h-screen flex-col bg-page-bg text-page-fg;
   }
 
   .site-main {
@@ -307,7 +307,7 @@ a {
   }
 
   .site-header {
-    @apply sticky top-0 z-40 flex min-h-12 items-center justify-between border-b border-panel-border bg-panel-bg px-5 py-3;
+    @apply sticky top-0 z-40 flex min-h-12 items-center justify-between border-b border-panel-border bg-page-bg px-5 py-3;
   }
 
   .site-brand {
@@ -892,6 +892,10 @@ a {
     background: rgba(251, 113, 133, 0.9);
   }
 
+  .home-scroll-column {
+    @apply flex min-h-0 flex-1 flex-col overflow-y-auto;
+  }
+
   .home-hero-section {
     @apply flex items-center px-5 pb-3 pt-8 md:pb-4 md:pt-10;
     min-height: clamp(220px, calc(100vh - 420px), 310px);
@@ -946,7 +950,7 @@ a {
   }
 
   .home-section-title {
-    @apply text-[13px] font-semibold text-page-fg;
+    @apply text-[16px] font-bold leading-6 text-page-fg;
   }
 
   .home-body {
@@ -1623,13 +1627,116 @@ a {
     @apply shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--accent)_4%,transparent)];
   }
 
+  .search-shell {
+    @apply flex w-full items-stretch overflow-hidden;
+    height: calc(100vh - var(--search-shell-offset, 60px));
+  }
+
+  .search-main-column {
+    @apply flex min-w-0 flex-1 flex-col bg-panel-bg;
+  }
+
+  .search-mobile-toolbar {
+    @apply hidden gap-2 border-b border-panel-border-soft bg-page-bg px-4 py-2 max-lg:flex;
+  }
+
+  .search-mobile-toolbar button {
+    @apply rounded-[var(--radius-md)] border border-panel-border-soft bg-card-bg px-3 py-1.5 text-[13px] font-semibold text-page-fg transition hover:bg-card-hover-bg;
+  }
+
+  .search-center-shell {
+    @apply flex min-h-0 flex-1 flex-col;
+  }
+
+  .search-sidebar-left,
+  .search-sidebar-right {
+    @apply w-72 shrink-0 overflow-y-auto border-panel-border-soft bg-page-bg;
+  }
+
+  .search-sidebar-left {
+    @apply border-r;
+  }
+
+  .search-sidebar-right {
+    @apply border-l;
+  }
+
+  .search-sidebar-left,
+  .search-sidebar-right {
+    @apply max-lg:fixed max-lg:inset-y-0 max-lg:z-30 max-lg:w-[85vw] max-lg:max-w-sm max-lg:shadow-xl max-lg:transition-transform;
+  }
+
+  .search-sidebar-left {
+    @apply max-lg:left-0 max-lg:-translate-x-full;
+  }
+
+  .search-sidebar-right {
+    @apply max-lg:right-0 max-lg:translate-x-full;
+  }
+
+  .search-sidebar-left.search-sidebar-open,
+  .search-sidebar-right.search-sidebar-open {
+    @apply max-lg:translate-x-0;
+  }
+
+  .search-drawer-backdrop {
+    @apply fixed inset-0 z-20 hidden bg-black/40 max-lg:block;
+  }
+
+  .search-conversation-sidebar {
+    @apply flex flex-col gap-1 p-3;
+  }
+
+  .search-conversation-heading {
+    @apply mb-1 px-2 text-[12px] font-semibold uppercase tracking-[0.14em] text-accent;
+  }
+
+  .search-conversation-empty {
+    @apply px-2 py-4 text-[13px] text-muted-fg;
+  }
+
+  .search-conversation-list {
+    @apply grid gap-1;
+  }
+
+  .search-conversation-item {
+    @apply flex items-center gap-1 rounded-[var(--radius-md)] px-1;
+  }
+
+  .search-conversation-item-active {
+    @apply bg-accent-soft;
+  }
+
+  .search-conversation-title {
+    @apply min-w-0 flex-1 truncate rounded-[var(--radius-md)] px-2 py-2 text-left text-[13px] font-medium text-page-fg transition hover:bg-card-hover-bg;
+  }
+
+  .search-conversation-delete {
+    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-muted-fg transition hover:bg-card-hover-bg hover:text-accent;
+  }
+
+  .search-context-panel {
+    @apply grid content-start gap-4 p-3;
+  }
+
+  .search-context-empty {
+    @apply text-[13px] text-muted-fg;
+  }
+
+  .search-context-section h2 {
+    @apply mb-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-accent;
+  }
+
+  .search-context-list {
+    @apply mt-1.5 grid gap-1.5;
+  }
+
   .chat-search-shell {
-    @apply mx-auto flex max-w-4xl flex-col gap-4 px-4 pb-40 pt-4;
+    @apply mx-auto flex w-full max-w-4xl flex-1 flex-col gap-4 overflow-y-auto px-4 pt-4;
   }
 
   .chat-input-dock {
-    @apply fixed bottom-0 left-0 right-0 z-20 px-4 pb-5 pt-10;
-    background: linear-gradient(to bottom, transparent 0%, var(--panel-bg) 36%);
+    @apply px-4 pb-5 pt-4;
   }
 
   .chat-input-dock-inner {
@@ -1786,16 +1893,12 @@ a {
     @apply mt-0.5 block text-[14px] leading-6 text-muted-fg;
   }
 
-  .chat-guide-list {
-    @apply mt-3 grid gap-3 md:grid-cols-2;
-  }
-
   .chat-guide-card {
-    @apply flex min-h-[80px] flex-col justify-start gap-1.5 rounded-[var(--radius-md)] border border-panel-border bg-card-bg px-4 py-3 transition hover:border-accent/30 hover:bg-card-hover-bg;
+    @apply flex flex-col justify-start gap-1 rounded-[var(--radius-md)] border border-panel-border bg-card-bg px-3 py-2 transition hover:border-accent/30 hover:bg-card-hover-bg;
   }
 
   .chat-guide-card strong {
-    @apply text-[14px] font-semibold leading-5 text-page-fg;
+    @apply text-[13px] font-semibold leading-5 text-page-fg;
   }
 
   .chat-loading {
@@ -1900,23 +2003,23 @@ a {
   }
 
   .home-guide-card-grid {
-    @apply mt-3 grid gap-3 md:grid-cols-2;
+    @apply mt-3 grid divide-y divide-panel-border-soft overflow-hidden rounded-[var(--radius-lg)] border border-panel-border;
   }
 
   .home-guide-card {
-    @apply relative flex min-h-[104px] items-start gap-3 rounded-[var(--radius-lg)] bg-card-bg px-3 py-3 text-left transition hover:bg-card-hover-bg;
+    @apply relative flex min-h-0 items-center gap-2.5 bg-card-bg px-3 py-2.5 text-left transition hover:bg-card-hover-bg;
   }
 
   .home-guide-card-featured {
-    @apply min-h-[92px] border border-panel-border bg-card-bg px-4 py-4;
+    @apply min-h-[92px] items-start gap-3 rounded-[var(--radius-lg)] border border-accent/20 bg-accent-soft px-4 py-4;
   }
 
   .home-guide-card-icon {
-    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-page-bg text-accent;
+    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-page-bg text-accent;
   }
 
   .home-guide-card-icon-featured {
-    @apply h-9 w-9 bg-panel-bg;
+    @apply h-9 w-9 border-accent/20 bg-panel-bg;
   }
 
   .home-guide-card-copy {
@@ -1932,15 +2035,15 @@ a {
   }
 
   .home-guide-card-arrow {
-    @apply absolute right-3 top-3 text-[13px] text-subtle-fg;
+    @apply absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-subtle-fg;
   }
 
   .home-lesson-section {
-    @apply px-5 pb-6 pt-0;
+    @apply mt-auto border-t border-panel-border bg-page-bg px-5 py-8;
   }
 
   .home-lesson-card {
-    @apply mx-auto flex w-full max-w-4xl items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-panel-border bg-card-bg p-5 no-underline transition hover:border-accent/40 hover:bg-card-hover-bg;
+    @apply mx-auto flex w-full max-w-4xl flex-col items-center gap-4 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left;
   }
 
   .home-lesson-card-copy {
@@ -1956,7 +2059,7 @@ a {
   }
 
   .home-lesson-card-button {
-    @apply whitespace-nowrap text-[13px] font-semibold text-accent;
+    @apply inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-accent px-5 py-2.5 text-[13px] font-semibold text-white no-underline transition hover:bg-accent-strong;
   }
 
   .lesson-index-shell {
