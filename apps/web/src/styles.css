@@ -288,9 +288,11 @@ textarea::placeholder {
   font-size: var(--font-size-ui) !important;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
 }
 
 @layer components {
@@ -2011,7 +2013,8 @@ a {
   }
 
   .home-guide-card-featured {
-    @apply min-h-[92px] items-start gap-3 rounded-[var(--radius-lg)] border border-accent/20 bg-accent-soft px-4 py-4;
+    @apply min-h-[92px] items-start gap-3 rounded-[var(--radius-lg)] border border-accent/20 px-4 py-4;
+    background: color-mix(in srgb, var(--accent) 10%, var(--panel-bg) 90%);
   }
 
   .home-guide-card-icon {
@@ -2039,7 +2042,7 @@ a {
   }
 
   .home-lesson-section {
-    @apply mt-auto border-t border-panel-border bg-page-bg px-5 py-8;
+    @apply shrink-0 border-t border-panel-border bg-page-bg px-5 py-8;
   }
 
   .home-lesson-card {
