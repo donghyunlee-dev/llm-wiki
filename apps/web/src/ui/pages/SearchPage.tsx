@@ -1,6 +1,6 @@
 import { buildSearchFollowUpQuestion, stripTitleTypePrefix } from "@sfood/wiki-core";
 import { startTransition, useEffect, useRef, useState, useCallback } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
 import { getPolicyNoticeMessage, shouldShowPolicyNotice } from "../../lib/policyNotice";
 import { StructuredAnswerView } from "../StructuredAnswerView";
@@ -10,53 +10,13 @@ import {
   buildFaqRecommendations,
   isFullyUnsupportedSearchAnswer,
   resolveSearchDocumentSections,
-  resolveSearchRecommendedDocuments,
-  type SearchDocumentSummary,
 } from "../searchRecommendations";
 import { WikiStatePanel } from "./WikiStatePanel";
-
-type SearchAnswer = {
-  answer: string;
-  policyNotice: {
-    isPolicyRelated: boolean;
-    message: string;
-    sources?: Array<{
-      id: string;
-      title: string;
-      href: string;
-    }>;
-  };
-  immediateActions: Array<{
-    text: string;
-    relatedPageIds: string[];
-  }>;
-  exampleCommands: string[];
-  verificationChecks: Array<{
-    text: string;
-    relatedPageIds: string[];
-  }>;
-  cautions: Array<{
-    text: string;
-    relatedPageIds: string[];
-  }>;
-  confluenceData: Array<{
-    pageId: string;
-    title: string;
-    quote: string;
-  }>;
-  unsupportedClaims: string[];
-  recommendedDocuments?: SearchDocumentSummary[];
-  relatedDocuments?: SearchDocumentSummary[];
-};
-
-type SearchConversationItem = {
-  id: string;
-  question: string;
-  status: "loading" | "complete" | "error";
-  answer?: SearchAnswer;
-  errorMessage?: string;
-  fallbackDocuments: SearchDocumentSummary[];
-};
+import type { SearchAnswer } from "./SearchPage.types";
+import { ConversationSidebar } from "./search/ConversationSidebar";
+import { SearchContextPanel } from "./search/SearchContextPanel";
+import { accumulateSearchContext } from "./search/searchContextAccumulation";
+import { useSearchConversations } from "./search/useSearchConversations";
 
 const SEARCH_LOADING_STAGES = [
   "문서를 찾는 중",
@@ -65,29 +25,93 @@ const SEARCH_LOADING_STAGES = [
   "답변을 구성하는 중",
 ] as const;
 
+type LiveTurn = {
+  id: string;
+  question: string;
+  status: "loading" | "complete" | "error";
+  answer?: SearchAnswer;
+  errorMessage?: string;
+};
+
 export function SearchPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const query = searchParams.get("q")?.trim() ?? "";
   const { documents, errorMessage, isLoading } = useWikiData();
   const [draftQuestion, setDraftQuestion] = useState(query);
-  const [conversation, setConversation] = useState<SearchConversationItem[]>([]);
+  const [liveTurns, setLiveTurns] = useState<LiveTurn[]>([]);
   const [showEmptyHint, setShowEmptyHint] = useState(false);
+  const [isConversationDrawerOpen, setIsConversationDrawerOpen] = useState(false);
+  const [isContextDrawerOpen, setIsContextDrawerOpen] = useState(false);
   const emptyHintTimerRef = useRef<number | null>(null);
   const requestedQuestionsRef = useRef(new Set<string>());
   const turnRefs = useRef(new Map<string, HTMLDivElement>());
-  const lastScrolledTurnRef = useRef<{ id: string; status: SearchConversationItem["status"] } | null>(null);
+  const lastScrolledTurnRef = useRef<{ id: string; status: LiveTurn["status"] } | null>(null);
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const activeConversationIdRef = useRef<string | null>(null);
+  const deletedConversationIdsRef = useRef(new Set<string>());
+  const currentConversationIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const element = shellRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateOffset = () => {
+      const top = element.getBoundingClientRect().top;
+      element.style.setProperty("--search-shell-offset", `${top}px`);
+    };
+
+    updateOffset();
+    window.addEventListener("resize", updateOffset);
+    return () => window.removeEventListener("resize", updateOffset);
+  }, []);
+
+  const {
+    conversations,
+    activeConversationId,
+    startNewConversation,
+    selectConversation,
+    deleteConversation,
+    commitTurn,
+  } = useSearchConversations();
+
+  useEffect(() => {
+    activeConversationIdRef.current = activeConversationId;
+  }, [activeConversationId]);
 
   useEffect(() => {
     setDraftQuestion("");
   }, [query]);
 
   useEffect(() => {
+    const conversationId = searchParams.get("c");
+    if (!conversationId || currentConversationIdRef.current !== null) {
+      return;
+    }
+
+    const conversation = conversations.find((item) => item.id === conversationId);
+    if (!conversation) {
+      return;
+    }
+
+    currentConversationIdRef.current = conversationId;
+    selectConversation(conversationId);
+    setLiveTurns(conversation.turns);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, conversations]);
+
+  useEffect(() => {
     if (!query || isLoading || errorMessage) {
       return;
     }
 
-    const history = conversation
+    const isNewConversation = currentConversationIdRef.current === null;
+    const targetConversationId = currentConversationIdRef.current ?? startNewConversation();
+    currentConversationIdRef.current = targetConversationId;
+
+    const history = liveTurns
       .filter((item) => item.status === "complete" && item.answer)
       .slice(-3)
       .map((item) => ({
@@ -95,25 +119,19 @@ export function SearchPage() {
         answer: item.answer?.answer,
       }));
     const searchQuestion = buildSearchFollowUpQuestion(query, history);
-    const normalizedQuery = normalizeQuestionKey(searchQuestion);
+    const requestKey = `${targetConversationId}::${normalizeQuestionKey(searchQuestion)}`;
 
-    if (requestedQuestionsRef.current.has(normalizedQuery)) {
+    if (requestedQuestionsRef.current.has(requestKey)) {
       return;
     }
 
-    requestedQuestionsRef.current.add(normalizedQuery);
+    requestedQuestionsRef.current.add(requestKey);
 
-    const requestId = `${Date.now()}-${requestedQuestionsRef.current.size}`;
-    const fallbackDocuments = buildFallbackRecommendedDocuments(documents, searchQuestion);
+    const turnId = `${Date.now()}-${requestedQuestionsRef.current.size}`;
 
-    setConversation((items) => [
-      ...items,
-      {
-        id: requestId,
-        question: query,
-        status: "loading",
-        fallbackDocuments,
-      },
+    setLiveTurns((items) => [
+      ...(isNewConversation ? [] : items),
+      { id: turnId, question: query, status: "loading" as const },
     ]);
 
     void fetch(import.meta.env.VITE_AI_SEARCH_ENDPOINT?.trim() || "/api/wiki/ai/search", {
@@ -121,11 +139,11 @@ export function SearchPage() {
       headers: {
         "Content-Type": "application/json",
       },
-        body: JSON.stringify({
-          question: query,
-          history,
-        }),
-      })
+      body: JSON.stringify({
+        question: query,
+        history,
+      }),
+    })
       .then(async (response) => {
         if (!response.ok) {
           throw new Error("검색 답변을 생성하지 못했습니다.");
@@ -135,32 +153,30 @@ export function SearchPage() {
       })
       .then((payload) => {
         startTransition(() => {
-          setConversation((items) =>
-            items.map((item) =>
-              item.id === requestId
-                ? { ...item, status: "complete", answer: payload }
-                : item,
-            ),
-          );
+          const completedTurn = { id: turnId, question: query, status: "complete" as const, answer: payload };
+          if (activeConversationIdRef.current === targetConversationId) {
+            setLiveTurns((items) => upsertLiveTurn(items, completedTurn));
+          }
+          if (!deletedConversationIdsRef.current.has(targetConversationId)) {
+            commitTurn(targetConversationId, completedTurn);
+          }
         });
       })
       .catch((error) => {
-        setConversation((items) =>
-          items.map((item) =>
-            item.id === requestId
-              ? {
-                ...item,
-                status: "error",
-                errorMessage: error instanceof Error ? error.message : "검색 답변을 생성하지 못했습니다.",
-              }
-              : item,
-          ),
-        );
+        const message = error instanceof Error ? error.message : "검색 답변을 생성하지 못했습니다.";
+        const errorTurn = { id: turnId, question: query, status: "error" as const, errorMessage: message };
+        if (activeConversationIdRef.current === targetConversationId) {
+          setLiveTurns((items) => upsertLiveTurn(items, errorTurn));
+        }
+        if (!deletedConversationIdsRef.current.has(targetConversationId)) {
+          commitTurn(targetConversationId, errorTurn);
+        }
       });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documents, errorMessage, isLoading, query]);
 
   useEffect(() => {
-    const lastItem = conversation[conversation.length - 1];
+    const lastItem = liveTurns[liveTurns.length - 1];
     if (!lastItem) {
       return;
     }
@@ -175,7 +191,7 @@ export function SearchPage() {
     lastScrolledTurnRef.current = { id: lastItem.id, status: lastItem.status };
     const turnElement = turnRefs.current.get(lastItem.id);
     turnElement?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [conversation]);
+  }, [liveTurns]);
 
   const triggerEmptyHint = useCallback(() => {
     setShowEmptyHint(true);
@@ -201,6 +217,34 @@ export function SearchPage() {
     });
   };
 
+  const handleSelectConversation = (id: string) => {
+    const conversation = conversations.find((item) => item.id === id);
+    currentConversationIdRef.current = id;
+    selectConversation(id);
+    setLiveTurns(conversation?.turns ?? []);
+    setIsConversationDrawerOpen(false);
+  };
+
+  const handleDeleteConversation = (id: string) => {
+    deletedConversationIdsRef.current.add(id);
+    const wasActive = id === activeConversationId;
+    const remaining = conversations.filter((item) => item.id !== id);
+    deleteConversation(id);
+
+    if (!wasActive) {
+      return;
+    }
+
+    const next = remaining[0] ?? null;
+    currentConversationIdRef.current = next?.id ?? null;
+    if (next) {
+      selectConversation(next.id);
+      setLiveTurns(next.turns);
+    } else {
+      setLiveTurns([]);
+    }
+  };
+
   if (isLoading) {
     return (
       <WikiStatePanel
@@ -220,122 +264,158 @@ export function SearchPage() {
     );
   }
 
+  const turnContexts = liveTurns
+    .filter((item) => item.status !== "loading")
+    .map((item) => resolveTurnContext(item, documents));
+  const accumulatedContext = accumulateSearchContext(
+    turnContexts.map((context) => ({
+      recommended: context.recommendedDocuments,
+      related: context.relatedDocuments,
+      faq: context.faqDocuments,
+    })),
+  );
+
   return (
-    <div className="page-shell">
-      <div className="chat-search-shell">
-        {!query && conversation.length === 0 ? (
-          <div className="chat-empty-hint">
-            <p>궁금한 내용을 입력하면 관련 가이드와 함께 답변을 드립니다.</p>
-          </div>
-        ) : null}
-
-        {conversation.map((item) => {
-          const recommendedDocuments = resolveSearchRecommendedDocuments(item.answer ?? null, item.fallbackDocuments);
-          const directFaqDocuments = isFullyUnsupportedSearchAnswer(item.answer ?? null)
-            ? []
-            : buildFaqRecommendations(documents, item.question);
-          const { faqDocuments: aiFaqDocuments, recommendedDocuments: primaryRecommendations, relatedDocuments } = resolveSearchDocumentSections(
-            item.answer ?? null,
-            item.fallbackDocuments,
-          );
-          const faqSeenIds = new Set(aiFaqDocuments.map((d) => d.id));
-          const faqDocuments = [...aiFaqDocuments, ...directFaqDocuments.filter((d) => !faqSeenIds.has(d.id))];
-
-          return (
-            <div
-              className="chat-turn"
-              key={item.id}
-              ref={(element) => {
-                if (element) {
-                  turnRefs.current.set(item.id, element);
-                } else {
-                  turnRefs.current.delete(item.id);
-                }
-              }}
-            >
-              <div className="chat-message chat-message-user">
-                <p>{item.question}</p>
-              </div>
-
-              <section className="chat-message chat-message-assistant">
-                {item.status === "loading" ? (
-                  <SearchLoadingState />
-                ) : item.status === "complete" && item.answer ? (
-                  <SearchAnswerView
-                    answer={item.answer}
-                    faqDocuments={faqDocuments}
-                    recommendedDocuments={primaryRecommendations}
-                    relatedDocuments={relatedDocuments}
-                  />
-                ) : (
-                  <div>
-                    <p>{item.errorMessage ?? "답변을 준비하지 못했습니다."}</p>
-                    {recommendedDocuments.length ? (
-                      <SearchResultSummary documents={recommendedDocuments} />
-                    ) : null}
-                  </div>
-                )}
-              </section>
-            </div>
-          );
-        })}
-
+    <div className="search-shell" ref={shellRef}>
+      <div className={isConversationDrawerOpen ? "search-sidebar-left search-sidebar-open" : "search-sidebar-left"}>
+        <ConversationSidebar
+          conversations={conversations}
+          activeConversationId={activeConversationId}
+          onSelect={handleSelectConversation}
+          onDelete={handleDeleteConversation}
+        />
       </div>
-      <div className="chat-input-dock">
-        <div className="chat-input-dock-inner">
-          <div className="chat-input-area">
-            <PromptComposer
-              value={draftQuestion}
-              onValueChange={(value) => {
-                setDraftQuestion(value);
-                if (showEmptyHint) setShowEmptyHint(false);
-              }}
-              onSubmit={submitDraftQuestion}
-              placeholder="궁금한 내용을 입력하세요"
-              ariaLabel="검색 질문"
-              ariaDescribedBy={showEmptyHint ? "chat-empty-input-hint" : undefined}
-              buttonAriaLabel="질문 전송"
-              buttonTitle="질문 전송"
-              className="chat-input-bar"
-              textareaClassName="chat-input-bar-textarea prompt-composer-textarea"
-              buttonClassName="chat-input-bar-button prompt-composer-button"
-              minRows={2}
-              maxRows={8}
-              buttonIcon={(
-                <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
-                  <path
-                    d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
-                    stroke="currentColor"
-                    strokeWidth="1.7"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
-            />
-            {showEmptyHint ? (
-              <p id="chat-empty-input-hint" className="chat-input-hint" role="alert">
-                검색어를 입력해 주세요.
-              </p>
+
+      <div className="search-main-column">
+        <div className="search-mobile-toolbar">
+          <button type="button" onClick={() => setIsConversationDrawerOpen(true)}>
+            대화 목록
+          </button>
+          <button type="button" onClick={() => setIsContextDrawerOpen(true)}>
+            관련 페이지
+          </button>
+        </div>
+
+        <div className="search-center-shell">
+          <div className="chat-search-shell">
+            {!query && liveTurns.length === 0 ? (
+              <div className="chat-empty-hint">
+                <p>궁금한 내용을 입력하면 관련 가이드와 함께 답변을 드립니다.</p>
+              </div>
             ) : null}
+
+            {liveTurns.map((item) => (
+              <div
+                className="chat-turn"
+                key={item.id}
+                ref={(element) => {
+                  if (element) {
+                    turnRefs.current.set(item.id, element);
+                  } else {
+                    turnRefs.current.delete(item.id);
+                  }
+                }}
+              >
+                <div className="chat-message chat-message-user">
+                  <p>{item.question}</p>
+                </div>
+
+                <section className="chat-message chat-message-assistant">
+                  {item.status === "loading" ? (
+                    <SearchLoadingState />
+                  ) : item.status === "complete" && item.answer ? (
+                    <SearchAnswerView answer={item.answer} />
+                  ) : (
+                    <p>{item.errorMessage ?? "답변을 준비하지 못했습니다."}</p>
+                  )}
+                </section>
+              </div>
+            ))}
+          </div>
+          <div className="chat-input-dock">
+            <div className="chat-input-dock-inner">
+              <div className="chat-input-area">
+                <PromptComposer
+                  value={draftQuestion}
+                  onValueChange={(value) => {
+                    setDraftQuestion(value);
+                    if (showEmptyHint) setShowEmptyHint(false);
+                  }}
+                  onSubmit={submitDraftQuestion}
+                  placeholder="궁금한 내용을 입력하세요"
+                  ariaLabel="검색 질문"
+                  ariaDescribedBy={showEmptyHint ? "chat-empty-input-hint" : undefined}
+                  buttonAriaLabel="질문 전송"
+                  buttonTitle="질문 전송"
+                  className="chat-input-bar"
+                  textareaClassName="chat-input-bar-textarea prompt-composer-textarea"
+                  buttonClassName="chat-input-bar-button prompt-composer-button"
+                  minRows={2}
+                  maxRows={8}
+                  buttonIcon={(
+                    <svg aria-hidden="true" viewBox="0 0 20 20" fill="none">
+                      <path
+                        d="m3 10 13-6-3.5 12-2.4-4.5L3 10Zm0 0 7.1 1.5"
+                        stroke="currentColor"
+                        strokeWidth="1.7"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  )}
+                />
+                {showEmptyHint ? (
+                  <p id="chat-empty-input-hint" className="chat-input-hint" role="alert">
+                    검색어를 입력해 주세요.
+                  </p>
+                ) : null}
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      <div className={isContextDrawerOpen ? "search-sidebar-right search-sidebar-open" : "search-sidebar-right"}>
+        <SearchContextPanel
+          recommended={accumulatedContext.recommended}
+          related={accumulatedContext.related}
+          faq={accumulatedContext.faq}
+        />
+      </div>
+
+      {isConversationDrawerOpen || isContextDrawerOpen ? (
+        <button
+          type="button"
+          className="search-drawer-backdrop"
+          aria-label="닫기"
+          onClick={() => {
+            setIsConversationDrawerOpen(false);
+            setIsContextDrawerOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }
 
-function SearchAnswerView({
-  answer,
-  faqDocuments,
-  recommendedDocuments,
-  relatedDocuments,
-}: {
-  answer: SearchAnswer;
-  faqDocuments: SearchDocumentSummary[];
-  recommendedDocuments: SearchDocumentSummary[];
-  relatedDocuments: SearchDocumentSummary[];
-}) {
+function resolveTurnContext(turn: LiveTurn, documents: ReturnType<typeof useWikiData>["documents"]) {
+  const fallbackDocuments = buildFallbackRecommendedDocuments(documents, turn.question);
+  const answer = turn.answer ?? null;
+  const directFaqDocuments = isFullyUnsupportedSearchAnswer(answer ?? null)
+    ? []
+    : buildFaqRecommendations(documents, turn.question);
+  const {
+    faqDocuments: aiFaqDocuments,
+    recommendedDocuments,
+    relatedDocuments,
+  } = resolveSearchDocumentSections(answer ?? null, fallbackDocuments);
+  const faqSeenIds = new Set(aiFaqDocuments.map((d) => d.id));
+  const faqDocuments = [...aiFaqDocuments, ...directFaqDocuments.filter((d) => !faqSeenIds.has(d.id))];
+
+  return { recommendedDocuments, relatedDocuments, faqDocuments };
+}
+
+function SearchAnswerView({ answer }: { answer: SearchAnswer }) {
   const supplementalAnswerText = buildSupplementalAnswerText(answer);
 
   return (
@@ -358,27 +438,6 @@ function SearchAnswerView({
 
       {shouldShowPolicyNotice(answer.policyNotice) ? (
         <PolicyNoticeView policyNotice={answer.policyNotice} />
-      ) : null}
-
-      {faqDocuments.length ? (
-        <section>
-          <h2>자주 묻는 질문</h2>
-          <SearchResultSummary documents={faqDocuments} />
-        </section>
-      ) : null}
-
-      {recommendedDocuments.length ? (
-        <section>
-          <h2>추천 페이지</h2>
-          <SearchResultSummary documents={recommendedDocuments} />
-        </section>
-      ) : null}
-
-      {relatedDocuments.length ? (
-        <section>
-          <h2>관련 페이지</h2>
-          <SearchResultSummary documents={relatedDocuments} />
-        </section>
       ) : null}
     </div>
   );
@@ -498,28 +557,12 @@ function SearchLoadingState() {
   );
 }
 
-function SearchResultSummary({
-  documents,
-}: {
-  documents: SearchDocumentSummary[];
-}) {
-  if (!documents.length) {
-    return null;
-  }
-
-  return (
-    <ul className="chat-guide-list">
-      {documents.map((document) => (
-        <li key={document.id}>
-          <Link className="chat-guide-card" to={document.href} target="_blank" rel="noreferrer">
-            <strong>{stripTitleTypePrefix(document.title)}</strong>
-          </Link>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 function normalizeQuestionKey(question: string) {
   return question.trim().toLocaleLowerCase("ko-KR").replace(/\s+/g, " ");
+}
+
+function upsertLiveTurn(items: LiveTurn[], turn: LiveTurn) {
+  return items.some((item) => item.id === turn.id)
+    ? items.map((item) => (item.id === turn.id ? turn : item))
+    : [...items, turn];
 }

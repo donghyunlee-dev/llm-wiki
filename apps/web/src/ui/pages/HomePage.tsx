@@ -5,10 +5,12 @@ import {
   stripTitleTypePrefix,
   type WikiDocument,
 } from "@sfood/wiki-core";
-import { startTransition, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
 import { PromptComposer } from "../PromptComposer";
+import { ConversationSidebar } from "./search/ConversationSidebar";
+import { useSearchConversations } from "./search/useSearchConversations";
 
 type FeaturedGuide = {
   title: string;
@@ -128,15 +130,17 @@ function LessonEntrySection({ hasLessons }: { hasLessons: boolean }) {
 
   return (
     <section className="home-lesson-section">
-      <Link to="/lesson" className="home-lesson-card">
+      <div className="home-lesson-card">
         <span className="home-lesson-card-copy">
           <span className="home-lesson-card-title">AI, 이제 기초부터 이해해 보세요</span>
           <span className="home-lesson-card-description">
             실습 전에 알아야 할 개념을 짧은 장면으로 정리했습니다.
           </span>
         </span>
-        <span className="home-lesson-card-button">교육 시작하기 →</span>
-      </Link>
+        <Link to="/lesson" className="home-lesson-card-button">
+          교육 시작하기 →
+        </Link>
+      </div>
     </section>
   );
 }
@@ -231,15 +235,78 @@ function GuideRowIcon({ pinned }: { pinned: boolean }) {
 
 export function HomePage() {
   const { documents, isLoading } = useWikiData();
+  const navigate = useNavigate();
+  const { conversations, deleteConversation } = useSearchConversations();
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const [isConversationDrawerOpen, setIsConversationDrawerOpen] = useState(false);
 
   const featuredGuides = useMemo(() => buildFeaturedGuides(documents), [documents]);
   const hasLessons = useMemo(() => listLessonDocumentsFrom(documents).length > 0, [documents]);
+  const hasConversations = conversations.length > 0;
+
+  useEffect(() => {
+    const element = shellRef.current;
+    if (!element) {
+      return;
+    }
+
+    const updateOffset = () => {
+      const top = element.getBoundingClientRect().top;
+      element.style.setProperty("--search-shell-offset", `${top}px`);
+    };
+
+    updateOffset();
+    window.addEventListener("resize", updateOffset);
+    return () => window.removeEventListener("resize", updateOffset);
+  }, []);
 
   return (
-    <>
-      <SearchHero />
-      <RecommendedGuidesSection guides={featuredGuides} isLoading={isLoading} />
-      <LessonEntrySection hasLessons={hasLessons} />
-    </>
+    <div className="search-shell" ref={shellRef}>
+      {hasConversations ? (
+        <div
+          className={
+            isConversationDrawerOpen ? "search-sidebar-left search-sidebar-open" : "search-sidebar-left"
+          }
+        >
+          <ConversationSidebar
+            conversations={conversations}
+            activeConversationId={null}
+            title="최근 대화"
+            onSelect={(id) => {
+              setIsConversationDrawerOpen(false);
+              startTransition(() => {
+                navigate(`/search?c=${id}`);
+              });
+            }}
+            onDelete={deleteConversation}
+          />
+        </div>
+      ) : null}
+
+      <div className="search-main-column">
+        {hasConversations ? (
+          <div className="search-mobile-toolbar">
+            <button type="button" onClick={() => setIsConversationDrawerOpen(true)}>
+              최근 대화
+            </button>
+          </div>
+        ) : null}
+
+        <div className="home-scroll-column">
+          <SearchHero />
+          <RecommendedGuidesSection guides={featuredGuides} isLoading={isLoading} />
+          <LessonEntrySection hasLessons={hasLessons} />
+        </div>
+      </div>
+
+      {hasConversations && isConversationDrawerOpen ? (
+        <button
+          type="button"
+          className="search-drawer-backdrop"
+          aria-label="닫기"
+          onClick={() => setIsConversationDrawerOpen(false)}
+        />
+      ) : null}
+    </div>
   );
 }

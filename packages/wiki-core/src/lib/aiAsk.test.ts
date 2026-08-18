@@ -116,8 +116,10 @@ describe("aiAsk prompt helpers", () => {
     expect(input[1]?.content).toContain("Do NOT create visible sections titled `바로 할 일`");
     expect(input[1]?.content).not.toContain("관련 페이지별 요약");
     expect(input[0]?.content).toContain("Do not invent exact package names, command names, file paths, or login steps unless they are explicitly present in searchResults.");
+    expect(input[1]?.content).toContain("short Korean label for a conversation list");
     expect(schema.required).toEqual([
       "answer",
+      "title",
       "policyNotice",
       "immediateActions",
       "exampleCommands",
