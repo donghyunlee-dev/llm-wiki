@@ -123,8 +123,14 @@ function RecommendedGuidesSection(props: {
   );
 }
 
-function LessonEntrySection({ hasLessons }: { hasLessons: boolean }) {
-  if (!hasLessons) {
+function LessonEntrySection({
+  isLoading,
+  hasLessons,
+}: {
+  isLoading: boolean;
+  hasLessons: boolean;
+}) {
+  if (!isLoading && !hasLessons) {
     return null;
   }
 
@@ -297,7 +303,7 @@ export function HomePage() {
           <RecommendedGuidesSection guides={featuredGuides} isLoading={isLoading} />
         </div>
 
-        <LessonEntrySection hasLessons={hasLessons} />
+        <LessonEntrySection isLoading={isLoading} hasLessons={hasLessons} />
       </div>
 
       {hasConversations && isConversationDrawerOpen ? (

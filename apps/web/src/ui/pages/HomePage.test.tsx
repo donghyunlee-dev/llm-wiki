@@ -189,7 +189,7 @@ describe("HomePage", () => {
     expect(withLesson).toContain('href="/lesson"');
   });
 
-  it("shows a loading placeholder for guides independently of the lesson footer", () => {
+  it("shows the guides loading placeholder and keeps the lesson footer visible while wiki data loads", () => {
     useWikiDataMock.mockReturnValue({
       documents: [],
       errorMessage: null,
@@ -205,7 +205,7 @@ describe("HomePage", () => {
     expect(markup).toContain("궁금한 것을 검색해보세요");
     expect(markup).toContain("추천 가이드");
     expect(markup).toContain("불러오는 중");
-    expect(markup).not.toContain("교육 시작하기");
+    expect(markup).toContain("교육 시작하기");
   });
 
   it("keeps the lesson footer outside the scrollable guides column", () => {
