@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
+import { cleanup, render } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import type { WikiDocument } from "@sfood/wiki-core";
 import { HomePage } from "./HomePage";
@@ -34,6 +35,10 @@ function document(overrides: Partial<WikiDocument> = {}): WikiDocument {
 describe("HomePage", () => {
   beforeEach(() => {
     useWikiDataMock.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("renders only search and an even recommendation card grid with the starting guide pinned first", () => {
@@ -182,5 +187,66 @@ describe("HomePage", () => {
 
     expect(withLesson).toContain("교육 시작하기");
     expect(withLesson).toContain('href="/lesson"');
+  });
+
+  it("shows the guides loading placeholder and keeps the lesson footer visible while wiki data loads", () => {
+    useWikiDataMock.mockReturnValue({
+      documents: [],
+      errorMessage: null,
+      isLoading: true,
+    });
+
+    const markup = renderToStaticMarkup(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    );
+
+    expect(markup).toContain("궁금한 것을 검색해보세요");
+    expect(markup).toContain("추천 가이드");
+    expect(markup).toContain("불러오는 중");
+    expect(markup).toContain("교육 시작하기");
+  });
+
+  it("keeps the lesson footer outside the scrollable guides column", () => {
+    useWikiDataMock.mockReturnValue({
+      documents: [
+        document({
+          id: "lesson-1",
+          slug: "ai-first-perspective",
+          title: "AI를 이해하는 첫 번째 관점",
+          metadata: { ...document().metadata, docType: "lesson" },
+          presentation: {
+            schemaVersion: 1,
+            lessonId: "ai-first-perspective",
+            theme: "ai-foundation",
+            scenes: [
+              {
+                sceneId: "scene-1",
+                anchor: "장면",
+                type: "concept",
+                layout: "visual-split",
+                narration: "",
+                blocks: [{ order: 1, kind: "explanation", content: "본문" }],
+              },
+            ],
+          },
+        }),
+      ],
+      errorMessage: null,
+      isLoading: false,
+    });
+
+    const { container } = render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    );
+
+    const scrollColumn = container.querySelector(".home-scroll-column");
+    const lessonSection = container.querySelector(".home-lesson-section");
+    expect(scrollColumn).not.toBeNull();
+    expect(lessonSection).not.toBeNull();
+    expect(scrollColumn?.contains(lessonSection)).toBe(false);
   });
 });
