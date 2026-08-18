@@ -16,6 +16,12 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-19 — 대화 목록 항목에서 제목이 길면 삭제 아이콘이 밀려 사라지던 버그 수정
+- 배경: 사용자가 좌측 대화 목록에서 요약된 대화 주제가 길어지면 휴지통 삭제 아이콘이 안 보이는 문제를 리포트.
+- 원인: `.search-conversation-title`는 이미 `flex-1 min-w-0 truncate`로 구성돼 있었지만, 그 부모인 `.search-conversation-item`(`.search-conversation-list`의 grid item)에 `min-w-0`이 없었음 — CSS Grid item은 기본값이 `min-width: auto`라 내용물(긴 제목 텍스트) 크기만큼 그리드 셀 자체가 늘어나 버려, 자식의 `truncate`가 전혀 작동하지 않고 행 전체가 사이드바 폭을 넘어 삭제 아이콘이 화면 밖으로 밀려났던 것.
+- `.search-conversation-item`에 `min-w-0`을 추가해 그리드 아이템 자체를 사이드바 폭으로 제한 — 이제 제목만 `...`으로 줄어들고 삭제 아이콘은 항상 우측에 고정되어 보임. `ConversationSidebar`는 홈·검색 화면이 공유하므로 양쪽에 동일하게 적용됨.
+- Playwright로 의도적으로 매우 긴 제목의 대화를 localStorage에 주입해 재현(수정 전 아이콘 완전히 사라짐 확인) → 수정 후 두 화면(홈, `/search`) 모두 제목 말줄임+아이콘 고정 노출 확인. `pnpm test`(web 33 files/206 tests) 전체 통과.
+
 ### 2026-08-18 — 라이트 모드 CTA 버튼 텍스트 색상 버그 + 다크 모드 시작 가이드 카드 배경 색조 불일치 수정
 - 배경: 사용자가 "교육 시작하기" 버튼 텍스트가 라이트 모드에서 검게 보인다(다크 모드는 우연히 괜찮아 보임), 다크 모드에서 "시작 가이드" 카드 배경색만 유독 다르게 보인다고 리포트. 두 가지 다 실측(`getComputedStyle`)으로 원인을 확인.
 - **버튼 텍스트 색상**: `styles.css`에 전역 `a { color: inherit; text-decoration: none; }`가 어떤 `@layer`에도 속하지 않은 채 정의되어 있었음 — CSS Cascade Layers 규칙상 레이어 밖 스타일은 레이어 안 스타일(Tailwind의 유틸리티 포함)보다 항상 우선하므로, "교육 시작하기" 버튼(`<Link>`, 즉 실제 `<a>` 태그)에 준 `text-white` 유틸리티가 항상 이 전역 리셋에 덮여 `color: inherit`(부모 텍스트 색)로 렌더링되고 있었음. 다크 모드는 부모 텍스트 색이 마침 밝은 색이라 우연히 괜찮아 보였을 뿐, 라이트 모드는 부모 텍스트 색이 어두워 검게 보였던 것. 해당 리셋을 `@layer base { ... }`로 감싸 Tailwind 유틸리티가 정상적으로 우선하도록 수정 — 이 버튼뿐 아니라 앞으로 색 배경 위에 텍스트 색을 지정하는 모든 링크형 버튼에 적용되는 근본 수정.
