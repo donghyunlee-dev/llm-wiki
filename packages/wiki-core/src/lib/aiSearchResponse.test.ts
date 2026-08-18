@@ -5,6 +5,7 @@ describe("parseAiSearchResponseText", () => {
   it("parses normal JSON search responses", () => {
     const result = parseAiSearchResponseText(JSON.stringify({
       answer: "짧답: 설치 후 확인하세요.",
+      title: "설치 방법 안내",
       policyNotice: {
         isPolicyRelated: true,
         message: "정책 반영",
@@ -24,6 +25,7 @@ describe("parseAiSearchResponseText", () => {
       { id: "policy-1", title: "Search Policy", href: "https://example.com/policy" },
     ]);
     expect(result.answer).toBe("설치 후 확인하세요.");
+    expect(result.title).toBe("설치 방법 안내");
     expect(result.immediateActions).toEqual([{ text: "설치한다", relatedPageIds: ["1"] }]);
     expect(result.confluenceData).toHaveLength(1);
     expect(result.recommendedPages).toHaveLength(1);

@@ -16,6 +16,56 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-18 — 대화 목록 삭제 버튼을 아이콘으로 변경 (홈·검색 공통)
+- 배경: 사용자가 "최근 대화"의 "삭제" 텍스트를 아이콘으로 바꾸고 검색 결과 화면과 공통 적용해달라고 요청.
+- 홈과 `/search`가 같은 `ConversationSidebar` 컴포넌트를 공유하므로, 그 컴포넌트 한 곳만 수정하면 양쪽에 자동 반영됨 — 텍스트 "삭제"를 휴지통 SVG 아이콘으로 교체, `aria-label`/`title="대화 삭제"`는 유지해 접근성 유지.
+- TDD로 진행(`ConversationSidebar.test.tsx`에 "아이콘만 보이고 텍스트 없음" 회귀 테스트 추가, RED 확인 후 구현). `pnpm test`(web 33 files/204 tests) 전체 통과, Playwright로 홈·검색 양쪽 모두 아이콘 적용 확인.
+
+### 2026-08-18 — 홈 화면 풋터 영역 버그 2건 수정 (여백/클릭 범위)
+- 배경: 사용자가 (1) 교육 광고 풋터 아래에 흰색 배경의 정체불명 영역이 하나 더 보인다, (2) 풋터 전체가 클릭되는데 "교육 시작하기" 버튼만 클릭되어야 한다고 리포트.
+- **정체불명의 흰 영역**: `.home-scroll-column`(홈 콘텐츠가 담기는 내부 스크롤 컨테이너)이 일반 block 흐름이라, 콘텐츠(검색창+가이드+풋터)가 뷰포트보다 짧을 때 풋터 아래 남는 공간이 컨테이너의 배경(흰색, elevated 톤)으로 그대로 드러났던 것. `.home-scroll-column`을 flex column으로 바꾸고 `.home-lesson-section`에 `mt-auto`를 줘서 풋터가 항상 스크롤 영역의 맨 아래에 붙도록 수정 — 실측(`getBoundingClientRect`)으로 풋터 바로 아래 여백이 0임을 확인.
+- **클릭 범위**: `LessonEntrySection`이 `<Link>`로 전체(제목+설명+버튼)를 감싸고 있어 배너 어디를 눌러도 `/lesson`으로 이동했음. `<Link>`를 버튼(`home-lesson-card-button`)에만 적용하고 나머지는 일반 `<div>`로 변경 — Playwright로 제목 텍스트 클릭 시 페이지 이동 없음, 버튼 클릭 시에만 `/lesson`으로 이동함을 확인.
+- `pnpm test`(web 33 files/203 tests) 전체 통과.
+
+### 2026-08-18 — 전역 배경 톤에 미묘한 명암(elevation) 차이 적용
+- 배경: 사용자가 "구역은 잘 나눠졌는데 배경색이 다 동일해서 분리된 영역처럼 안 느껴진다"고 지적, 완전히 다른 색이 아니라 미묘한 명암으로 입체감을 달라고 요청.
+- 조사 결과 디자인 시스템에 이미 `--page-bg`(라이트: 연한 슬레이트 톤, 다크: 가장 어두운 톤)와 `--panel-bg`/`--card-bg`(라이트: 순백, 다크: 약간 밝은 톤)가 서로 다른 값으로 정의돼 있었으나, 코드에서 `--page-bg`를 실제로 쓰는 곳이 거의 없어(대부분 `--panel-bg`로 통일) 시각적으로 아무 차이가 없었음(다크 테마만 우연히 이미 차이가 남). 새 색을 만들지 않고 기존 토큰을 "제 용도"에 맞게 배치하는 방식으로 해결.
+- `site-layout`/`site-header`/`search-sidebar-left`/`search-sidebar-right`/`search-mobile-toolbar`/`home-lesson-section`(풋터)을 "recessed" 톤(`--page-bg`)으로, `search-main-column`(중앙 답변·홈 콘텐츠가 앉는 영역)을 "elevated" 톤(`--panel-bg`)으로 분리 — 사이드바/헤더/풋터는 약간 가라앉은 톤, 중앙 콘텐츠는 그보다 밝게 떠 보이는 3단 명암 구조. 이 변경은 `/search`·홈뿐 아니라 사이트 전역(`.site-layout`)에도 적용되어 다른 페이지의 카드도 은은한 배경 위에 놓이게 됨.
+- `pnpm test`(web 33 files/203 tests) 전체 통과, Playwright로 라이트/다크 테마 모두 실측 확인(사이드바·헤더·풋터가 중앙 콘텐츠보다 미묘하게 어둡게/밝게 구분됨).
+
+### 2026-08-18 — 홈 화면 레슨 진입 영역을 풋터 배너 스타일로 변경
+- 배경: 사용자가 "교육 카드 섹션이 가이드 카드와 같은 CSS라 가이드 페이지처럼 보인다"고 지적, 카드 섹션이 아니라 다른 사이트의 풋터 광고 영역처럼 구획을 나누고, "교육 시작하기"는 타원형(pill) 버튼으로 광고 클릭 느낌을 내달라고 요청.
+- `.home-lesson-section`에서 카드 박스 스타일(테두리+배경+호버)을 제거하고 상단 구분선(`border-t`) + 배경 톤 차이만으로 "다른 영역"임을 표현. `.home-lesson-card-button`을 `rounded-full` + 채워진 accent 배경의 pill 버튼으로 변경(기존엔 단순 텍스트 링크 스타일).
+- `pnpm test`(web 33 files/203 tests) 전체 통과, Playwright로 데스크톱/모바일 모두 시각 확인.
+
+### 2026-08-18 — 홈 화면 카피/가이드 카드 정리
+- 배경: 사용자가 홈 화면을 직접 확인하며 3가지 피드백: (1) 히어로 문구 "사내 지식을 쉽게 찾아보세요"가 실제 위키 성격과 안 맞음, (2) "추천 가이드" 섹션 타이틀이 눈에 안 띔, (3) 일반 가이드 4개 카드가 테두리 없이 빈 공간이 커서 오류처럼 보임.
+- 히어로 문구를 여러 후보 중 사용자가 고른 "궁금한 것을 검색해보세요"로 교체(`packages/wiki-core/src/lib/homeContent.ts`).
+- `.home-section-title`를 13px→16px, font-bold로 키워 섹션 타이틀 시인성 개선.
+- 일반 가이드 4개를 개별 큰 카드(2열 그리드, 카드당 104px)에서 **하나의 테두리 있는 리스트**(구분선으로 나뉜 컴팩트 행)로 변경 — 카드당 빈 공간 제거. "시작 가이드"(featured) 카드는 accent 톤 배경으로 별도 강조해 일반 가이드 목록과 명확히 구분.
+- `pnpm test`(web 33 files/203 tests, wiki-core 포함) 전체 통과, Playwright로 데스크톱/모바일 모두 시각 확인.
+
+### 2026-08-18 — 홈 화면에 "최근 대화" 진입점 추가 (좌측 고정 사이드바)
+- 배경: 사용자가 검색 화면에서 대화를 나눈 뒤 홈으로 돌아가면 그 대화를 다시 찾을 방법이 없다고 리포트. 1차로 검색창 아래 인라인 카드로 구현했으나, 사용자가 "동일한 패널로 왼쪽에 보여야지, 화면 구조를 나누기 싫어서 하단에 넣은 거냐"고 재지적 — 홈도 `/search`처럼 좌측 고정 사이드바 구조로 바꾸는 것으로 확정. 상세는 `docs/tasks/search-three-pane-layout/tasks.md`(2026-08-18 섹션) 참고.
+- `HomePage.tsx`를 `/search`와 동일한 `search-shell`/`search-sidebar-left`/`search-main-column` 구조로 재구성 — 저장된 대화가 있을 때만 좌측에 `ConversationSidebar`("최근 대화" 제목)를 고정 배치, 기존 홈 콘텐츠는 우측 메인 컬럼 안에서 내부 스크롤(`home-scroll-column`). 클릭 시 `/search?c=<대화ID>`로 이동.
+- `ConversationSidebar`에 선택적 `title` prop 추가(홈에서만 사용, `/search`는 기존과 동일).
+- `SearchPage.tsx`에 `c` 쿼리 파라미터 처리 추가 — 마운트 시 해당 대화를 찾아 턴/컨텍스트 패널을 복원.
+- TDD로 진행(`HomePage.recentConversations.test.tsx`, `SearchPage.conversationParam.test.tsx`, `ConversationSidebar.test.tsx` 각각 RED 확인 후 구현). `pnpm test`(web 33 files/203 tests) 전체 통과, `pnpm typecheck` 통과, Playwright 실측(뷰포트를 좁혀 내부 스크롤 시 사이드바 위치 불변 확인 포함)으로 데스크톱·모바일 모두 재확인.
+
+### 2026-08-18 — 검색 화면 3단 레이아웃 실사용 리포트 2건 수정 (대화 중복 생성, 우측 패널 스크롤)
+- 배경: 사용자가 로컬 dev 서버에서 새 3단 레이아웃을 직접 테스트하다가 "claude token 제한에 대해 설명해줘" 질문 하나에 대화가 2개 생성되는 문제와, 우측 컨텍스트 패널 카드 여백이 커서 스크롤이 생기는 문제를 리포트. 상세는 `docs/tasks/search-three-pane-layout/`(tasks.md Review Notes, test-result.md Retest Results, result.md Post-Delivery Fixes) 참고.
+- **대화 중복 생성 근본 원인**: `main.tsx`의 `React.StrictMode`(dev 전용)가 effect를 의도적으로 2회 실행하는데, 검색 요청 effect가 "새 대화 생성 여부"를 아직 갱신되지 않은 `activeConversationId` state로 판단해 두 번째 invoke에서도 `startNewConversation()`이 다시 실행되던 것. `SearchPage.tsx`에 effect 재실행 사이에도 값이 유지되는 `currentConversationIdRef`(useRef)를 추가해 state 대신 ref로 "현재 대화"를 동기적으로 추적하도록 수정. `<StrictMode>`로 감싸 렌더링해 버그를 실제로 재현하는 회귀 테스트(`SearchPage.strictmode.test.tsx`) 추가.
+- **우측 패널 스크롤**: 카드 최소 높이(`min-h-[80px]`)와 섹션/카드 간격을 축소해 밀도를 높임. 더 이상 쓰이지 않던 `.chat-guide-list` CSS도 함께 정리. Playwright 실측(추천 3+관련 3+FAQ 3, 총 9장)으로 스크롤 없이 전부 노출됨을 확인.
+- `pnpm test`(web 31 files/198 tests) 전체 통과, `pnpm typecheck` 통과, Playwright로 실제 OpenAI 연동 환경에서 두 수정 모두 재검증.
+
+### 2026-08-18 — 검색 화면 3단 레이아웃(대화 목록/답변/컨텍스트 패널) 재구성
+- 배경: 사용자가 검색 결과 화면이 최신 AI Agent UI(좌측 대화 목록, 중앙 연속 답변, 우측 컨텍스트) 구조로 낡았다는 피드백을 주고 개편을 요청. 브레인스토밍으로 헤더 유지 여부, 우측 패널 누적 범위, 대화 제목 생성 방식, 새 대화 시작 조건, 삭제 확인, localStorage 보관 개수, 우측 패널 섹션 구분 방식, 모바일 대응을 순서대로 확정. 상세는 `docs/prd/search-screen-layout.md`(화면 설계 기준)와 `docs/tasks/search-three-pane-layout/`(spec/plan/tasks/test-result/result) 참고.
+- `/search`를 좌(대화 목록)/중(기존 답변 스트림 재사용)/우(추천→관련→FAQ 컨텍스트 패널) 3단으로 재구성. 사이트 헤더는 그대로 유지하고, 헤더의 실제 렌더 높이를 런타임에 측정해 `--search-shell-offset`으로 반영(레슨 리더의 dock-height 측정과 동일한 패턴 재사용).
+- 신규 localStorage 훅(`useSearchConversations`)으로 대화 생성/전환/삭제(확인 다이얼로그)/최신순 정렬/최대 20개 자동 정리 구현. 우측 패널은 대화의 모든 턴에서 나온 문서를 섹션별로 누적하고, 중복 문서는 최신 턴 기준으로 재배치(`searchContextAccumulation.ts`).
+- AI 검색 응답 스키마에 `title` 필드를 추가해 대화 제목을 자동 생성(첫 턴에서만 설정, 없으면 첫 질문 텍스트로 폴백) — `docs/prd/ai-ask-prompt-guide.md`에 먼저 규칙을 기록한 뒤 `aiAsk.ts`/`aiSearchResponse.ts`를 맞춤.
+- Codex 크리티컬 리뷰에서 5건 지적, 4건 즉시 수정: (1) `title` 필드가 스키마엔 있었지만 `aiSearchResponse.ts` 파서가 읽지 않아 항상 폴백 제목만 쓰이던 버그, (2) 답변 대기 중 대화를 삭제해도 응답이 늦게 도착하면 `commitTurn`이 대화를 되살리던 레이스 컨디션, (3) 응답 대기 중 다른 대화로 갔다가 돌아오면 완료된 답변이 저장은 되지만 화면에는 반영되지 않던 문제, (4) 우측 패널이 `.chat-guide-list`(768px 이상 2열 그리드)를 재사용해 288px 사이드바에서 카드가 눌리던 문제. 요청 취소(`AbortController`) 부재는 Open Gap으로 남김(실사용 영향 낮음으로 판단).
+- Playwright로 실제 OpenAI 연동 환경에서 end-to-end 확인: 데스크톱 3단 레이아웃, 멀티턴 누적, 대화 전환/삭제(취소·확인), 모바일 드로어, 다크 테마, title 폴백/정상 생성 경로 모두 실측. `pnpm test`(web 30 files/197 tests, wiki-core 19 files/235 tests)·`pnpm typecheck`(양쪽) 전체 통과.
+
 ### 2026-08-07 — 학습 흐름(레슨 아웃라인 드로어) 씬 번호/간격 버그 수정
 - 배경: 사용자가 "학습 흐름" 드로어에서 씬 번호가 전부 "1"로 보이고 항목 간 간격이 너무 넓어 스크롤이 길다고 리포트.
 - 원인: `LessonOutlineDrawer.tsx`가 레슨마다 별도 `<ol>`을 만들며 번호를 레슨 내부 순번(`index + 1`)으로 표시하고 있었다. 지금 데이터는 레슨당 씬이 거의 1개뿐이라 사실상 모든 항목이 "1"로 보였다. 레슨 사이 간격(`gap-2.5`)도 씬 사이 간격(`gap-0.5`)보다 훨씬 넓어, 사실상 모든 항목 사이가 넓게 벌어지는 효과를 냈다.

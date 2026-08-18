@@ -297,6 +297,7 @@ export function buildAiSearchInput(context: AiSearchPromptContext) {
         searchResults: context.documents,
         outputRequirements: {
           answer: getSearchAnswerOutputRequirement(questionIntent),
+          title: "A short Korean label for a conversation list (5-15 characters), summarizing what the question is about. Do not copy the question verbatim. Not shown as part of the visible answer, so the answer body style rules do not apply to it.",
           policyNotice: "Object that marks whether policy materially shaped the answer and carries a short visible notice without naming the policy page.",
           immediateActions: questionIntent === "concept" || questionIntent === "page-lookup"
             ? "MUST be an empty array [] for concept/definition or page-lookup questions. Do not add action items."
@@ -432,6 +433,7 @@ export function aiSearchJsonSchema() {
     additionalProperties: false,
     required: [
       "answer",
+      "title",
       "policyNotice",
       "immediateActions",
       "exampleCommands",
@@ -443,6 +445,7 @@ export function aiSearchJsonSchema() {
     ],
     properties: {
       answer: { type: "string" },
+      title: { type: "string" },
       policyNotice: {
         type: "object",
         additionalProperties: false,

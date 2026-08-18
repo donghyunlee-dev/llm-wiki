@@ -39,7 +39,7 @@ export const BLOCKED_UI_TERMS = [
 export const HOME_CONTENT: HomeContent = {
   hero: {
     eyebrow: "사내 지식 위키",
-    title: "사내 지식을 쉽게 찾아보세요",
+    title: "궁금한 것을 검색해보세요",
     body: "궁금한 내용을 입력하면 관련 문서와 사례, FAQ를 함께 확인할 수 있습니다.",
   },
   search: {

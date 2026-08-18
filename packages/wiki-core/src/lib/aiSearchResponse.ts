@@ -1,5 +1,6 @@
 export type ParsedAiSearchResult = {
   answer: string;
+  title: string;
   policyNotice: {
     isPolicyRelated: boolean;
     message: string;
@@ -58,6 +59,7 @@ export function parseAiSearchResponseText(responseText: string): ParsedAiSearchR
 
       return {
         answer: normalizeAiSearchAnswerText(parsed.answer),
+        title: typeof parsed.title === "string" ? parsed.title.trim() : "",
         policyNotice: normalizePolicyNotice(parsed.policyNotice),
         immediateActions: normalizeActionItems(parsed.immediateActions),
         exampleCommands: normalizeStringArray(parsed.exampleCommands),
@@ -76,6 +78,7 @@ export function parseAiSearchResponseText(responseText: string): ParsedAiSearchR
 
   return recovered ?? {
     answer: normalizeAiSearchAnswerText(responseText),
+    title: "",
     policyNotice: {
       isPolicyRelated: false,
       message: "",
@@ -191,6 +194,7 @@ function recoverAiSearchResultFromLabeledText(text: string): ParsedAiSearchResul
 
   return {
     answer: normalizeAiSearchAnswerText(answer || text),
+    title: "",
     policyNotice: normalizePolicyNotice(policyNotice),
     immediateActions: normalizeActionItems(parseLabeledArray(text, "immediateActions")),
     exampleCommands: normalizeStringArray(parseLabeledArray(text, "exampleCommands")),
