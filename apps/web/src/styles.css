@@ -2039,7 +2039,7 @@ a {
   }
 
   .home-lesson-section {
-    @apply mt-auto border-t border-panel-border bg-page-bg px-5 py-8;
+    @apply shrink-0 border-t border-panel-border bg-page-bg px-5 py-8;
   }
 
   .home-lesson-card {
