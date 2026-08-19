@@ -1702,7 +1702,7 @@ textarea::placeholder {
   }
 
   .search-conversation-item {
-    @apply flex items-center gap-1 rounded-[var(--radius-md)] px-1;
+    @apply flex min-w-0 items-center gap-1 rounded-[var(--radius-md)] px-1;
   }
 
   .search-conversation-item-active {
