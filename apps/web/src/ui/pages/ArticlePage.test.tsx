@@ -1,3 +1,4 @@
+import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -162,5 +163,29 @@ describe("ArticlePage TOC active state", () => {
 
     expect(secondLink.className).toContain("article-toc-link-active");
     expect(firstLink.className).not.toContain("article-toc-link-active");
+  });
+});
+
+describe("ArticlePage back link", () => {
+  it("shows a visible '목록으로' text label inside the reading column, not an icon-only floating button", () => {
+    useWikiDataMock.mockReturnValue({
+      documents: [buildDocument()],
+      errorMessage: null,
+      isLoading: false,
+    });
+
+    render(
+      <MemoryRouter>
+        <ArticlePage section="guides" />
+      </MemoryRouter>,
+    );
+
+    const backLink = screen.getByRole("link", { name: /목록으로/ });
+
+    expect(backLink).toHaveTextContent("목록으로");
+    expect(backLink).toHaveAttribute("href", "/guides");
+    // Must sit inside the reading column (in-flow, next to the title), not as a sibling
+    // floating outside .guide-detail-row via absolute positioning.
+    expect(backLink.closest(".guide-detail-content")).not.toBeNull();
   });
 });
