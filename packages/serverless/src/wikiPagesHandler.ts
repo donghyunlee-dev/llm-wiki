@@ -4,6 +4,44 @@ declare const process: {
   env: HandlerEnv;
 };
 
+const WIKI_PAGES_CACHE_TTL_MS = 30 * 60 * 1000;
+
+// This handler is deployed per-space (fixed CONFLUENCE_SPACE_ID env), so a single
+// unkeyed cache slot is safe — it must not be reused across different space configs.
+let cachedPages: Awaited<ReturnType<typeof fetchConfluencePageRecords>> | null = null;
+let cacheExpiresAt = 0;
+let inFlightFetch: Promise<Awaited<ReturnType<typeof fetchConfluencePageRecords>>> | null = null;
+
+export function __resetWikiPagesCacheForTests() {
+  cachedPages = null;
+  cacheExpiresAt = 0;
+  inFlightFetch = null;
+}
+
+async function loadPages(
+  config: Parameters<typeof fetchConfluencePageRecords>[0],
+) {
+  if (cachedPages && cacheExpiresAt > Date.now()) {
+    return cachedPages;
+  }
+
+  if (inFlightFetch) {
+    return inFlightFetch;
+  }
+
+  inFlightFetch = fetchConfluencePageRecords(config)
+    .then((pages) => {
+      cachedPages = pages;
+      cacheExpiresAt = Date.now() + WIKI_PAGES_CACHE_TTL_MS;
+      return pages;
+    })
+    .finally(() => {
+      inFlightFetch = null;
+    });
+
+  return inFlightFetch;
+}
+
 type LambdaEvent = {
   httpMethod?: string;
   requestContext?: {
@@ -77,7 +115,7 @@ export async function wikiPagesHandler(
   };
 
   try {
-    const pages = await fetchConfluencePageRecords({
+    const pages = await loadPages({
       ...config,
       fetch: options.fetch,
     });

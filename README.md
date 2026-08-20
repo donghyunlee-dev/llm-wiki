@@ -45,6 +45,11 @@ CONFLUENCE_SPACE_ID=63111172
 WIKI_ALLOWED_ORIGIN=https://your-web-origin.example
 ```
 
+`wikiPagesHandler` caches fetched Confluence records in memory for 30 minutes
+per warm Lambda instance to avoid refetching every page's metadata on every
+request. Confluence content edits can take up to 30 minutes to appear, and a
+cold-started instance always fetches fresh.
+
 Point the static web build at the deployed endpoint with:
 
 ```env
