@@ -16,6 +16,12 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-20 — 가이드 상세 페이지 "뒤로가기" 버튼을 눈에 띄는 in-flow 링크로 교체
+- 배경: 사용자가 "뒤로가기 버튼이 위치도 그렇고 모양도 별로이고 바로 알아볼 수 없다"고 리포트. Playwright로 실측한 결과, `.article-back-link`가 페이지 전체 폭 컨테이너 기준 absolute로 화면 맨 왼쪽 가장자리에 떠 있고 텍스트 라벨 없이 아이콘(`‹`)만 있는 32×32px 버튼이었음 — 본문·헤더와 시각적으로 단절된 고립 요소였음.
+- `ArticlePage.tsx`: `.article-back-link`를 본문 리딩 컬럼(`.guide-detail-content`) 안, 제목 바로 위로 옮기고 "목록으로" 텍스트를 아이콘과 함께 상시 노출. 더 이상 필요 없는 `aria-label`/`title` 제거, `.guide-detail-shell`의 `relative`도 함께 정리.
+- TDD로 진행(`ArticlePage.test.tsx` 신규 테스트, RED 확인 후 구현). Playwright로 라이트/다크/모바일 시각 확인, 클릭 내비게이션 회귀 없음 확인.
+- Codex 크리티컬 리뷰: `relative` 제거가 다른 absolute 자식(TOC는 sticky, ask dock은 fixed)에 영향 없음, 접근성 문제없음(`BackArrowIcon`이 이미 `aria-hidden`, 보이는 텍스트로 대체), `StartingGuidePage`는 back link가 없어 영향 없음 — 이견 없음. Low 1건(테스트가 CSS 레이아웃 회귀까지는 완전히 못 잡음)만 한계로 기록.
+- `pnpm test`(34 files/208 tests, 회귀 없음)/`pnpm typecheck` 통과. 상세는 `docs/tasks/article-back-link-visibility/` 참고.
 
 ### 2026-08-20 — 가이드 페이지 진입 시 스크롤이 최상단이 아닌 중간에서 시작하던 버그 수정
 - 배경: 사용자가 "가이드 페이지에 진입하면 최상단에 스크롤이 포커스되지 않고 중간으로 된다"고 리포트.

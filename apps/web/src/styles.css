@@ -409,13 +409,11 @@ textarea::placeholder {
   }
 
   .article-back-link {
-    /* Absolutely positioned against .guide-detail-shell (its own relatively-positioned wrapper —
-       see that class), floating at its top-left instead of reserving a line inside the reading
-       column. An absolutely positioned child's left/top:0 aligns with the shell's OUTER edge
-       (the containing block is the padding box, whose own edges sit outside the padding) — so
-       left/top must mirror .guide-detail-shell's own px-4/py-7 (sm:px-6) padding exactly for the
-       button to visually align with where the shell's actual (padded) content starts. */
-    @apply absolute left-4 top-7 sm:left-6 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-md)] border border-panel-border bg-card-bg text-page-fg transition hover:border-accent/30 hover:bg-card-hover-bg hover:text-accent;
+    /* In-flow, inside .guide-detail-content (the reading column) — previously this floated as an
+       icon-only button absolutely positioned at the full-width .guide-detail-shell's outer edge,
+       disconnected from both the header and the title it navigates away from. Sitting directly
+       above the title with a text label makes it immediately readable as "back to the list". */
+    @apply mb-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-muted-fg transition hover:text-accent;
   }
 
   .control-input {
@@ -1039,11 +1037,10 @@ textarea::placeholder {
        router.tsx) — they render as direct children of .site-main instead, which has no
        max-width of its own. That gives this row the full app width to work with, so the TOC can
        be a genuine right-edge sidebar instead of sharing a max-width-capped, centered container
-       with the rest of the site. relative so .article-back-link can anchor to this shell's own
-       top-left corner. No max-width here is intentional: the TOC is meant to sit at the actual
-       right edge of the app frame, however wide that is, with content centering independently in
-       whatever space remains to its left (see .guide-detail-content). */
-    @apply relative px-4 py-7 sm:px-6;
+       with the rest of the site. No max-width here is intentional: the TOC is meant to sit at the
+       actual right edge of the app frame, however wide that is, with content centering
+       independently in whatever space remains to its left (see .guide-detail-content). */
+    @apply px-4 py-7 sm:px-6;
   }
 
   .guide-detail-row {
