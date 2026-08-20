@@ -19,11 +19,12 @@
 - [x] `result.md`에 구현 요약 기록 (배포 전/후 실측 비교는 배포 승인 후 추가 예정).
 - [x] README에 캐시/반영 지연 동작 문서화.
 - [x] `docs/prd/implementation-status.md` 갱신.
-- [ ] 배포 후 Before/After 실측 재기록.
+- [x] 배포 후 Before/After 실측 재기록.
 
 ## Progress Notes
 - 2026-08-20: spec.md/plan.md 작성 완료, 구현 착수.
 - 2026-08-20: 캐시 구현 + 테스트 완료, `pnpm test`/`pnpm typecheck` 통과, Codex 크리티컬 리뷰 완료 및 반영. 프로덕션 배포는 사용자 확인 대기 중.
+- 2026-08-20: PR #25 생성(`fix/wiki-pages-endpoint-cache` → `develop`), 사용자가 main 반영. 배포 후 Playwright로 프로덕션 재실측 — `/api/wiki-pages` 캐시 히트 시 7~9초 → 0.8초대로 감소 확인. AI 검색 자체 지연(~31초)은 스코프 밖이라 무변화, 후속 과제로 남김.
 
 ## Review Notes
 - Codex 크리티컬 리뷰(2026-08-20): Medium 2건(동시성 dedup 효과 과장 표현, 캐시 미키잉 가정 문서화), Low 2건(TTL 갱신 검증 부족, stale 실패 케이스 미검증) 지적 → 전부 반영.
