@@ -16,6 +16,14 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-20 — 검색 응답 지연 원인 진단 + `/api/wiki-pages` Lambda 캐시 추가 (배포 대기)
+- 배경: 사용자가 "질문 답변까지 20초 이상 걸린다"고 리포트 — Playwright로 ax-wiki.s-food.ai를 직접 실측(새 질문 평균 약 48초: `/api/wiki-pages` GET 7~14초 + AI 검색 POST 29~36초)하고 현재 캐시 전략을 코드로 조사.
+- **핵심 발견**: `packages/serverless/src/wikiPagesHandler.ts`(브라우저가 홈/검색 화면 진입마다 호출하는 Lambda)가 캐시 없이 매 요청마다 Confluence 전체 페이지 목록 + 페이지별 메타데이터를 재수집하고 있었음 — `aiOrchestration.ts`의 `loadWikiCache`(30분 TTL 메모리 캐시)와 동일한 데이터를 다루면서도 이 캐시가 적용되지 않은 구조적 누락이었음. AI 검색은 순차적인 2단계 OpenAI 호출(Stage1 `gpt-5-mini` 키워드 추출 → Stage2 `o4-mini` 답변 생성) 구조가 별도 병목으로 확인됨.
+- 1차 개선으로 `wikiPagesHandler.ts`에 동일한 TTL(30분) 인메모리 캐시 + in-flight 요청 공유(콜드 캐시 동시 요청 dedup) + 실패 시 미캐시 로직을 추가. 상세는 `docs/tasks/wiki-pages-endpoint-cache/`(spec/plan/tasks/test-result/result) 참고.
+- Codex 크리티컬 리뷰에서 4건 지적(동시성 dedup 효과가 실제 Lambda 실행 모델 대비 과장 표현될 수 있음, 캐시 미키잉이 단일 스페이스 가정에 의존한다는 문서화 부족, TTL 만료 테스트가 실제 데이터 갱신까지 검증 안 함, 만료 후 재조회 실패 시 stale 미서빙 케이스 미검증) 전부 반영.
+- `pnpm test`(신규 캐시 테스트 5건 포함, 전체 회귀 없음)/`pnpm typecheck` 통과. 인위적 지연(8초) mock으로 캐시 히트 시 지연이 사라짐을 확인.
+- **미완료**: 이번 변경은 아직 프로덕션에 배포되지 않음 — 사용자가 요청한 실제 Before/After 개선폭 측정은 배포 승인 후 진행 예정. AI 검색 파이프라인 최적화, 캐시 워밍, Lambda 메모리/동시성 설정 확인은 후속 과제로 남김.
+
 ### 2026-08-19 — 대화 목록 항목에서 제목이 길면 삭제 아이콘이 밀려 사라지던 버그 수정
 - 배경: 사용자가 좌측 대화 목록에서 요약된 대화 주제가 길어지면 휴지통 삭제 아이콘이 안 보이는 문제를 리포트.
 - 원인: `.search-conversation-title`는 이미 `flex-1 min-w-0 truncate`로 구성돼 있었지만, 그 부모인 `.search-conversation-item`(`.search-conversation-list`의 grid item)에 `min-w-0`이 없었음 — CSS Grid item은 기본값이 `min-width: auto`라 내용물(긴 제목 텍스트) 크기만큼 그리드 셀 자체가 늘어나 버려, 자식의 `truncate`가 전혀 작동하지 않고 행 전체가 사이드바 폭을 넘어 삭제 아이콘이 화면 밖으로 밀려났던 것.
