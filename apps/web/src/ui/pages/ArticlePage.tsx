@@ -141,17 +141,13 @@ export function ArticlePage({ section }: { section: WikiSection }) {
 
   return (
     <div className="guide-detail-shell">
-      <Link
-        className="article-back-link"
-        to={`/${section}`}
-        aria-label="목록으로 돌아가기"
-        title="목록으로 돌아가기"
-      >
-        <BackArrowIcon />
-      </Link>
-
       <div className="guide-detail-row">
         <article className="guide-detail-content article-body" ref={articleRef}>
+          <Link className="article-back-link" to={`/${section}`}>
+            <BackArrowIcon />
+            목록으로
+          </Link>
+
           <p className="eyebrow">
             {document.metadata.docType}
           </p>
