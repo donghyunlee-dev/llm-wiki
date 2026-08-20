@@ -16,6 +16,14 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-20 — 가이드 페이지 진입 시 스크롤이 최상단이 아닌 중간에서 시작하던 버그 수정
+- 배경: 사용자가 "가이드 페이지에 진입하면 최상단에 스크롤이 포커스되지 않고 중간으로 된다"고 리포트.
+- 원인: `apps/web/src/router.tsx`가 `createBrowserRouter` 데이터 라우터를 쓰는데, 공통 레이아웃(`AppLayout.tsx`)에 React Router의 `<ScrollRestoration />`이 빠져 있어 client-side 내비게이션 시 브라우저가 이전 페이지의 스크롤 위치를 그대로 유지하고 있었음. 가이드뿐 아니라 이 레이아웃을 쓰는 모든 라우트(홈/문서/FAQ/라이브러리/프로젝트)에 동일하게 영향.
+- `AppLayout.tsx`에 `<ScrollRestoration />` 한 줄 추가로 수정. TDD로 진행(`AppLayout.test.tsx` 신규, `<ScrollRestoration />`이 렌더 트리에 포함되는지 구조적 검증).
+- Playwright로 로컬 dev 서버(실제 Confluence 원격 데이터)에서 검증: 스크롤 후 새 가이드 페이지 진입 시 최상단 시작 확인(원 버그 수정), 기존 TOC 클릭 해시 스크롤 회귀 없음, 해시 포함 URL 직접 진입 시 정상 동작.
+- Codex 크리티컬 리뷰: 컴포넌트 배치 자체는 문제없음 확인. Medium 1건(뒤로가기 시 스크롤 복원이 로컬 dev 서버에서 관찰되지 않음 — StrictMode 개발 전용 effect 이중 실행 가설, 프로덕션 빌드로 재확인 시도했으나 스냅샷 데이터 한계로 재현 실패)과 Low 1건(jsdom의 Node/undici `AbortSignal` realm 불일치로 실제 내비게이션 단위 테스트가 막혀 구조적 검증에 그침)을 Open Gap으로 기록 — 둘 다 사용자가 리포트한 원 버그와는 무관.
+- `pnpm test`(34 files/207 tests, 회귀 없음)/`pnpm typecheck` 통과. 상세는 `docs/tasks/guide-page-scroll-restoration/`(spec/plan/tasks/test-result/result) 참고.
+
 ### 2026-08-20 — 검색 응답 지연 원인 진단 + `/api/wiki-pages` Lambda 캐시 추가 (배포 대기)
 - 배경: 사용자가 "질문 답변까지 20초 이상 걸린다"고 리포트 — Playwright로 ax-wiki.s-food.ai를 직접 실측(새 질문 평균 약 48초: `/api/wiki-pages` GET 7~14초 + AI 검색 POST 29~36초)하고 현재 캐시 전략을 코드로 조사.
 - **핵심 발견**: `packages/serverless/src/wikiPagesHandler.ts`(브라우저가 홈/검색 화면 진입마다 호출하는 Lambda)가 캐시 없이 매 요청마다 Confluence 전체 페이지 목록 + 페이지별 메타데이터를 재수집하고 있었음 — `aiOrchestration.ts`의 `loadWikiCache`(30분 TTL 메모리 캐시)와 동일한 데이터를 다루면서도 이 캐시가 적용되지 않은 구조적 누락이었음. AI 검색은 순차적인 2단계 OpenAI 호출(Stage1 `gpt-5-mini` 키워드 추출 → Stage2 `o4-mini` 답변 생성) 구조가 별도 병목으로 확인됨.
