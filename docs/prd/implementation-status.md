@@ -16,6 +16,23 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+
+### 2026-08-20 — 가이드 페이지 진입 시 스크롤이 최상단이 아닌 중간에서 시작하던 버그 수정
+- 배경: 사용자가 "가이드 페이지에 진입하면 최상단에 스크롤이 포커스되지 않고 중간으로 된다"고 리포트.
+- 원인: `apps/web/src/router.tsx`가 `createBrowserRouter` 데이터 라우터를 쓰는데, 공통 레이아웃(`AppLayout.tsx`)에 React Router의 `<ScrollRestoration />`이 빠져 있어 client-side 내비게이션 시 브라우저가 이전 페이지의 스크롤 위치를 그대로 유지하고 있었음. 가이드뿐 아니라 이 레이아웃을 쓰는 모든 라우트(홈/문서/FAQ/라이브러리/프로젝트)에 동일하게 영향.
+- `AppLayout.tsx`에 `<ScrollRestoration />` 한 줄 추가로 수정. TDD로 진행(`AppLayout.test.tsx` 신규, `<ScrollRestoration />`이 렌더 트리에 포함되는지 구조적 검증).
+- Playwright로 로컬 dev 서버(실제 Confluence 원격 데이터)에서 검증: 스크롤 후 새 가이드 페이지 진입 시 최상단 시작 확인(원 버그 수정), 기존 TOC 클릭 해시 스크롤 회귀 없음, 해시 포함 URL 직접 진입 시 정상 동작.
+- Codex 크리티컬 리뷰: 컴포넌트 배치 자체는 문제없음 확인. Medium 1건(뒤로가기 시 스크롤 복원이 로컬 dev 서버에서 관찰되지 않음 — StrictMode 개발 전용 effect 이중 실행 가설, 프로덕션 빌드로 재확인 시도했으나 스냅샷 데이터 한계로 재현 실패)과 Low 1건(jsdom의 Node/undici `AbortSignal` realm 불일치로 실제 내비게이션 단위 테스트가 막혀 구조적 검증에 그침)을 Open Gap으로 기록 — 둘 다 사용자가 리포트한 원 버그와는 무관.
+- `pnpm test`(34 files/207 tests, 회귀 없음)/`pnpm typecheck` 통과. 상세는 `docs/tasks/guide-page-scroll-restoration/`(spec/plan/tasks/test-result/result) 참고.
+
+### 2026-08-20 — AI 검색 지연 근본 원인은 모델이 아니라 Lambda 메모리 설정이었음 (전체 wiki Lambda 1024MB로 상향)
+- 배경: `/api/wiki-pages` 캐시 적용 후에도 AI 검색 자체가 여전히 약 31초 걸려, 사용자가 "답변 퀄리티를 지키면서 파이프라인을 최적화"해 달라고 요청.
+- 1차 가설이었던 Stage2 모델 교체(`o4-mini` → `gpt-5-mini`)를 로컬에서 실제 파이프라인 함수로 직접 실측한 결과, 오히려 2배 이상 느려지고(6~7초 → 12~19초) 스타일 가이드 준수도(`[괄호형 소제목]` 형식)가 떨어짐을 확인해 **폐기**. `gpt-4.1-mini` 같은 비추론 모델은 코드가 `reasoning.effort`를 모든 모델에 고정 전송해 502로 즉시 실패, 요청 빌더 리팩터링 없이는 시도 불가함을 확인.
+- 로컬 baseline(9~12초)과 프로덕션 실측(~31초) 간 3배 차이를 근거로 인프라 쪽을 의심 — AWS CLI(`aws lambda get-function-configuration`)로 확인한 결과 `sfood-ax-ai-search`/`sfood-ax-ai-ask`/`sfood-ax-wiki-pages`/`sfood-ax-wiki-documents` 4개 Lambda가 전부 **256MB**(최저 실용 티어)로 설정되어 있었음. CloudWatch Logs는 조직 정책으로 접근이 막혀 Duration 로그 기반 확정 진단은 못하고, 메모리를 올려 재실측하는 방식으로 검증.
+- 사용자 확인 후 `sfood-ax-ai-search`부터 1024MB로 상향해 실측 확인(콜드 15.4초, 웜 9.8초 — 기존 29~36초 대비 크게 개선) → 나머지 3개 Lambda도 동일하게 1024MB로 상향(사용자 승인). 코드/배포 변경 없음, 순수 AWS 설정 변경.
+- 상세는 `docs/tasks/wiki-lambda-memory-latency-fix/`(spec/plan/tasks/test-result/result) 참고. Open Gap: 이 설정을 관리하는 IaC가 없어 AWS 콘솔/CLI에만 반영됨 — Lambda 재생성 시 유실 위험.
+
+
 ### 2026-08-20 — 검색 응답 지연 원인 진단 + `/api/wiki-pages` Lambda 캐시 추가 (배포 대기)
 - 배경: 사용자가 "질문 답변까지 20초 이상 걸린다"고 리포트 — Playwright로 ax-wiki.s-food.ai를 직접 실측(새 질문 평균 약 48초: `/api/wiki-pages` GET 7~14초 + AI 검색 POST 29~36초)하고 현재 캐시 전략을 코드로 조사.
 - **핵심 발견**: `packages/serverless/src/wikiPagesHandler.ts`(브라우저가 홈/검색 화면 진입마다 호출하는 Lambda)가 캐시 없이 매 요청마다 Confluence 전체 페이지 목록 + 페이지별 메타데이터를 재수집하고 있었음 — `aiOrchestration.ts`의 `loadWikiCache`(30분 TTL 메모리 캐시)와 동일한 데이터를 다루면서도 이 캐시가 적용되지 않은 구조적 누락이었음. AI 검색은 순차적인 2단계 OpenAI 호출(Stage1 `gpt-5-mini` 키워드 추출 → Stage2 `o4-mini` 답변 생성) 구조가 별도 병목으로 확인됨.
