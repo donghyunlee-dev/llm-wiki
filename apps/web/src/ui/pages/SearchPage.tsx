@@ -33,6 +33,25 @@ type LiveTurn = {
   errorMessage?: string;
 };
 
+function SidebarToggleIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className={collapsed ? "h-4 w-4 rotate-180" : "h-4 w-4"}
+    >
+      <path
+        d="M12.5 15.5 7 10l5.5-5.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function SearchPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -43,6 +62,7 @@ export function SearchPage() {
   const [showEmptyHint, setShowEmptyHint] = useState(false);
   const [isConversationDrawerOpen, setIsConversationDrawerOpen] = useState(false);
   const [isContextDrawerOpen, setIsContextDrawerOpen] = useState(false);
+  const [isConversationSidebarCollapsed, setIsConversationSidebarCollapsed] = useState(false);
   const emptyHintTimerRef = useRef<number | null>(null);
   const requestedQuestionsRef = useRef(new Set<string>());
   const turnRefs = useRef(new Map<string, HTMLDivElement>());
@@ -288,10 +308,30 @@ export function SearchPage() {
 
   return (
     <div className="search-shell" ref={shellRef}>
-      <div className={isConversationDrawerOpen ? "search-sidebar-left search-sidebar-open" : "search-sidebar-left"}>
+      <div
+        id="search-conversation-sidebar"
+        className={[
+          "search-sidebar-left",
+          isConversationDrawerOpen ? "search-sidebar-open" : "",
+          isConversationSidebarCollapsed ? "search-sidebar-collapsed" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        <button
+          type="button"
+          className="search-sidebar-collapse-toggle"
+          aria-expanded={!isConversationSidebarCollapsed}
+          aria-controls="search-conversation-sidebar"
+          aria-label={isConversationSidebarCollapsed ? "대화 목록 열기" : "대화 목록 닫기"}
+          onClick={() => setIsConversationSidebarCollapsed((collapsed) => !collapsed)}
+        >
+          <SidebarToggleIcon collapsed={isConversationSidebarCollapsed} />
+        </button>
         <ConversationSidebar
           conversations={conversations}
           activeConversationId={activeConversationId}
+          title="최근 대화"
           onSelect={handleSelectConversation}
           onDelete={handleDeleteConversation}
         />
@@ -299,10 +339,10 @@ export function SearchPage() {
 
       <div className="search-main-column">
         <div className="search-mobile-toolbar">
-          <button type="button" onClick={() => setIsConversationDrawerOpen(true)}>
+          <button type="button" className="search-toolbar-button" onClick={() => setIsConversationDrawerOpen(true)}>
             대화 목록
           </button>
-          <button type="button" onClick={() => setIsContextDrawerOpen(true)}>
+          <button type="button" className="search-toolbar-button" onClick={() => setIsContextDrawerOpen(true)}>
             관련 페이지
           </button>
         </div>

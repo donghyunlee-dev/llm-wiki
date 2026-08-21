@@ -1639,7 +1639,7 @@ textarea::placeholder {
     @apply hidden gap-2 border-b border-panel-border-soft bg-page-bg px-4 py-2 max-lg:flex;
   }
 
-  .search-mobile-toolbar button {
+  .search-toolbar-button {
     @apply rounded-[var(--radius-md)] border border-panel-border-soft bg-card-bg px-3 py-1.5 text-[13px] font-semibold text-page-fg transition hover:bg-card-hover-bg;
   }
 
@@ -1653,7 +1653,7 @@ textarea::placeholder {
   }
 
   .search-sidebar-left {
-    @apply border-r;
+    @apply relative border-r;
   }
 
   .search-sidebar-right {
@@ -1676,6 +1676,22 @@ textarea::placeholder {
   .search-sidebar-left.search-sidebar-open,
   .search-sidebar-right.search-sidebar-open {
     @apply max-lg:translate-x-0;
+  }
+
+  .search-sidebar-collapse-toggle {
+    @apply absolute right-2 top-3 z-10 hidden h-7 w-7 items-center justify-center rounded-[var(--radius-md)] border border-panel-border-soft bg-card-bg text-muted-fg transition hover:bg-card-hover-bg hover:text-accent lg:flex;
+  }
+
+  .search-sidebar-left.search-sidebar-collapsed {
+    @apply lg:w-10 lg:overflow-hidden;
+  }
+
+  .search-sidebar-left.search-sidebar-collapsed .search-sidebar-collapse-toggle {
+    @apply lg:right-1.5;
+  }
+
+  .search-sidebar-left.search-sidebar-collapsed .search-conversation-sidebar {
+    @apply lg:hidden;
   }
 
   .search-drawer-backdrop {
