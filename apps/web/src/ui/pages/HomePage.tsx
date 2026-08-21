@@ -248,6 +248,25 @@ function GuideRowIcon({ pinned }: { pinned: boolean }) {
   );
 }
 
+function SidebarToggleIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className={collapsed ? "h-4 w-4 rotate-180" : "h-4 w-4"}
+    >
+      <path
+        d="M12.5 15.5 7 10l5.5-5.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function HomePage() {
   const { documents, isLoading } = useWikiData();
   const navigate = useNavigate();
@@ -289,6 +308,16 @@ export function HomePage() {
             .filter(Boolean)
             .join(" ")}
         >
+          <button
+            type="button"
+            className="search-sidebar-collapse-toggle"
+            aria-expanded={!isConversationSidebarCollapsed}
+            aria-controls="home-conversation-sidebar"
+            aria-label={isConversationSidebarCollapsed ? "대화 목록 열기" : "대화 목록 닫기"}
+            onClick={() => setIsConversationSidebarCollapsed((collapsed) => !collapsed)}
+          >
+            <SidebarToggleIcon collapsed={isConversationSidebarCollapsed} />
+          </button>
           <ConversationSidebar
             conversations={conversations}
             activeConversationId={null}
@@ -306,28 +335,15 @@ export function HomePage() {
 
       <div className="search-main-column">
         {hasConversations ? (
-          <>
-            <div className="search-mobile-toolbar">
-              <button
-                type="button"
-                className="search-toolbar-button"
-                onClick={() => setIsConversationDrawerOpen(true)}
-              >
-                최근 대화
-              </button>
-            </div>
-            <div className="search-desktop-sidebar-toggle">
-              <button
-                type="button"
-                className="search-toolbar-button"
-                aria-expanded={!isConversationSidebarCollapsed}
-                aria-controls="home-conversation-sidebar"
-                onClick={() => setIsConversationSidebarCollapsed((collapsed) => !collapsed)}
-              >
-                {isConversationSidebarCollapsed ? "대화 목록 열기" : "대화 목록 닫기"}
-              </button>
-            </div>
-          </>
+          <div className="search-mobile-toolbar">
+            <button
+              type="button"
+              className="search-toolbar-button"
+              onClick={() => setIsConversationDrawerOpen(true)}
+            >
+              최근 대화
+            </button>
+          </div>
         ) : null}
 
         <div className="home-scroll-column">

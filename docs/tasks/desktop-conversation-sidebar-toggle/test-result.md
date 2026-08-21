@@ -27,6 +27,14 @@
 ## Retest Results
 Codex 리뷰 반영 후 `pnpm typecheck`/`pnpm test` 재실행, 통과 유지.
 
+### 재설계 후 재검증 (텍스트 버튼 → 사이드바 아이콘 토글 + 접힘 rail)
+- PASS: `pnpm typecheck`
+- PASS: `pnpm test` (34 files / 208 tests, 회귀 없음)
+- PASS: Playwright(홈, 데스크톱 1440x900, 다크) — 사이드바 우상단 chevron 아이콘 클릭 → `lg:w-10` rail로 축소 + 아이콘이 반대 방향으로 회전, 재클릭 → 원상 복귀
+- PASS: Playwright(검색, 데스크톱, 라이트 테마) — 동일 왕복 동작, `aria-label="대화 목록 닫기"/"대화 목록 열기"`로 전환 확인
+- PASS: Playwright(검색, 모바일 390x844) — 데스크톱 토글 버튼이 노출되지 않음(`hidden lg:flex`), 기존 "대화 목록"/"관련 페이지" 모바일 툴바와 드로어 정상 동작
+- NOTE: 모바일 드로어 상단이 사이트 헤더(59px, z-40)에 일부 가려지는 현상을 관찰했으나, `git diff c5c4305 origin/develop -- apps/web/src/styles.css`로 해당 CSS 영역이 이번 변경과 무관함을 확인 — 사전 존재 이슈로 판단, 범위 밖으로 분류(수정하지 않음, `result.md` Open Gaps에 기록)
+
 ## Acceptance Criteria Coverage
 - AC1: 충족(Playwright 확인)
 - AC2: 충족(같은 버튼으로 재오픈 확인)

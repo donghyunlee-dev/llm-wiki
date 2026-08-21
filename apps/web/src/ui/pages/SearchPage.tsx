@@ -33,6 +33,25 @@ type LiveTurn = {
   errorMessage?: string;
 };
 
+function SidebarToggleIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 20 20"
+      fill="none"
+      className={collapsed ? "h-4 w-4 rotate-180" : "h-4 w-4"}
+    >
+      <path
+        d="M12.5 15.5 7 10l5.5-5.5"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function SearchPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -299,6 +318,16 @@ export function SearchPage() {
           .filter(Boolean)
           .join(" ")}
       >
+        <button
+          type="button"
+          className="search-sidebar-collapse-toggle"
+          aria-expanded={!isConversationSidebarCollapsed}
+          aria-controls="search-conversation-sidebar"
+          aria-label={isConversationSidebarCollapsed ? "대화 목록 열기" : "대화 목록 닫기"}
+          onClick={() => setIsConversationSidebarCollapsed((collapsed) => !collapsed)}
+        >
+          <SidebarToggleIcon collapsed={isConversationSidebarCollapsed} />
+        </button>
         <ConversationSidebar
           conversations={conversations}
           activeConversationId={activeConversationId}
@@ -315,17 +344,6 @@ export function SearchPage() {
           </button>
           <button type="button" className="search-toolbar-button" onClick={() => setIsContextDrawerOpen(true)}>
             관련 페이지
-          </button>
-        </div>
-        <div className="search-desktop-sidebar-toggle">
-          <button
-            type="button"
-            className="search-toolbar-button"
-            aria-expanded={!isConversationSidebarCollapsed}
-            aria-controls="search-conversation-sidebar"
-            onClick={() => setIsConversationSidebarCollapsed((collapsed) => !collapsed)}
-          >
-            {isConversationSidebarCollapsed ? "대화 목록 열기" : "대화 목록 닫기"}
           </button>
         </div>
 
