@@ -34,8 +34,9 @@
 
 ## Visibility And Copy Constraints
 - Do not expose `Confluence`, `컨플루언스`, `DB`, `데이터베이스`.
-- Avoid `AI Wiki`, bare `AI`, `대시보드`, `로그`, `개인`, `진행률`.
+- Avoid `대시보드`, `로그`, `개인`, `진행률`.
 - `LLM Wiki` is allowed as the product name.
+- `AI Wiki`, bare `AI` are allowed since `home-hero-ai-copy` — the wiki's identity is AI/AI Agent utilization guides, so hiding "AI" caused users to mistake it for a general company-wide knowledge base.
 
 ## Test Constraints
 - 4 entry cards

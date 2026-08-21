@@ -103,11 +103,10 @@ Blueprint CTA:
 - `로그`
 - `개인`
 - `진행률`
-- `AI Wiki`
-- bare `AI`
 
 Allowed exception:
 - `LLM Wiki`
+- `AI Wiki`, bare `AI` (allowed since `home-hero-ai-copy` — the wiki's identity is AI/AI Agent utilization guides, so hiding "AI" caused users to mistake it for a general company-wide knowledge base)
 
 ## Prototype Notes
 The attached JSX prototype also embeds policy-style UI tests:

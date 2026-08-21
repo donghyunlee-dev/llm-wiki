@@ -116,7 +116,9 @@ describe("HomePage", () => {
       </MemoryRouter>,
     );
 
-    expect(markup).toContain("궁금한 것을 검색해보세요");
+    expect(markup).toContain("AI 활용 가이드");
+    expect(markup).toContain("AI에게 궁금한 것을 물어보세요");
+    expect(markup).toContain("AI는 어떻게 활용하나요?");
     expect(markup).toContain("<textarea");
     expect(markup).toContain("추천 가이드");
     expect(markup).toContain("시작 가이드");
@@ -202,7 +204,7 @@ describe("HomePage", () => {
       </MemoryRouter>,
     );
 
-    expect(markup).toContain("궁금한 것을 검색해보세요");
+    expect(markup).toContain("AI에게 궁금한 것을 물어보세요");
     expect(markup).toContain("추천 가이드");
     expect(markup).toContain("불러오는 중");
     expect(markup).toContain("교육 시작하기");

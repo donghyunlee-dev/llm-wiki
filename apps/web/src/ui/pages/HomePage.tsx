@@ -50,6 +50,7 @@ function SearchHero() {
   return (
     <section className="home-hero-section">
       <div className="home-main-frame text-center">
+        <p className="home-eyebrow">{HOME_CONTENT.hero.eyebrow}</p>
         <h1 className="home-title">{HOME_CONTENT.hero.title}</h1>
 
         <PromptComposer
