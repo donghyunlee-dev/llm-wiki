@@ -16,6 +16,17 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-21 — 사용자 리포트 5건 조사 후 4건 UX 수정 (대화 목록 데스크톱 토글, FAQ 진입 링크, 가이드 목록 라벨 제거, 검색 페이지 대화 목록 헤딩)
+- 배경: 사용자가 한 번에 5가지 리포트를 전달 — (1) 좌측 대화 목록 닫고/열기 버튼, (2) FAQ 리스트를 볼 방법이 없음, (3) 메인화면 시작 가이드가 안 바뀜, (4) `/guides` 목록의 "[가이드문서]" 텍스트 제거, (5) 검색 페이지 좌측 대화 목록에 타이틀이 안 보임. 5건 모두 먼저 조사만 진행(Explore 서브에이전트 5개 병렬)해 사용자에게 원인과 선택지를 보고한 뒤, 승인받은 4건만 구현.
+- **(3) 시작 가이드는 버그가 아니라 의도된 고정 동작으로 확인되어 수정하지 않음**: `HomePage.tsx`의 `findStartingGuideDocument`가 slug `agent-start`/제목/ID(`63668231`) 순으로 특정 문서 하나를 항상 찾도록 명시적으로 작성돼 있고, 과거 태스크 문서에도 "fixed starting guide"로 기록돼 있음. `development-rules.md`의 Frozen Behaviors에도 "시작 가이드 핀: 홈 추천 가이드의 첫 번째 카드는 항상 시작 가이드(agent-start)로 고정"이 명시돼 있어 동결된 동작임을 재확인.
+- **(5) 검색 페이지 대화 목록 헤딩 추가**: 사용자 확인 결과 "타이틀이 안 보인다"는 개별 대화 제목이 아니라 섹션 헤딩("최근 대화")을 의미. `SearchPage.tsx`의 `ConversationSidebar`에 홈과 동일하게 `title="최근 대화"` prop 추가(`docs/tasks/search-conversation-sidebar-title/`).
+- **(4) `/guides` 목록 "가이드 문서" 라벨 제거**: 실제 텍스트는 `CategoryPage.tsx`가 `section === "guides"`일 때만 `WikiDocumentListItem`에 전달하던 `eyebrow="가이드 문서"`(대괄호 없음). 사용자 승인으로 완전 제거, 유일한 사용처였으므로 `WikiDocumentListItem`의 `eyebrow` prop 자체도 함께 삭제(`docs/tasks/guides-list-remove-eyebrow-label/`).
+- **(2) 홈 화면에 FAQ 진입 링크 추가**: `/faq` 라우트·목록 페이지는 이미 정상 구현돼 있었으나 어떤 화면에도 진입 링크가 없어 URL 직접 입력 외에는 접근 불가능했음. 2026-05-19에 홈 단순화 목적으로 FAQ 진입 블록이 의도적으로 제거된 이력이 있고, `search-flow-contract.md`의 "FAQ는 검색 화면의 별도 `faq` 섹션에서만 노출된다"는 문구가 있었으나, 이는 AI 검색 답변 내 문서 노출 규칙이며 정적 내비게이션과는 무관함을 계약 문서에 구분해 명시(사용자 승인). 사용자는 사이트 헤더 전역 개편이 아닌 "홈 화면에 FAQ 진입 링크만 추가"를 선택 — `HOME_CONTENT.entryCards`에 있던 미사용 FAQ 카드 데이터를 실제로 사용해 홈 "추천 가이드" 헤더에 기존 `home-secondary-button` 스타일의 링크로 추가(`docs/tasks/home-faq-entry-link/`).
+- **(1) 데스크톱 대화 목록 사이드바 접기/펼치기 토글 구현**: 기존 `isConversationDrawerOpen`은 모바일 드로어 전용(`max-lg` 트랜지션)이라 데스크톱(`lg` 이상)에는 접기 기능이 전혀 없었음. 홈/검색 양쪽에 별도 데스크톱용 state(`isConversationSidebarCollapsed`)를 추가하고, `.search-sidebar-collapsed`(`lg:hidden`) CSS와 `lg`에서만 보이는 토글 바(`.search-desktop-sidebar-toggle`)를 새로 추가 — 모바일 드로어 로직과 완전히 분리해 혼용하지 않음. 기존 모바일 툴바 버튼 스타일은 `.search-toolbar-button` 공용 클래스로 리팩터링해 새 토글 버튼과 공유(`docs/tasks/desktop-conversation-sidebar-toggle/`).
+- Codex 크리티컬 리뷰(4건 묶음 diff 기준): Critical/Major 없음, Minor 2건 모두 반영 — (a) FAQ 카드 조회에 non-null assertion(`!`) 사용 시 향후 카드 구성 변경 시 크래시 위험 → `?? { title: "FAQ", href: "/faq" }` fallback으로 교체, (b) 데스크톱 토글 버튼에 `aria-expanded`/`aria-controls` 부재 → 사이드바 컨테이너에 stable id 부여 후 속성 추가.
+- Playwright로 실제 로컬 dev 서버(실 Confluence 데이터 + 기존 저장된 대화)에서 라이트/다크, 데스크톱(1440x900)/모바일(390x844) 확인: `/guides` 목록에 "가이드 문서" 라벨 미노출, 홈 FAQ 링크 클릭 시 `/faq` 정상 이동, 홈/검색 양쪽에서 데스크톱 토글 클릭 시 사이드바 사라짐→재클릭 시 복귀, 모바일에서는 기존 드로어 동작 회귀 없음, 검색 페이지 좌측 사이드바에 "최근 대화" 헤딩 노출.
+- `pnpm test`(34 files/208 tests, 회귀 없음)/`pnpm typecheck` 통과(Codex 리뷰 반영 후 재검증 포함). 상세는 각 항목의 `docs/tasks/{search-conversation-sidebar-title,guides-list-remove-eyebrow-label,home-faq-entry-link,desktop-conversation-sidebar-toggle}/` 참고.
+
 ### 2026-08-21 — 홈 화면 히어로 문구를 "AI/AI Agent 활용" 정체성이 드러나도록 교체
 - 배경: 사용자가 "홈 문구('궁금한 것을 검색해보세요')가 범위를 특정하지 않아, ERP/WMS/OMS 같은 회사 업무 전반을 검색해도 될 것처럼 보인다"고 리포트. 이 위키는 실제로는 AI/AI Agent 활용·AX 관련 가이드/지식 전용이며 회사 업무 시스템과는 무관함.
 - 조사 결과 `homeContent.ts`의 `BLOCKED_UI_TERMS`에 `"AI Wiki"`, `"AI "`가 금지어로 등록되어 있어 정체성을 드러내는 문구를 쓸 수 없던 상태였음. 사용자와 논의 후(1) 해당 두 금지어 항목 제거, (2) "개발" 프레이밍 대신 일반 사용자 대상 "활용/가이드 탐색" 프레이밍으로 문구 확정, (3) "AI Agent"라는 단어가 일반 사용자에게 어렵다는 재피드백을 받아 "AI"로 단순화.

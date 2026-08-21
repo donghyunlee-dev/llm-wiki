@@ -84,6 +84,9 @@ function SearchHero() {
   );
 }
 
+const faqEntryCard =
+  HOME_CONTENT.entryCards.find((card) => card.href === "/faq") ?? { title: "FAQ", href: "/faq" };
+
 function RecommendedGuidesSection(props: {
   guides: FeaturedGuide[];
   isLoading: boolean;
@@ -96,9 +99,14 @@ function RecommendedGuidesSection(props: {
       <div className="home-card home-guides-card home-support-frame">
         <div className="home-guides-header">
           <h2 className="home-section-title">추천 가이드</h2>
-          <Link className="home-secondary-button" to="/guides">
-            전체 보기
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link className="home-secondary-button" to="/faq">
+              {faqEntryCard.title}
+            </Link>
+            <Link className="home-secondary-button" to="/guides">
+              전체 보기
+            </Link>
+          </div>
         </div>
 
         <div className="home-guides-cards">
@@ -246,6 +254,7 @@ export function HomePage() {
   const { conversations, deleteConversation } = useSearchConversations();
   const shellRef = useRef<HTMLDivElement | null>(null);
   const [isConversationDrawerOpen, setIsConversationDrawerOpen] = useState(false);
+  const [isConversationSidebarCollapsed, setIsConversationSidebarCollapsed] = useState(false);
 
   const featuredGuides = useMemo(() => buildFeaturedGuides(documents), [documents]);
   const hasLessons = useMemo(() => listLessonDocumentsFrom(documents).length > 0, [documents]);
@@ -271,9 +280,14 @@ export function HomePage() {
     <div className="search-shell" ref={shellRef}>
       {hasConversations ? (
         <div
-          className={
-            isConversationDrawerOpen ? "search-sidebar-left search-sidebar-open" : "search-sidebar-left"
-          }
+          id="home-conversation-sidebar"
+          className={[
+            "search-sidebar-left",
+            isConversationDrawerOpen ? "search-sidebar-open" : "",
+            isConversationSidebarCollapsed ? "search-sidebar-collapsed" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         >
           <ConversationSidebar
             conversations={conversations}
@@ -292,11 +306,28 @@ export function HomePage() {
 
       <div className="search-main-column">
         {hasConversations ? (
-          <div className="search-mobile-toolbar">
-            <button type="button" onClick={() => setIsConversationDrawerOpen(true)}>
-              최근 대화
-            </button>
-          </div>
+          <>
+            <div className="search-mobile-toolbar">
+              <button
+                type="button"
+                className="search-toolbar-button"
+                onClick={() => setIsConversationDrawerOpen(true)}
+              >
+                최근 대화
+              </button>
+            </div>
+            <div className="search-desktop-sidebar-toggle">
+              <button
+                type="button"
+                className="search-toolbar-button"
+                aria-expanded={!isConversationSidebarCollapsed}
+                aria-controls="home-conversation-sidebar"
+                onClick={() => setIsConversationSidebarCollapsed((collapsed) => !collapsed)}
+              >
+                {isConversationSidebarCollapsed ? "대화 목록 열기" : "대화 목록 닫기"}
+              </button>
+            </div>
+          </>
         ) : null}
 
         <div className="home-scroll-column">

@@ -43,6 +43,7 @@ export function SearchPage() {
   const [showEmptyHint, setShowEmptyHint] = useState(false);
   const [isConversationDrawerOpen, setIsConversationDrawerOpen] = useState(false);
   const [isContextDrawerOpen, setIsContextDrawerOpen] = useState(false);
+  const [isConversationSidebarCollapsed, setIsConversationSidebarCollapsed] = useState(false);
   const emptyHintTimerRef = useRef<number | null>(null);
   const requestedQuestionsRef = useRef(new Set<string>());
   const turnRefs = useRef(new Map<string, HTMLDivElement>());
@@ -288,10 +289,20 @@ export function SearchPage() {
 
   return (
     <div className="search-shell" ref={shellRef}>
-      <div className={isConversationDrawerOpen ? "search-sidebar-left search-sidebar-open" : "search-sidebar-left"}>
+      <div
+        id="search-conversation-sidebar"
+        className={[
+          "search-sidebar-left",
+          isConversationDrawerOpen ? "search-sidebar-open" : "",
+          isConversationSidebarCollapsed ? "search-sidebar-collapsed" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <ConversationSidebar
           conversations={conversations}
           activeConversationId={activeConversationId}
+          title="최근 대화"
           onSelect={handleSelectConversation}
           onDelete={handleDeleteConversation}
         />
@@ -299,11 +310,22 @@ export function SearchPage() {
 
       <div className="search-main-column">
         <div className="search-mobile-toolbar">
-          <button type="button" onClick={() => setIsConversationDrawerOpen(true)}>
+          <button type="button" className="search-toolbar-button" onClick={() => setIsConversationDrawerOpen(true)}>
             대화 목록
           </button>
-          <button type="button" onClick={() => setIsContextDrawerOpen(true)}>
+          <button type="button" className="search-toolbar-button" onClick={() => setIsContextDrawerOpen(true)}>
             관련 페이지
+          </button>
+        </div>
+        <div className="search-desktop-sidebar-toggle">
+          <button
+            type="button"
+            className="search-toolbar-button"
+            aria-expanded={!isConversationSidebarCollapsed}
+            aria-controls="search-conversation-sidebar"
+            onClick={() => setIsConversationSidebarCollapsed((collapsed) => !collapsed)}
+          >
+            {isConversationSidebarCollapsed ? "대화 목록 열기" : "대화 목록 닫기"}
           </button>
         </div>
 

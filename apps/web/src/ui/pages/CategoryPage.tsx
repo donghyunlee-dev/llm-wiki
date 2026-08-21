@@ -181,7 +181,6 @@ export function CategoryPage({ section }: { section: WikiSection }) {
                 key={document.id}
                 to={`/${section}/${document.slug}`}
                 document={document}
-                eyebrow={section === "guides" ? "가이드 문서" : undefined}
               />
             ))
           ) : (
