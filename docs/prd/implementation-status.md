@@ -16,6 +16,13 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-21 — 홈 화면 히어로 문구를 "AI/AI Agent 활용" 정체성이 드러나도록 교체
+- 배경: 사용자가 "홈 문구('궁금한 것을 검색해보세요')가 범위를 특정하지 않아, ERP/WMS/OMS 같은 회사 업무 전반을 검색해도 될 것처럼 보인다"고 리포트. 이 위키는 실제로는 AI/AI Agent 활용·AX 관련 가이드/지식 전용이며 회사 업무 시스템과는 무관함.
+- 조사 결과 `homeContent.ts`의 `BLOCKED_UI_TERMS`에 `"AI Wiki"`, `"AI "`가 금지어로 등록되어 있어 정체성을 드러내는 문구를 쓸 수 없던 상태였음. 사용자와 논의 후(1) 해당 두 금지어 항목 제거, (2) "개발" 프레이밍 대신 일반 사용자 대상 "활용/가이드 탐색" 프레이밍으로 문구 확정, (3) "AI Agent"라는 단어가 일반 사용자에게 어렵다는 재피드백을 받아 "AI"로 단순화.
+- `homeContent.ts`: `hero.eyebrow`("AI 활용 가이드"), `hero.title`("AI에게 궁금한 것을 물어보세요"), `search.placeholder`("예: AI는 어떻게 활용하나요?")/`search.examples`("AI 활용 방법" 등) 문구로 최종 확정. `HomePage.tsx`: 기존에 데이터·CSS(`.home-eyebrow`)는 있었지만 미렌더링 상태였던 `hero.eyebrow`를 `<h1>` 위에 렌더링해 라벨+제목 2줄 구조 완성(새 CSS 추가 없음).
+- Codex 크리티컬 리뷰(1차)에서 `docs/prd/ui-spec.md`, `docs/prd/development-prompt-reference.md`가 여전히 "AI Wiki/bare AI 금지" 계약을 문서로 명시하고 있어 코드와 불일치한다는 지적을 받아 두 문서 모두 갱신. `HomePage.test.tsx`의 eyebrow/placeholder 검증 assertion도 보강. Codex 2차 리뷰에서 "AI에게 물어보세요"가 챗봇으로 오해될 수 있다는 의견이 있었으나, 이 위키가 "최근 대화"+AI Ask(구조화된 AI 답변) 기반 대화형 검색이라는 실제 동작과 일치한다고 판단해 반영하지 않음(Open Gap으로 기록).
+- Playwright로 데스크톱(다크/라이트)·모바일 뷰포트에서 최종 문구 렌더링 확인, `pnpm test`(34 files/208 tests)/`pnpm typecheck` 통과. 상세는 `docs/tasks/home-hero-ai-copy/` 참고.
+
 ### 2026-08-21 — 검색 결과 페이지 입력창 타이핑 지연 수정
 - 배경: 사용자가 "검색 결과 페이지 하단 검색창에 다시 검색하려고 타이핑하면 글자가 느리게 찍힌다(CPU가 높아진 느낌)"고 리포트.
 - 원인: `SearchPage.tsx`에서 입력값(`draftQuestion`) state가 바뀔 때마다 컴포넌트 전체가 리렌더되면서, 완료된 대화 턴마다 추천 문서 재계산(`resolveTurnContext` → 전체 문서 코퍼스 대상 lexical 스코어링)과 `StructuredAnswerView`의 마크다운 재파싱이 `useMemo`/`React.memo` 없이 매 키 입력마다 다시 실행되고 있었음. Playwright로 실제 키보드 입력을 재현한 결과, 200턴이 쌓인 대화에서는 수정 전 코드로 5초 동안 문자 1개도 입력되지 않는 수준의 지연이 실제로 발생함을 확인.
