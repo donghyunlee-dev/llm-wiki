@@ -32,21 +32,19 @@ export const BLOCKED_UI_TERMS = [
   "로그",
   "개인",
   "진행률",
-  "AI Wiki",
-  "AI ",
 ] as const;
 
 export const HOME_CONTENT: HomeContent = {
   hero: {
-    eyebrow: "사내 지식 위키",
-    title: "궁금한 것을 검색해보세요",
+    eyebrow: "AI 활용 가이드",
+    title: "AI에게 궁금한 것을 물어보세요",
     body: "궁금한 내용을 입력하면 관련 문서와 사례, FAQ를 함께 확인할 수 있습니다.",
   },
   search: {
-    placeholder: "예: 업무 자동화는 어떻게 시작하나요?",
+    placeholder: "예: AI는 어떻게 활용하나요?",
     examples: [
-      "업무 자동화 시작 방법",
-      "프로젝트 사례 찾기",
+      "AI 활용 방법",
+      "AI 활용 프로젝트 사례 찾기",
       "자주 묻는 질문 확인",
     ],
   },
