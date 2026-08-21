@@ -1,5 +1,5 @@
 import { buildSearchFollowUpQuestion, stripTitleTypePrefix } from "@sfood/wiki-core";
-import { startTransition, useEffect, useRef, useState, useCallback } from "react";
+import { memo, startTransition, useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useWikiData } from "../../data/WikiDataProvider";
 import { getPolicyNoticeMessage, shouldShowPolicyNotice } from "../../lib/policyNotice";
@@ -193,6 +193,28 @@ export function SearchPage() {
     turnElement?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [liveTurns]);
 
+  const accumulatedContext = useMemo(() => {
+    const turnContexts = liveTurns
+      .filter((item) => item.status !== "loading")
+      .map((item) => resolveTurnContext(item, documents));
+
+    return accumulateSearchContext(
+      turnContexts.map((context) => ({
+        recommended: context.recommendedDocuments,
+        related: context.relatedDocuments,
+        faq: context.faqDocuments,
+      })),
+    );
+  }, [liveTurns, documents]);
+
+  const registerTurnRef = useCallback((id: string, element: HTMLDivElement | null) => {
+    if (element) {
+      turnRefs.current.set(id, element);
+    } else {
+      turnRefs.current.delete(id);
+    }
+  }, []);
+
   const triggerEmptyHint = useCallback(() => {
     setShowEmptyHint(true);
     if (emptyHintTimerRef.current !== null) {
@@ -264,17 +286,6 @@ export function SearchPage() {
     );
   }
 
-  const turnContexts = liveTurns
-    .filter((item) => item.status !== "loading")
-    .map((item) => resolveTurnContext(item, documents));
-  const accumulatedContext = accumulateSearchContext(
-    turnContexts.map((context) => ({
-      recommended: context.recommendedDocuments,
-      related: context.relatedDocuments,
-      faq: context.faqDocuments,
-    })),
-  );
-
   return (
     <div className="search-shell" ref={shellRef}>
       <div className={isConversationDrawerOpen ? "search-sidebar-left search-sidebar-open" : "search-sidebar-left"}>
@@ -305,31 +316,7 @@ export function SearchPage() {
             ) : null}
 
             {liveTurns.map((item) => (
-              <div
-                className="chat-turn"
-                key={item.id}
-                ref={(element) => {
-                  if (element) {
-                    turnRefs.current.set(item.id, element);
-                  } else {
-                    turnRefs.current.delete(item.id);
-                  }
-                }}
-              >
-                <div className="chat-message chat-message-user">
-                  <p>{item.question}</p>
-                </div>
-
-                <section className="chat-message chat-message-assistant">
-                  {item.status === "loading" ? (
-                    <SearchLoadingState />
-                  ) : item.status === "complete" && item.answer ? (
-                    <SearchAnswerView answer={item.answer} />
-                  ) : (
-                    <p>{item.errorMessage ?? "답변을 준비하지 못했습니다."}</p>
-                  )}
-                </section>
-              </div>
+              <ChatTurn key={item.id} item={item} registerRef={registerTurnRef} />
             ))}
           </div>
           <div className="chat-input-dock">
@@ -397,6 +384,37 @@ export function SearchPage() {
     </div>
   );
 }
+
+const ChatTurn = memo(function ChatTurn({
+  item,
+  registerRef,
+}: {
+  item: LiveTurn;
+  registerRef: (id: string, element: HTMLDivElement | null) => void;
+}) {
+  const handleRef = useCallback(
+    (element: HTMLDivElement | null) => registerRef(item.id, element),
+    [registerRef, item.id],
+  );
+
+  return (
+    <div className="chat-turn" ref={handleRef}>
+      <div className="chat-message chat-message-user">
+        <p>{item.question}</p>
+      </div>
+
+      <section className="chat-message chat-message-assistant">
+        {item.status === "loading" ? (
+          <SearchLoadingState />
+        ) : item.status === "complete" && item.answer ? (
+          <SearchAnswerView answer={item.answer} />
+        ) : (
+          <p>{item.errorMessage ?? "답변을 준비하지 못했습니다."}</p>
+        )}
+      </section>
+    </div>
+  );
+});
 
 function resolveTurnContext(turn: LiveTurn, documents: ReturnType<typeof useWikiData>["documents"]) {
   const fallbackDocuments = buildFallbackRecommendedDocuments(documents, turn.question);
