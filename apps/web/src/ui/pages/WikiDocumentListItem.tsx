@@ -22,13 +22,11 @@ export const AUDIENCE_LABELS: Record<WikiDocument["metadata"]["audience"], strin
 type WikiDocumentListItemProps = {
   document: WikiDocument;
   to: string;
-  eyebrow?: string;
   showCategory?: boolean;
 };
 
 export function WikiDocumentListItem({
   document,
-  eyebrow,
   showCategory = false,
   to,
 }: WikiDocumentListItemProps) {
@@ -36,11 +34,6 @@ export function WikiDocumentListItem({
     <Link to={to} className="document-list-item">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          {eyebrow ? (
-            <p className="mb-1.5 text-xs font-semibold uppercase text-accent">
-              {eyebrow}
-            </p>
-          ) : null}
           <p className="document-title">{stripTitleTypePrefix(document.title)}</p>
         </div>
         <span className="link-indicator">보기</span>
