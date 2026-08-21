@@ -16,6 +16,13 @@ This document is the session-to-session progress ledger for the project. It must
 | 7 | Operator Workflow | Not Started | No review workflow yet |
 
 ## Latest Completed Work
+### 2026-08-21 — 검색 결과 페이지 입력창 타이핑 지연 수정
+- 배경: 사용자가 "검색 결과 페이지 하단 검색창에 다시 검색하려고 타이핑하면 글자가 느리게 찍힌다(CPU가 높아진 느낌)"고 리포트.
+- 원인: `SearchPage.tsx`에서 입력값(`draftQuestion`) state가 바뀔 때마다 컴포넌트 전체가 리렌더되면서, 완료된 대화 턴마다 추천 문서 재계산(`resolveTurnContext` → 전체 문서 코퍼스 대상 lexical 스코어링)과 `StructuredAnswerView`의 마크다운 재파싱이 `useMemo`/`React.memo` 없이 매 키 입력마다 다시 실행되고 있었음. Playwright로 실제 키보드 입력을 재현한 결과, 200턴이 쌓인 대화에서는 수정 전 코드로 5초 동안 문자 1개도 입력되지 않는 수준의 지연이 실제로 발생함을 확인.
+- `turnContexts`/`accumulatedContext` 계산을 `useMemo`(의존성: `liveTurns`, `documents`)로 감싸고, 채팅 턴 렌더링을 `ChatTurn`이라는 `React.memo` 컴포넌트로 분리 — `draftQuestion` 변경이 과거 턴 재계산/리렌더로 전파되지 않게 함. `turnRefs` 스크롤 ref 등록은 안정적인 `registerTurnRef` 콜백으로 유지해 memo가 실제로 동작하도록 함.
+- Playwright로 수정 전/후 200턴 상태에서 실제 타이핑을 재현 비교(수정 전: 5초 타임아웃/문자 1개, 수정 후: 즉시 정상 입력) — 회귀 없음(대화 복원/스크롤/추천 패널 렌더링 동일). Codex 크리티컬 리뷰에서 크리티컬/메이저 이슈 없음, Low 2건(회귀 방지 자동 테스트 부재, `SearchContextPanel`이 여전히 매 키 입력마다 리렌더되지만 비용 미미)만 Open Gap으로 기록.
+- `pnpm test`(34 files/208 tests, 회귀 없음)/`pnpm typecheck` 통과. 상세는 `docs/tasks/search-page-typing-lag-fix/` 참고.
+
 ### 2026-08-20 — 가이드 상세 페이지 "뒤로가기" 버튼을 눈에 띄는 in-flow 링크로 교체
 - 배경: 사용자가 "뒤로가기 버튼이 위치도 그렇고 모양도 별로이고 바로 알아볼 수 없다"고 리포트. Playwright로 실측한 결과, `.article-back-link`가 페이지 전체 폭 컨테이너 기준 absolute로 화면 맨 왼쪽 가장자리에 떠 있고 텍스트 라벨 없이 아이콘(`‹`)만 있는 32×32px 버튼이었음 — 본문·헤더와 시각적으로 단절된 고립 요소였음.
 - `ArticlePage.tsx`: `.article-back-link`를 본문 리딩 컬럼(`.guide-detail-content`) 안, 제목 바로 위로 옮기고 "목록으로" 텍스트를 아이콘과 함께 상시 노출. 더 이상 필요 없는 `aria-label`/`title` 제거, `.guide-detail-shell`의 `relative`도 함께 정리.
